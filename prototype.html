@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>HabitFlow - Habit Tracker Prototype</title>
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com" rel="preconnect"/>
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@200;300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+    <!-- Material Symbols -->
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#13ec80",
+                        "background-light": "#f6f8f7",
+                        "background-dark": "#102219",
+                        "surface-dark": "#1A2E24", 
+                        "surface-light": "#ffffff",
+                        "input-dark": "#234836",
+                        "text-muted": "#92c9ad"
+                    },
+                    fontFamily: {
+                        "display": ["Manrope", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "2xl": "1rem", "3xl": "1.5rem", "full": "9999px"},
+                    boxShadow: {
+                        'glow': '0 0 15px rgba(19, 236, 128, 0.3)',
+                    }
+                },
+            },
+        }
+    </script>
+    <!-- React & Router -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+    <script src="https://unpkg.com/history@5/umd/history.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-router@6.3.0/umd/react-router.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-router-dom@6.3.0/umd/react-router-dom.development.js" crossorigin></script>
+    <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+
+    <style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        body {
+            min-height: max(884px, 100dvh);
+            -webkit-font-smoothing: antialiased;
+        }
+        .glass-panel {
+            background: rgba(24, 44, 36, 0.6);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+        /* Toggle Switch Custom */
+        .toggle-checkbox:checked {
+            right: 0;
+            border-color: #13ec80;
+        }
+        .toggle-checkbox:checked + .toggle-label {
+            background-color: #13ec80;
+        }
+        .text-shadow-sm {
+            text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-white antialiased transition-colors duration-200">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+        const { createRoot } = ReactDOM;
+        const { MemoryRouter, Routes, Route, Link, useNavigate, useLocation } = ReactRouterDOM;
+
+        // --- Common Components ---
+
+        const BottomNav = () => {
+            const navigate = useNavigate();
+            const location = useLocation();
+
+            const isActive = (path) => location.pathname === path;
+
+            return (
+                <nav className="fixed bottom-0 left-0 w-full bg-white dark:bg-[#193326]/90 backdrop-blur-md border-t border-slate-200 dark:border-white/10 pb-6 pt-3 px-6 z-50">
+                    <div className="flex justify-between items-center max-w-md mx-auto">
+                        <Link to="/dashboard" className="flex flex-col items-center gap-1 w-16 group">
+                            <span className={`material-symbols-outlined transition-colors ${isActive('/dashboard') ? 'text-primary' : 'text-gray-400 dark:text-gray-500 group-hover:text-primary'}`}>home</span>
+                            <span className={`text-[10px] font-bold transition-colors ${isActive('/dashboard') ? 'text-primary' : 'text-gray-400 dark:text-gray-500 group-hover:text-primary'}`}>Home</span>
+                        </Link>
+                        <Link to="/tasks" className="flex flex-col items-center gap-1 w-16 group">
+                            <span className={`material-symbols-outlined transition-colors ${isActive('/tasks') ? 'text-primary' : 'text-gray-400 dark:text-gray-500 group-hover:text-primary'}`}>check_circle</span>
+                            <span className={`text-[10px] font-medium transition-colors ${isActive('/tasks') ? 'text-primary' : 'text-gray-400 dark:text-gray-500 group-hover:text-primary'}`}>Tasks</span>
+                        </Link>
+                        <Link to="/habits" className="flex flex-col items-center gap-1 w-16 group">
+                            <span className={`material-symbols-outlined transition-colors ${isActive('/habits') ? 'text-primary' : 'text-gray-400 dark:text-gray-500 group-hover:text-primary'}`}>calendar_month</span>
+                            <span className={`text-[10px] font-medium transition-colors ${isActive('/habits') ? 'text-primary' : 'text-gray-400 dark:text-gray-500 group-hover:text-primary'}`}>Habits</span>
+                        </Link>
+                        <Link to="/stats" className="flex flex-col items-center gap-1 w-16 group">
+                            <span className={`material-symbols-outlined transition-colors ${isActive('/stats') ? 'text-primary' : 'text-gray-400 dark:text-gray-500 group-hover:text-primary'}`}>bar_chart</span>
+                            <span className={`text-[10px] font-medium transition-colors ${isActive('/stats') ? 'text-primary' : 'text-gray-400 dark:text-gray-500 group-hover:text-primary'}`}>Stats</span>
+                        </Link>
+                         <Link to="/settings" className="flex flex-col items-center gap-1 w-16 group">
+                            <span className={`material-symbols-outlined transition-colors ${isActive('/settings') ? 'text-primary' : 'text-gray-400 dark:text-gray-500 group-hover:text-primary'}`}>settings</span>
+                            <span className={`text-[10px] font-medium transition-colors ${isActive('/settings') ? 'text-primary' : 'text-gray-400 dark:text-gray-500 group-hover:text-primary'}`}>Settings</span>
+                        </Link>
+                    </div>
+                </nav>
+            );
+        };
+
+        const TopBar = ({ title, backPath, rightIcon }) => {
+            const navigate = useNavigate();
+            return (
+                <div className="sticky top-0 z-20 flex items-center bg-background-light/95 dark:bg-background-dark/95 backdrop-blur-sm p-4 pb-2 justify-between border-b border-transparent dark:border-white/5">
+                    {backPath ? (
+                        <button onClick={() => navigate(backPath)} className="text-slate-900 dark:text-white flex size-10 shrink-0 items-center justify-center hover:bg-black/5 dark:hover:bg-white/10 rounded-full transition-colors">
+                            <span className="material-symbols-outlined">arrow_back</span>
+                        </button>
+                    ) : (
+                         <div className="size-10"></div>
+                    )}
+                    <h2 className="text-slate-900 dark:text-white text-lg font-bold leading-tight tracking-[-0.015em] flex-1 text-center truncate px-2">{title}</h2>
+                    {rightIcon ? rightIcon : <div className="size-10"></div>}
+                </div>
+            );
+        };
+
+
+        // --- Pages ---
+
+        const LoginPage = () => {
+            const navigate = useNavigate();
+            return (
+                <div className="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-white min-h-screen flex flex-col items-center justify-center overflow-hidden relative">
+                    <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0 pointer-events-none">
+                        <div className="absolute top-[-10%] left-[50%] -translate-x-1/2 w-[150%] h-[50%] bg-primary/10 blur-[100px] rounded-full"></div>
+                        <div className="absolute bottom-[-10%] left-[-10%] w-[80%] h-[40%] bg-primary/5 blur-[80px] rounded-full"></div>
+                    </div>
+                    <div className="relative z-10 flex flex-col w-full max-w-[480px] h-full min-h-screen p-6 justify-between">
+                        <div className="flex-1 flex flex-col items-center justify-center mt-12 mb-8">
+                            <div className="mb-8 relative">
+                                <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center border border-primary/20 shadow-[0_0_30px_-5px_rgba(19,236,128,0.2)]">
+                                    <span className="material-symbols-outlined text-primary text-5xl">check_circle</span>
+                                </div>
+                                <div className="absolute -top-2 -right-2 w-6 h-6 bg-primary rounded-full flex items-center justify-center text-background-dark animate-bounce">
+                                    <span className="material-symbols-outlined text-sm font-bold">bolt</span>
+                                </div>
+                            </div>
+                            <h1 className="text-3xl font-extrabold tracking-tight text-center mb-3">
+                                Habit<span className="text-primary">Flow</span>
+                            </h1>
+                            <p className="text-slate-500 dark:text-slate-400 text-center text-lg max-w-[280px] leading-relaxed">
+                                Track your goals. Master your day.
+                            </p>
+                        </div>
+                        <div className="w-full flex flex-col gap-4 pb-8">
+                            <button onClick={() => navigate('/dashboard')} className="group relative flex w-full cursor-pointer items-center justify-center overflow-hidden rounded-xl h-14 px-5 bg-white text-slate-900 gap-3 transition-all active:scale-[0.98] hover:bg-slate-50 shadow-lg shadow-black/5 border border-slate-200 dark:border-transparent">
+                                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M23.52 12.29C23.52 11.43 23.441 10.71 23.3 10.04H12V14.51H18.59C18.421 15.89 17.57 17.61 16.03 18.66L15.997 18.804L19.566 21.52L19.81 21.54C22.06 19.49 23.52 16.39 23.52 12.29Z" fill="#4285F4"></path>
+                                    <path d="M12 24C15.24 24 17.96 22.94 19.81 21.24L16.03 18.33C15.02 19.03 13.68 19.53 12 19.53C8.82 19.53 6.13 17.42 5.16 14.53L5.02 14.542L1.319 17.33L1.27 17.47C3.12 21.14 6.91 24 12 24Z" fill="#34A853"></path>
+                                    <path d="M5.16 14.53C4.9 13.78 4.75 12.93 4.75 12.04C4.75 11.16 4.9 10.32 5.14 9.53L5.132 9.379L1.378 6.51L1.27 6.58C0.46 8.19 0 10.05 0 12.04C0 14.04 0.46 15.89 1.28 17.47L5.16 14.53Z" fill="#FBBC05"></path>
+                                    <path d="M12 4.47C14.28 4.47 15.83 5.46 16.7 6.27L20 3C17.96 1.11 15.24 0 12 0C6.91 0 3.12 2.86 1.27 6.58L5.14 9.53C6.12 6.64 8.82 4.47 12 4.47Z" fill="#EA4335"></path>
+                                </svg>
+                                <span className="text-base font-bold tracking-wide">Continue with Google</span>
+                            </button>
+                            <button onClick={() => navigate('/dashboard')} className="group flex w-full cursor-pointer items-center justify-center overflow-hidden rounded-xl h-14 px-5 bg-black text-white gap-3 transition-all active:scale-[0.98] border border-slate-800 dark:bg-white dark:text-black hover:opacity-90">
+                                <svg className="w-6 h-6 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M18.71 19.5C17.76 20.85 16.59 22.5 14.94 22.5C13.43 22.5 12.98 21.6 11.23 21.6C9.48 21.6 8.94 22.5 7.55 22.5C5.94 22.5 4.54 20.69 3.51 19.2C1.41 16.16 0.99 12.79 2.1 10.87C3.18 9 5.39 7.8 7.29 7.8C8.89 7.8 9.94 8.87 11.13 8.87C12.3 8.87 13.62 7.8 15.22 7.8C15.87 7.8 17.73 8.04 18.9 9.75C18.81 9.8 16.89 10.93 16.89 13.56C16.89 16.7 19.64 17.79 19.74 17.84C19.73 17.89 19.34 19.24 18.71 19.5ZM14.98 5.25C15.7 4.38 16.19 3.17 16.05 2C14.97 2.05 13.67 2.72 12.9 3.61C12.21 4.4 11.66 5.64 11.82 6.75C13.01 6.84 14.25 6.13 14.98 5.25Z"></path>
+                                </svg>
+                                <span className="text-base font-bold tracking-wide">Continue with Apple</span>
+                            </button>
+                            <div className="relative flex py-2 items-center">
+                                <div className="flex-grow border-t border-slate-300 dark:border-slate-700"></div>
+                                <span className="flex-shrink mx-4 text-slate-500 dark:text-slate-400 text-xs font-medium uppercase tracking-wider">Or</span>
+                                <div className="flex-grow border-t border-slate-300 dark:border-slate-700"></div>
+                            </div>
+                            <button onClick={() => navigate('/dashboard')} className="group flex w-full cursor-pointer items-center justify-center overflow-hidden rounded-xl h-14 px-5 bg-transparent border-2 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white gap-3 transition-all hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-[0.98]">
+                                <span className="material-symbols-outlined text-xl">mail</span>
+                                <span className="text-base font-bold tracking-wide">Log in with Email</span>
+                            </button>
+                            <p className="text-center text-xs text-slate-500 dark:text-slate-500 mt-4 px-6 leading-5">
+                                By continuing, you agree to our <a className="underline hover:text-slate-700 dark:hover:text-slate-300" href="#">Terms of Service</a> & <a className="underline hover:text-slate-700 dark:hover:text-slate-300" href="#">Privacy Policy</a>.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const Dashboard = () => {
+            const navigate = useNavigate();
+            return (
+                <div className="bg-background-light dark:bg-background-dark text-slate-900 dark:text-white font-display h-auto min-h-screen w-full flex flex-col overflow-x-hidden pb-28">
+                    <header className="sticky top-0 z-30 bg-background-light/90 dark:bg-background-dark/90 backdrop-blur-md px-4 py-3 flex items-center justify-between border-b border-transparent dark:border-white/5 transition-all">
+                        <div className="flex items-center gap-3">
+                            <div className="relative shrink-0">
+                                <div className="bg-center bg-no-repeat bg-cover rounded-full size-10 ring-2 ring-primary/20" style={{backgroundImage: 'url("https://lh3.googleusercontent.com/aida-public/AB6AXuDkT978KBYpznlUZnU9X5BoDZoMLyDA4GWIj5dX1GObGOaiZFSpTOSpAIOYZP1F-Rshl5itgNBNbjZPNGJnhVH1CqQm3T03qsnpULnBWXOgTcKzuDTrvugzmgge2DfaDtsfoUZVRJQiVevZzTp94Zn4nG29XUh-ih_WG9kVve2_S1NFgpXDegMgBC4V-STo_xC2MZl_CMDhYgAMIo5dE0S0lK_aECRCoqjr4UbF2jp6k9A7I01HsUrj6wmggAeI1g7aiPmpTed4Nb2F")'}}></div>
+                                <div className="absolute bottom-0 right-0 size-3 bg-primary border-2 border-background-light dark:border-background-dark rounded-full"></div>
+                            </div>
+                            <div className="flex flex-col">
+                                <span className="text-xs font-medium text-gray-500 dark:text-gray-400 leading-none mb-1">Good Morning,</span>
+                                <h2 className="text-lg font-bold leading-none tracking-tight">Alex</h2>
+                            </div>
+                        </div>
+                        <button className="flex items-center justify-center size-10 rounded-full bg-transparent hover:bg-gray-200 dark:hover:bg-white/5 transition-colors relative">
+                            <span className="material-symbols-outlined">notifications</span>
+                            <span className="absolute top-2.5 right-2.5 size-2 bg-red-500 rounded-full border-2 border-background-light dark:border-background-dark"></span>
+                        </button>
+                    </header>
+
+                    <section className="px-4 pt-6 pb-2">
+                        <div className="relative w-full overflow-hidden rounded-3xl bg-surface-light dark:bg-surface-dark p-6 shadow-sm border border-gray-200 dark:border-white/5">
+                            <div className="absolute -top-24 -right-24 size-64 bg-primary/10 rounded-full blur-[80px] pointer-events-none"></div>
+                            <div className="relative z-10 flex flex-col gap-6">
+                                <div className="flex justify-between items-start">
+                                    <div>
+                                        <p className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Daily Progress</p>
+                                        <h3 className="text-2xl font-bold dark:text-white leading-tight">Keep it up! <br/> You're on fire.</h3>
+                                    </div>
+                                    <div className="flex flex-col items-end">
+                                        <span className="text-4xl font-extrabold text-primary tracking-tighter">66%</span>
+                                    </div>
+                                </div>
+                                <div className="flex flex-col gap-2">
+                                    <div className="flex justify-between text-xs font-medium dark:text-gray-300">
+                                        <span>4 of 6 habits completed</span>
+                                        <span>Goal: 100%</span>
+                                    </div>
+                                    <div className="h-4 w-full bg-gray-200 dark:bg-[#0d1a14] rounded-full overflow-hidden p-0.5">
+                                        <div className="h-full bg-primary rounded-full shadow-[0_0_12px_rgba(19, 236, 128, 0.6)] transition-all duration-1000 ease-out" style={{width: '66%'}}></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section className="py-4">
+                        <div className="px-4 mb-3 flex items-center justify-between">
+                            <h3 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">Habits</h3>
+                            <button onClick={() => navigate('/habits')} className="text-primary text-sm font-bold hover:text-primary/80 transition-colors">See All</button>
+                        </div>
+                        <div className="w-full overflow-x-auto no-scrollbar pb-2 pl-4">
+                            <div className="flex gap-3 min-w-min pr-4">
+                                <div className="flex flex-col items-center gap-2 group cursor-pointer">
+                                    <div className="relative size-[76px] rounded-2xl bg-surface-light dark:bg-surface-dark border border-gray-200 dark:border-white/5 flex items-center justify-center transition-transform active:scale-95">
+                                        <svg className="absolute inset-0 size-full -rotate-90 p-1"><circle className="text-gray-200 dark:text-gray-700/30" cx="38" cy="38" fill="transparent" r="33" stroke="currentColor" strokeWidth="3"></circle><circle className="text-primary drop-shadow-[0_0_2px_rgba(19,236,128,0.5)]" cx="38" cy="38" fill="transparent" r="33" stroke="currentColor" strokeDasharray="207" strokeDashoffset="140" strokeLinecap="round" strokeWidth="3"></circle></svg>
+                                        <span className="material-symbols-outlined text-primary" style={{fontSize: '28px'}}>water_drop</span>
+                                    </div>
+                                    <span className="text-xs font-semibold text-gray-600 dark:text-gray-300">Hydrate</span>
+                                </div>
+                                <div className="flex flex-col items-center gap-2 group cursor-pointer">
+                                    <div className="relative size-[76px] rounded-2xl bg-surface-light dark:bg-surface-dark border border-gray-200 dark:border-white/5 flex items-center justify-center transition-transform active:scale-95">
+                                        <svg className="absolute inset-0 size-full -rotate-90 p-1"><circle className="text-gray-200 dark:text-gray-700/30" cx="38" cy="38" fill="transparent" r="33" stroke="currentColor" strokeWidth="3"></circle><circle className="text-primary" cx="38" cy="38" fill="transparent" r="33" stroke="currentColor" strokeDasharray="207" strokeDashoffset="207" strokeLinecap="round" strokeWidth="3"></circle></svg>
+                                        <span className="material-symbols-outlined text-gray-400 dark:text-white" style={{fontSize: '28px'}}>menu_book</span>
+                                    </div>
+                                    <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Read</span>
+                                </div>
+                                <div className="flex flex-col items-center gap-2 group cursor-pointer">
+                                    <div className="relative size-[76px] rounded-2xl bg-surface-light dark:bg-surface-dark border border-gray-200 dark:border-white/5 flex items-center justify-center transition-transform active:scale-95">
+                                        <svg className="absolute inset-0 size-full -rotate-90 p-1"><circle className="text-gray-200 dark:text-gray-700/30" cx="38" cy="38" fill="transparent" r="33" stroke="currentColor" strokeWidth="3"></circle><circle className="text-primary drop-shadow-[0_0_2px_rgba(19,236,128,0.5)]" cx="38" cy="38" fill="transparent" r="33" stroke="currentColor" strokeDasharray="207" strokeDashoffset="60" strokeLinecap="round" strokeWidth="3"></circle></svg>
+                                        <span className="material-symbols-outlined text-primary" style={{fontSize: '28px'}}>directions_run</span>
+                                    </div>
+                                    <span className="text-xs font-semibold text-gray-600 dark:text-gray-300">Run</span>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section className="px-4 pb-4">
+                        <button onClick={() => navigate('/screenshot-upload')} className="relative w-full flex items-center gap-4 p-4 rounded-2xl bg-surface-light dark:bg-surface-dark border border-gray-200 dark:border-white/5 shadow-sm overflow-hidden group hover:border-primary/50 dark:hover:border-primary/50 transition-all active:scale-[0.98]">
+                            <div className="relative shrink-0 flex items-center justify-center size-12 rounded-xl bg-primary/10 text-primary group-hover:scale-110 transition-transform duration-300">
+                                <span className="material-symbols-outlined" style={{fontSize: '26px'}}>add_a_photo</span>
+                            </div>
+                            <div className="flex-1 text-left z-10">
+                                <div className="flex items-center gap-2 mb-1">
+                                    <h4 className="text-sm font-bold text-slate-900 dark:text-white">Screenshot to Alarm</h4>
+                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-primary text-background-dark shadow-sm">NEW</span>
+                                </div>
+                                <p className="text-xs font-medium text-gray-500 dark:text-gray-400">Turn your screenshots into alarms instantly</p>
+                            </div>
+                            <div className="shrink-0 flex items-center justify-center size-8 rounded-full bg-gray-100 dark:bg-white/5 text-gray-400 dark:text-gray-400 group-hover:bg-primary group-hover:text-background-dark transition-colors">
+                                <span className="material-symbols-outlined text-lg">arrow_forward</span>
+                            </div>
+                            <div className="absolute -right-8 -bottom-8 size-24 bg-primary/10 rounded-full blur-2xl group-hover:bg-primary/20 transition-all"></div>
+                        </button>
+                    </section>
+
+                    <section className="px-4 py-2">
+                        <h3 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight mb-4">Today's Tasks</h3>
+                        <div className="flex flex-col gap-3">
+                            <div className="group relative flex items-center gap-4 p-4 rounded-xl bg-surface-light dark:bg-surface-dark border border-gray-200 dark:border-white/5 shadow-sm overflow-hidden active:scale-[0.99] transition-all">
+                                <button className="flex items-center justify-center size-6 rounded-md border-2 border-primary bg-transparent text-transparent hover:bg-primary/10 transition-colors z-10"></button>
+                                <div className="flex-1 flex flex-col z-10">
+                                    <span className="text-base font-semibold text-slate-900 dark:text-white leading-tight">Submit Project Report</span>
+                                    <div className="flex items-center gap-1.5 mt-1.5 text-xs font-medium text-gray-500 dark:text-gray-400">
+                                        <span className="material-symbols-outlined text-[16px]">schedule</span>
+                                        <span>10:00 AM</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="group relative flex items-center gap-4 p-4 rounded-xl bg-surface-light dark:bg-surface-dark border border-gray-200 dark:border-white/5 shadow-sm overflow-hidden active:scale-[0.99] transition-all">
+                                <button className="flex items-center justify-center size-6 rounded-md border-2 border-gray-400 dark:border-gray-600 bg-transparent text-transparent group-hover:border-primary transition-colors z-10"></button>
+                                <div className="flex-1 flex flex-col z-10">
+                                    <span className="text-base font-semibold text-slate-900 dark:text-white leading-tight">Grocery Shopping</span>
+                                    <div className="flex items-center gap-1.5 mt-1.5 text-xs font-medium text-gray-500 dark:text-gray-400">
+                                        <span className="material-symbols-outlined text-[16px]">schedule</span>
+                                        <span>5:00 PM</span>
+                                    </div>
+                                </div>
+                                <div className="size-2 rounded-full bg-orange-500"></div>
+                            </div>
+                        </div>
+                    </section>
+                    
+                    <button onClick={() => navigate('/speech-mode')} className="fixed bottom-24 right-5 size-14 rounded-full bg-primary text-background-dark shadow-[0_8px_25px_rgba(19,236,128,0.4)] flex items-center justify-center z-40 hover:scale-105 active:scale-90 transition-transform duration-200">
+                        <span className="material-symbols-outlined text-3xl font-medium">mic</span>
+                    </button>
+                    
+                    <BottomNav />
+                </div>
+            );
+        };
+
+        const ScreenshotUpload = () => {
+            const navigate = useNavigate();
+            return (
+                <div className="bg-background-light dark:bg-background-dark text-slate-900 dark:text-white font-display min-h-screen flex flex-col overflow-x-hidden">
+                    <TopBar title="Scan Screenshot" backPath="/dashboard" />
+                    <main className="flex-1 flex flex-col px-4 pb-6 pt-2 max-w-md mx-auto w-full">
+                        <section className="flex flex-col items-center justify-center gap-6 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 bg-white/50 dark:bg-surface-dark/30 px-6 py-12 mt-4 relative overflow-hidden group">
+                            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 bg-primary/20 rounded-full blur-[60px] pointer-events-none"></div>
+                            <div className="flex flex-col items-center gap-3 relative z-10">
+                                <div className="p-4 bg-primary/10 rounded-full mb-2">
+                                    <span className="material-symbols-outlined text-primary text-[40px]">add_photo_alternate</span>
+                                </div>
+                                <h3 className="text-xl font-bold leading-tight tracking-tight text-center">Upload a screenshot</h3>
+                                <p className="text-slate-500 dark:text-slate-400 text-sm font-normal leading-relaxed text-center max-w-[280px]">
+                                    AI will automatically detect dates, times, and deadlines.
+                                </p>
+                            </div>
+                            <button onClick={() => navigate('/screenshot-confirm')} className="flex w-full max-w-[240px] cursor-pointer items-center justify-center gap-2 overflow-hidden rounded-xl h-12 px-6 bg-primary hover:bg-primary/90 transition-all text-white text-base font-bold tracking-wide shadow-lg shadow-primary/20 relative z-10">
+                                <span className="material-symbols-outlined text-[20px]">image</span>
+                                <span className="truncate">Select from Gallery</span>
+                            </button>
+                        </section>
+                        <div className="flex flex-col items-center gap-4 mt-6">
+                            <button className="flex w-full max-w-[240px] cursor-pointer items-center justify-center gap-2 overflow-hidden rounded-xl h-12 px-6 bg-slate-200 dark:bg-surface-dark hover:bg-slate-300 dark:hover:bg-white/10 transition-all text-slate-900 dark:text-white text-sm font-bold tracking-wide">
+                                <span className="material-symbols-outlined text-[20px]">photo_camera</span>
+                                <span className="truncate">Open Camera</span>
+                            </button>
+                        </div>
+                    </main>
+                </div>
+            );
+        };
+
+        const ScreenshotConfirm = () => {
+            const navigate = useNavigate();
+            return (
+                <div className="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-white antialiased overflow-hidden h-screen flex flex-col">
+                    <div className="relative flex h-screen w-full flex-col overflow-hidden max-w-md mx-auto shadow-2xl bg-background-light dark:bg-background-dark">
+                        <div className="flex items-center px-4 py-3 z-20 justify-between bg-transparent absolute top-0 left-0 w-full">
+                            <button onClick={() => navigate('/screenshot-upload')} className="flex items-center justify-center size-10 rounded-full bg-black/20 backdrop-blur-md text-white hover:bg-black/30 transition-colors">
+                                <span className="material-symbols-outlined text-[24px]">arrow_back</span>
+                            </button>
+                            <h2 className="text-white text-lg font-bold tracking-tight drop-shadow-md">Verify Alarm</h2>
+                            <div className="size-10"></div>
+                        </div>
+                        <div className="relative w-full h-[60%] bg-[#1a1a1a] overflow-hidden">
+                            <div className="w-full h-full bg-top bg-cover opacity-80" style={{backgroundImage: 'url("https://lh3.googleusercontent.com/aida-public/AB6AXuCfB7lBtTiph_TNFEMtpNDfBw4Q2dh1puFPQabfJkeIz6IDum47eBQlzAir6RJvRFa2B9qhjOIWanlQGRLJnTNU-fXFeBqCuDPoG6Xkn4nFIbPsZlca9lILASIrbzPJ7eq9SiPqlfzz1mx67jIzaiB8x71AxkQZoevdAlUFftND3BeQ3yCMXHe7ouRKwwSyy3RO3M5YclgmqiH-hSY26Wd0jbl4GJXpPjSu-p7DJk_9dLyU1osWRmIew9AWauD89NXoLcGY5n0-gloU")'}}></div>
+                            <div className="absolute inset-0 bg-background-dark/30 backdrop-blur-[1px]"></div>
+                            <div className="absolute top-[35%] left-1/2 -translate-x-1/2 w-[80%] h-24 border-2 border-primary rounded-lg shadow-glow flex flex-col items-center justify-center">
+                                <div className="absolute -top-3 left-4 bg-primary text-background-dark text-xs font-bold px-2 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-1">
+                                    <span className="material-symbols-outlined text-[14px]">auto_awesome</span>
+                                    Detected
+                                </div>
+                                <div className="absolute inset-0 bg-primary/10 animate-pulse rounded-lg"></div>
+                            </div>
+                        </div>
+                        <div className="relative -mt-6 flex-1 bg-white dark:bg-surface-dark rounded-t-3xl shadow-[0_-10px_40px_rgba(0,0,0,0.3)] flex flex-col z-10">
+                            <div className="w-full flex justify-center pt-3 pb-1">
+                                <div className="h-1.5 w-12 rounded-full bg-gray-300 dark:bg-gray-600"></div>
+                            </div>
+                            <div className="flex-1 flex flex-col px-6 pt-2 pb-6 overflow-y-auto no-scrollbar">
+                                <div className="flex items-center justify-center gap-2 mb-2">
+                                    <span className="material-symbols-outlined text-primary text-[20px]">check_circle</span>
+                                    <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Found 1 Alarm</h2>
+                                </div>
+                                <div className="text-center mb-6">
+                                    <h1 className="text-6xl font-extrabold text-slate-900 dark:text-white tracking-tighter">
+                                        08:30 <span className="text-2xl text-primary font-bold ml-1 align-top mt-2 inline-block">AM</span>
+                                    </h1>
+                                </div>
+                                <div className="space-y-4 w-full">
+                                    <div className="group">
+                                        <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5 ml-1">Alarm Label</label>
+                                        <div className="flex items-center bg-gray-100 dark:bg-background-dark rounded-xl px-4 py-3 focus-within:ring-2 focus-within:ring-primary transition-all">
+                                            <span className="material-symbols-outlined text-gray-400 mr-3">edit</span>
+                                            <input className="bg-transparent border-none p-0 w-full text-slate-900 dark:text-white font-semibold focus:ring-0 placeholder-gray-400" type="text" defaultValue="Doctor's Appointment"/>
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5 ml-1">Date</label>
+                                            <button className="w-full flex items-center justify-between bg-gray-100 dark:bg-background-dark rounded-xl px-4 py-3 hover:bg-gray-200 dark:hover:bg-[#15221d] transition-colors text-left">
+                                                <span className="text-sm font-semibold dark:text-white">Tomorrow</span>
+                                                <span className="material-symbols-outlined text-primary text-[20px]">calendar_today</span>
+                                            </button>
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5 ml-1">Repeat</label>
+                                            <button className="w-full flex items-center justify-between bg-gray-100 dark:bg-background-dark rounded-xl px-4 py-3 hover:bg-gray-200 dark:hover:bg-[#15221d] transition-colors text-left">
+                                                <span className="text-sm font-semibold dark:text-white">Once</span>
+                                                <span className="material-symbols-outlined text-gray-400 text-[20px]">repeat</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="flex-1 min-h-[20px]"></div>
+                                <div className="mt-4 flex flex-col gap-3">
+                                    <button onClick={() => navigate('/screenshot-review')} className="w-full bg-primary hover:bg-[#0fd671] active:scale-[0.98] transition-all text-background-dark font-bold text-lg py-4 rounded-2xl shadow-lg shadow-primary/20 flex items-center justify-center gap-2">
+                                        <span className="material-symbols-outlined">alarm_add</span>
+                                        Confirm Alarm
+                                    </button>
+                                    <button onClick={() => navigate('/screenshot-edit')} className="w-full text-gray-500 dark:text-gray-400 text-sm font-medium py-2 hover:text-primary transition-colors">
+                                        Not what you wanted? <span className="underline decoration-dotted underline-offset-4">Edit manually</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const ScreenshotEdit = () => {
+            const navigate = useNavigate();
+            return (
+                <div className="bg-background-light dark:bg-background-dark font-display min-h-screen flex flex-col antialiased selection:bg-primary selection:text-background-dark">
+                    <header className="sticky top-0 z-50 bg-background-light/90 dark:bg-background-dark/90 backdrop-blur-md border-b border-black/5 dark:border-white/5">
+                        <div className="flex items-center justify-between p-4 pb-2">
+                            <button onClick={() => navigate('/screenshot-confirm')} className="text-slate-900 dark:text-white flex size-10 items-center justify-center rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors">
+                                <span className="material-symbols-outlined text-2xl">arrow_back</span>
+                            </button>
+                            <h2 className="text-slate-900 dark:text-white text-lg font-bold leading-tight tracking-[-0.015em]">Review Details</h2>
+                            <div className="size-10"></div>
+                        </div>
+                    </header>
+                    <main className="flex-1 flex flex-col gap-6 p-4 pb-32 overflow-y-auto">
+                        <section className="bg-white dark:bg-surface-dark rounded-xl p-4 shadow-sm border border-slate-200 dark:border-white/5">
+                            <div className="flex items-stretch justify-between gap-4">
+                                <div className="flex flex-col justify-center gap-1 flex-[2_2_0px]">
+                                    <div className="flex items-center gap-2">
+                                        <span className="material-symbols-outlined text-primary text-sm">auto_awesome</span>
+                                        <p className="text-slate-900 dark:text-white text-base font-bold leading-tight">Source Snippet</p>
+                                    </div>
+                                    <p className="text-slate-500 dark:text-text-muted text-xs font-normal leading-normal">Extracted from screenshot analysis</p>
+                                </div>
+                                <div className="w-24 h-16 bg-center bg-no-repeat bg-cover rounded-lg flex-shrink-0 border border-slate-200 dark:border-white/10 relative overflow-hidden group" style={{backgroundImage: 'url("https://lh3.googleusercontent.com/aida-public/AB6AXuAjYnxWXDq9b0iJKFHWGa-GyCbqbWp8MSrPjQ928jXh72cn2zXDni7TJJkiS2j42G1DZuHNhwHgOgDHYPfhk6nTTxoHU0qZ6Se9-cHhCli1Il12U209ktcw3TiY_boOYUs--CYVuqmtNFjr2IV7nhbIKO9LcN_Rot_z3ZX3KyvPyo8MLev8ATagYk9Rk8QeVWDPOPQPVGPkX433MLVJain_O6Rr6_QNEAcVtSgul8EaclkEKd_pbUnFn5NWcXDJdYdO7yOLGjNZ99uP")'}}>
+                                </div>
+                            </div>
+                        </section>
+                        <section className="flex flex-col gap-4">
+                            <label className="flex flex-col gap-2">
+                                <span className="text-slate-900 dark:text-white text-sm font-medium">Title</span>
+                                <input className="w-full rounded-xl bg-white dark:bg-input-dark border border-slate-200 dark:border-transparent focus:border-primary focus:ring-1 focus:ring-primary text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-text-muted px-4 py-3.5 text-lg font-bold transition-all" type="text" defaultValue="Doctor's Appointment"/>
+                            </label>
+                            <div className="grid grid-cols-2 gap-4">
+                                <label className="flex flex-col gap-2">
+                                    <span className="text-slate-900 dark:text-white text-sm font-medium">Time</span>
+                                    <div className="relative">
+                                        <input className="w-full rounded-xl bg-white dark:bg-input-dark border border-slate-200 dark:border-transparent focus:border-primary focus:ring-1 focus:ring-primary text-slate-900 dark:text-white px-4 py-3 text-base font-semibold appearance-none" type="time" defaultValue="14:30"/>
+                                        <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-text-muted pointer-events-none">schedule</span>
+                                    </div>
+                                </label>
+                                <label className="flex flex-col gap-2">
+                                    <span className="text-slate-900 dark:text-white text-sm font-medium">Date</span>
+                                    <div className="relative">
+                                        <input className="w-full rounded-xl bg-white dark:bg-input-dark border border-slate-200 dark:border-transparent focus:border-primary focus:ring-1 focus:ring-primary text-slate-900 dark:text-white px-4 py-3 text-base font-semibold appearance-none" type="date" defaultValue="2023-10-24"/>
+                                        <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-text-muted pointer-events-none">calendar_today</span>
+                                    </div>
+                                </label>
+                            </div>
+                        </section>
+                    </main>
+                    <footer className="fixed bottom-0 w-full bg-background-light dark:bg-background-dark border-t border-slate-200 dark:border-white/5 p-4 z-40 pb-6">
+                        <button onClick={() => navigate('/dashboard')} className="w-full bg-primary hover:bg-[#0fd671] active:bg-[#0dbd63] text-background-dark font-bold text-lg h-14 rounded-xl flex items-center justify-center gap-2 transition-all shadow-[0_0_20px_rgba(19,236,128,0.3)]">
+                            <span className="material-symbols-outlined">alarm_add</span>
+                            Confirm Alarm
+                        </button>
+                    </footer>
+                </div>
+            );
+        };
+
+        const ScreenshotReview = () => {
+            const navigate = useNavigate();
+            return (
+                <div className="bg-background-light dark:bg-background-dark font-display min-h-screen relative flex flex-col overflow-hidden">
+                    <div className="flex items-center justify-between px-4 py-4 z-20 bg-background-light/90 dark:bg-background-dark/90 backdrop-blur-sm sticky top-0">
+                        <button onClick={() => navigate('/screenshot-upload')} className="flex items-center justify-center p-2 -ml-2 rounded-full text-gray-800 dark:text-white hover:bg-black/5 dark:hover:bg-white/10 transition-colors">
+                            <span className="material-symbols-outlined">arrow_back_ios_new</span>
+                        </button>
+                        <h2 className="text-lg font-bold text-gray-900 dark:text-white tracking-tight flex-1 ml-2">Review Suggestions</h2>
+                        <button className="flex items-center justify-center p-2 rounded-full text-gray-800 dark:text-white hover:bg-black/5 dark:hover:bg-white/10 transition-colors">
+                            <span className="material-symbols-outlined">help</span>
+                        </button>
+                    </div>
+                    <div className="flex-1 overflow-y-auto pb-32">
+                        <div className="px-4 pb-6 pt-2">
+                            <div className="relative w-full aspect-[16/9] bg-gray-800 rounded-xl overflow-hidden shadow-lg border border-white/5 group">
+                                <div className="absolute inset-0 bg-cover bg-top opacity-60 transition-opacity group-hover:opacity-40" style={{backgroundImage: "url('https://lh3.googleusercontent.com/aida-public/AB6AXuBsHg2F5q67NZCq4URjjVJAur0w5JDaEjIj0qK8E4DC9Hv2AWcoZs0CMk5PhLhBhlwwwdQI4efKQ6uJB-3eWiKbnQ4tlD2RK3fAVfi6_CJCR0roHTvk9jkTQdEDHqqiphEWTwY5dNuyc6jlLonBTGFxKVINpNMZpVv1YIw_7kkv1sJ30rUxb2Y36iW8grHyAnwD4berk2DRTJefBgfs38MH7uH6syMW4Gaq4SCE9CdfbK-R5L9XzX__pEWm-8dV_5yDGLSYtKNIQu38')"}}>
+                                </div>
+                                <div className="absolute inset-0 bg-gradient-to-t from-background-dark via-transparent to-transparent"></div>
+                                <div className="absolute top-[30%] left-8 right-8 h-12 border border-primary/40 bg-primary/10 rounded flex items-center justify-center backdrop-blur-sm shadow-[0_0_15px_rgba(19,236,128,0.1)]">
+                                    <div className="absolute -top-3 left-2 bg-primary text-background-dark text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
+                                        Scanned Text
+                                     </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="px-4 mb-4">
+                            <h3 className="text-white tracking-tight text-xl font-bold leading-tight mt-4">Suggested Alarms</h3>
+                        </div>
+                        <div className="px-4 space-y-5">
+                            <div className="relative flex flex-col gap-4 rounded-xl bg-[#193326] p-5 shadow-lg border border-white/5">
+                                <div className="flex items-start justify-between gap-4">
+                                    <div className="flex-1">
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <span className="text-primary material-symbols-outlined text-[18px]">check_circle</span>
+                                            <span className="text-primary text-xs font-bold uppercase tracking-wider">High Confidence</span>
+                                        </div>
+                                        <h4 className="text-white text-lg font-bold leading-tight">Doctor's Appointment</h4>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-3 bg-black/20 p-3 rounded-lg border border-white/5">
+                                    <div className="h-10 w-10 rounded-full bg-[#234836] flex items-center justify-center shrink-0">
+                                        <span className="material-symbols-outlined text-primary">schedule</span>
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <span className="text-[#92c9ad] text-xs font-medium">Extracted Time</span>
+                                        <span className="text-white text-xl font-bold tracking-tight">Tomorrow, 10:00 AM</span>
+                                    </div>
+                                </div>
+                                <button onClick={() => navigate('/dashboard')} className="w-full cursor-pointer flex items-center justify-center rounded-lg h-12 bg-primary hover:bg-[#0fd671] text-background-dark gap-2 text-base font-bold transition-all active:scale-[0.98]">
+                                    <span className="material-symbols-outlined">check</span>
+                                    Confirm
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const TasksPage = () => {
+             const navigate = useNavigate();
+             return (
+                <div className="font-display bg-background-light dark:bg-background-dark text-slate-900 dark:text-white min-h-screen flex flex-col overflow-x-hidden">
+                    <header className="pt-8 px-4 pb-2 sticky top-0 z-20 bg-background-light/95 dark:bg-background-dark/95 backdrop-blur-sm">
+                        <div className="flex justify-between items-center mb-4">
+                            <div>
+                                <h1 className="text-3xl font-bold tracking-tight">Good Morning, Alex</h1>
+                                <p className="text-slate-500 dark:text-slate-400 text-sm font-medium">Here's your plan for today</p>
+                            </div>
+                             <button className="flex items-center justify-center h-10 w-10 rounded-full bg-slate-200 dark:bg-surface-dark text-slate-900 dark:text-white hover:bg-slate-300 dark:hover:bg-[#234836] transition-colors">
+                                <span className="material-symbols-outlined">notifications</span>
+                            </button>
+                        </div>
+                        <div className="flex justify-between items-center py-2 overflow-x-auto no-scrollbar gap-2">
+                             <button className="flex flex-col items-center justify-center min-w-[50px] h-[70px] rounded-xl bg-transparent text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-surface-dark transition-colors">
+                                <span className="text-xs font-semibold mb-1">Mon</span>
+                                <span className="text-lg font-bold">23</span>
+                            </button>
+                            <button className="flex flex-col items-center justify-center min-w-[50px] h-[70px] rounded-xl bg-primary text-black shadow-lg shadow-primary/20 transform scale-105">
+                                <span className="text-xs font-bold mb-1">Tue</span>
+                                <span className="text-lg font-bold">24</span>
+                            </button>
+                            <button className="flex flex-col items-center justify-center min-w-[50px] h-[70px] rounded-xl bg-transparent text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-surface-dark transition-colors">
+                                <span className="text-xs font-semibold mb-1">Wed</span>
+                                <span className="text-lg font-bold">25</span>
+                            </button>
+                        </div>
+                    </header>
+                    <main className="flex-1 px-4 pb-24 overflow-y-auto">
+                        <div className="flex gap-3 py-4 overflow-x-auto no-scrollbar items-center">
+                            <button className="shrink-0 flex items-center justify-center h-9 px-4 rounded-lg bg-slate-900 dark:bg-white text-white dark:text-background-dark font-semibold text-sm shadow-sm transition-transform active:scale-95">All</button>
+                            <button className="shrink-0 flex items-center justify-center h-9 px-4 rounded-lg bg-slate-200 dark:bg-surface-dark text-slate-600 dark:text-slate-300 font-medium text-sm hover:bg-slate-300 dark:hover:bg-[#234836] transition-colors">Work</button>
+                        </div>
+                        <div className="flex flex-col gap-3 mt-2">
+                            <div className="flex justify-between items-center mt-2 mb-1">
+                                <h2 className="text-lg font-bold text-slate-900 dark:text-white">Up Next</h2>
+                            </div>
+                            <div className="group relative flex items-start gap-3 p-4 rounded-xl bg-white dark:bg-surface-dark shadow-sm border border-slate-100 dark:border-none transition-all hover:translate-y-[-2px] hover:shadow-md">
+                                <div className="flex-none pt-0.5">
+                                    <button className="w-6 h-6 rounded border-2 border-slate-300 dark:border-slate-500 hover:border-primary dark:hover:border-primary flex items-center justify-center group-hover/check:border-primary transition-colors"></button>
+                                </div>
+                                <div className="flex-1 flex flex-col gap-1">
+                                    <div className="flex justify-between items-start">
+                                        <span className="text-base font-semibold text-slate-900 dark:text-white">Morning Standup</span>
+                                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300 uppercase tracking-wide">Work</span>
+                                    </div>
+                                    <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-1">Sync with the team on Q4 roadmap targets.</p>
+                                    <div className="flex items-center gap-2 mt-2">
+                                        <div className="flex items-center gap-1 text-xs font-medium text-slate-400 dark:text-slate-400 bg-slate-100 dark:bg-[#11221a] px-2 py-1 rounded">
+                                            <span className="material-symbols-outlined text-[14px]">schedule</span>
+                                            10:00 AM
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </main>
+                    <BottomNav />
+                </div>
+             )
+        }
+
+        const HabitsPage = () => {
+             const navigate = useNavigate();
+             return (
+                 <div className="bg-background-light dark:bg-background-dark font-display min-h-screen flex flex-col items-center justify-start overflow-x-hidden">
+                    <div className="w-full max-w-md mx-auto flex flex-col min-h-screen relative pb-20">
+                         <div className="sticky top-0 z-20 bg-background-light/90 dark:bg-background-dark/90 backdrop-blur-md px-4 py-3 flex items-center justify-between border-b border-gray-200 dark:border-white/5">
+                            <h2 className="text-slate-900 dark:text-white text-2xl font-extrabold leading-tight tracking-tight">My Habits</h2>
+                             <button className="flex items-center justify-center size-10 rounded-full bg-primary text-background-dark hover:bg-opacity-90 transition-all shadow-lg shadow-primary/20">
+                                <span className="material-symbols-outlined font-bold">add</span>
+                            </button>
+                        </div>
+                        <div className="px-4 py-2 mt-4">
+                            <div className="bg-white dark:bg-surface-dark rounded-2xl p-4 shadow-sm border border-slate-100 dark:border-white/5">
+                                <div className="flex justify-between items-end mb-3">
+                                    <div>
+                                        <p className="text-slate-900 dark:text-white text-base font-bold leading-normal">Daily Progress</p>
+                                        <p className="text-slate-500 dark:text-[#92c9ad] text-xs font-medium mt-1">Keep it up! You're almost there.</p>
+                                    </div>
+                                    <p className="text-primary text-xl font-bold tracking-tight">60%</p>
+                                </div>
+                                <div className="w-full h-3 bg-slate-100 dark:bg-[#32674d]/40 rounded-full overflow-hidden">
+                                    <div className="h-full bg-primary rounded-full" style={{width: '60%'}}></div>
+                                </div>
+                            </div>
+                        </div>
+                         <div className="flex flex-col gap-3 px-4 mt-4">
+                            <div className="group relative flex items-center justify-between p-4 bg-white dark:bg-surface-dark rounded-2xl border border-slate-100 dark:border-white/5 shadow-sm transition-all active:scale-[0.99]">
+                                <div className="flex items-center gap-4">
+                                    <div className="flex items-center justify-center size-12 rounded-xl bg-orange-100 dark:bg-orange-900/20 text-orange-500 shrink-0">
+                                        <span className="material-symbols-outlined">directions_run</span>
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <p className="text-slate-900 dark:text-white text-base font-bold leading-tight decoration-slate-400 dark:decoration-slate-500 line-through decoration-2 opacity-50">Morning Run</p>
+                                         <div className="flex items-center gap-2 mt-1">
+                                            <span className="bg-orange-100 dark:bg-orange-500/10 text-orange-600 dark:text-orange-400 text-[10px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider flex items-center gap-1">
+                                                <span className="material-symbols-outlined text-[10px]">local_fire_department</span> 12 Day Streak
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                         </div>
+                    </div>
+                    <BottomNav />
+                 </div>
+             )
+        }
+
+        const StatsPage = () => {
+             const navigate = useNavigate();
+             return (
+                 <div className="font-display bg-background-light dark:bg-background-dark text-slate-900 dark:text-white min-h-screen flex flex-col overflow-x-hidden antialiased">
+                    <TopBar title="Your Progress" backPath="/dashboard" />
+                    <main className="flex-1 w-full max-w-md mx-auto p-4 space-y-6 pb-24">
+                        <div className="bg-slate-200 dark:bg-surface-dark p-1.5 rounded-xl flex shadow-inner">
+                            <label className="flex-1 cursor-pointer">
+                                <input defaultChecked className="peer sr-only" name="timeframe" type="radio"/>
+                                <div className="py-2 text-sm font-bold text-center rounded-lg text-slate-500 dark:text-text-secondary peer-checked:bg-white dark:peer-checked:bg-background-dark peer-checked:text-slate-900 dark:peer-checked:text-white peer-checked:shadow-sm transition-all duration-200">Daily</div>
+                            </label>
+                            <label className="flex-1 cursor-pointer">
+                                <input className="peer sr-only" name="timeframe" type="radio"/>
+                                <div className="py-2 text-sm font-medium text-center rounded-lg text-slate-500 dark:text-text-secondary peer-checked:bg-white dark:peer-checked:bg-background-dark peer-checked:text-slate-900 dark:peer-checked:text-white peer-checked:shadow-sm transition-all duration-200">Weekly</div>
+                            </label>
+                        </div>
+                        <div className="bg-white dark:bg-surface-dark rounded-2xl p-6 shadow-sm ring-1 ring-slate-900/5 dark:ring-white/10 relative overflow-hidden">
+                             <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none"></div>
+                             <div className="relative z-10 flex flex-col items-center">
+                                <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-6">Focus Score</h3>
+                                <div className="relative size-48 flex items-center justify-center mb-6">
+                                     <svg className="w-full h-full transform -rotate-90">
+                                        <circle className="text-slate-100 dark:text-background-dark/50" cx="50%" cy="50%" fill="none" r="42%" stroke="currentColor" strokeWidth="12"></circle>
+                                        <circle className="drop-shadow-[0_0_10px_rgba(19,236,128,0.4)]" cx="50%" cy="50%" fill="none" r="42%" stroke="#13ec80" strokeDasharray="264" strokeDashoffset="40" strokeLinecap="round" strokeWidth="12"></circle>
+                                    </svg>
+                                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                                        <span className="text-5xl font-extrabold tracking-tight text-slate-900 dark:text-white">85</span>
+                                        <span className="text-sm font-medium text-slate-500 dark:text-text-secondary mt-1">Excellent</span>
+                                    </div>
+                                </div>
+                             </div>
+                        </div>
+                    </main>
+                    <BottomNav />
+                 </div>
+             )
+        }
+
+        const SettingsPage = () => {
+            const navigate = useNavigate();
+            return (
+                <div className="bg-[url('https://images.unsplash.com/photo-1557683316-973673baf926?q=80&w=2000&auto=format&fit=crop')] bg-cover bg-center bg-fixed font-display text-slate-900 dark:text-white antialiased transition-colors duration-200 h-screen overflow-y-auto pb-24">
+                     <div className="fixed inset-0 bg-white/30 dark:bg-slate-950/40 pointer-events-none"></div>
+                     <div className="relative flex h-full min-h-screen w-full flex-col overflow-x-hidden max-w-md mx-auto shadow-2xl bg-white/10 backdrop-blur-[2px]">
+                        <div className="sticky top-0 z-10 flex items-center bg-white/70 dark:bg-slate-900/60 backdrop-blur-xl border-b border-white/20 dark:border-white/5 p-4 pb-2 justify-between transition-all duration-300">
+                             <button onClick={() => navigate('/dashboard')} className="text-slate-900 dark:text-white flex size-10 shrink-0 items-center justify-center hover:bg-black/5 dark:hover:bg-white/10 rounded-full transition-colors">
+                                <span className="material-symbols-outlined">arrow_back</span>
+                            </button>
+                            <h2 className="text-slate-900 dark:text-white text-lg font-bold leading-tight tracking-[-0.015em] flex-1 text-center pr-10">Settings</h2>
+                        </div>
+                        <div className="flex-1 flex flex-col gap-6 p-4 pb-12">
+                             <div className="flex flex-col gap-4">
+                                <div className="flex items-center gap-4 bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl border border-white/40 dark:border-white/10 p-4 rounded-2xl shadow-sm">
+                                    <div className="bg-center bg-no-repeat bg-cover rounded-full h-20 w-20 ring-2 ring-primary ring-offset-2 ring-offset-white/50 dark:ring-offset-slate-900 shrink-0 shadow-lg" style={{backgroundImage: 'url("https://lh3.googleusercontent.com/aida-public/AB6AXuBh_Zs8qs-rXjH18dyM36B_B9YtNEpVrxgP0YFtjNYqgCeYew0vlyPVwYSYEclKieHuDfeXZESBIk-6lcMPgNIBnaDr7OFyJ23ATtS2Zw9vnPV59jJ1nD3eYiA3URjFGxrNNf51iiz3lJjP9T4GtyXQgH7Md7zfr3c8XNe_0rbO2zOAEvezeyFBODQwRtru3QM6Q8ZFRAcd5Ygumz1X5Nt_AajYHmTQMMzkw1hli7H1E_-GaZXoZ7shKFi7shpVGh3RxLfdnW7AY-Tf")'}}></div>
+                                    <div className="flex flex-col justify-center flex-1 min-w-0">
+                                        <div className="flex justify-between items-start">
+                                            <div>
+                                                <p className="text-slate-900 dark:text-white text-xl font-bold leading-tight tracking-[-0.015em] truncate text-shadow-sm">Alex Doe</p>
+                                                <p className="text-slate-600 dark:text-slate-300 text-sm font-medium mt-1">alex.doe@example.com</p>
+                                            </div>
+                                            <button className="text-primary text-sm font-bold px-3 py-1.5 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors border border-primary/20 backdrop-blur-sm">Edit</button>
+                                        </div>
+                                    </div>
+                                </div>
+                             </div>
+                             {/* ... (More Settings Content could go here, abridged for length) ... */}
+                             <div className="flex flex-col bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl border border-white/40 dark:border-white/10 rounded-xl overflow-hidden shadow-sm">
+                                <button onClick={() => navigate('/')} className="flex items-center gap-4 p-4 min-h-[64px] justify-between cursor-pointer hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors group w-full">
+                                    <div className="flex items-center gap-4">
+                                        <div className="text-red-500 group-hover:text-red-600 flex items-center justify-center rounded-lg bg-red-50 dark:bg-red-900/20 shrink-0 size-10 transition-colors">
+                                            <span className="material-symbols-outlined">logout</span>
+                                        </div>
+                                        <p className="text-red-500 group-hover:text-red-600 text-base font-medium leading-normal flex-1 truncate transition-colors">Log Out</p>
+                                    </div>
+                                </button>
+                             </div>
+                        </div>
+                     </div>
+                     <BottomNav />
+                </div>
+            )
+        }
+
+        const SpeechMode = () => {
+             const navigate = useNavigate();
+             return (
+                 <div className="bg-background-light dark:bg-background-dark min-h-screen flex flex-col font-display antialiased overflow-x-hidden selection:bg-primary/30 selection:text-white">
+                    <header className="flex items-center justify-between px-4 py-3 sticky top-0 z-10 bg-background-light/90 dark:bg-background-dark/90 backdrop-blur-sm">
+                        <button onClick={() => navigate('/dashboard')} className="flex items-center justify-center p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors">
+                            <span className="material-symbols-outlined text-slate-900 dark:text-white" style={{fontSize: '24px'}}>close</span>
+                        </button>
+                        <h2 className="text-slate-900 dark:text-white text-lg font-bold leading-tight tracking-tight">Speech Mode</h2>
+                        <div className="w-10"></div>
+                    </header>
+                    <main className="flex-1 flex flex-col px-4 pb-6 gap-6 relative">
+                        <div className="flex flex-col gap-2 mt-2">
+                            <p className="text-xs font-bold uppercase tracking-widest text-primary mb-1 pl-1">I heard:</p>
+                            <h1 className="text-[28px] font-bold text-slate-900 dark:text-white leading-[1.2]">
+                                "Remind me to <span className="text-primary border-b-2 border-primary/20 pb-0.5">drink water</span> every day at <span className="text-primary border-b-2 border-primary/20 pb-0.5">8 AM</span>"
+                            </h1>
+                        </div>
+                        <div className="flex flex-col gap-3 mt-4">
+                            <div className="flex items-center gap-2 px-1">
+                                <span className="material-symbols-outlined text-primary animate-pulse" style={{fontSize: '20px'}}>auto_awesome</span>
+                                <span className="text-sm font-semibold text-slate-600 dark:text-slate-300">Analysis Complete</span>
+                            </div>
+                            <div className="bg-white dark:bg-[#1a2e24] rounded-2xl p-5 shadow-lg border border-gray-100 dark:border-white/5 flex flex-col gap-5">
+                                 <div className="flex items-start justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <div className="h-10 w-10 rounded-full bg-primary/10 dark:bg-primary/20 flex items-center justify-center text-primary">
+                                            <span className="material-symbols-outlined">repeat</span>
+                                        </div>
+                                        <div className="flex flex-col">
+                                            <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Type</span>
+                                            <span className="text-base font-bold text-slate-900 dark:text-white">Habit</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="h-px bg-gray-100 dark:bg-white/5 w-full"></div>
+                                <div className="flex flex-col gap-4">
+                                     <label className="flex flex-col gap-1.5">
+                                        <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Title</span>
+                                        <div className="relative group">
+                                            <input className="w-full bg-gray-50 dark:bg-[#102219] border border-gray-200 dark:border-[#32674d] rounded-lg pl-4 pr-10 py-3.5 text-slate-900 dark:text-white focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-all font-semibold placeholder:text-slate-400" type="text" defaultValue="Drink Water"/>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                         <div className="flex items-center gap-4 mt-8">
+                            <button className="flex-1 h-14 bg-primary hover:bg-[#0fd673] rounded-full flex items-center justify-center gap-2 shadow-[0_4px_20px_rgba(19,236,128,0.25)] transition-all active:scale-[0.98]" onClick={() => navigate('/habits')}>
+                                <span className="text-[#102219] font-bold text-lg">Create Habit</span>
+                                <span className="material-symbols-outlined text-[#102219] font-bold">check</span>
+                            </button>
+                        </div>
+                    </main>
+                 </div>
+             )
+        }
+
+        // --- App Component ---
+
+        const App = () => {
+            return (
+                <MemoryRouter>
+                    <Routes>
+                        <Route path="/" element={<LoginPage />} />
+                        <Route path="/dashboard" element={<Dashboard />} />
+                        <Route path="/tasks" element={<TasksPage />} />
+                        <Route path="/habits" element={<HabitsPage />} />
+                        <Route path="/stats" element={<StatsPage />} />
+                        <Route path="/settings" element={<SettingsPage />} />
+                        
+                        <Route path="/screenshot-upload" element={<ScreenshotUpload />} />
+                        <Route path="/screenshot-confirm" element={<ScreenshotConfirm />} />
+                        <Route path="/screenshot-edit" element={<ScreenshotEdit />} />
+                        <Route path="/screenshot-review" element={<ScreenshotReview />} />
+                        
+                        <Route path="/speech-mode" element={<SpeechMode />} />
+                    </Routes>
+                </MemoryRouter>
+            );
+        };
+
+        const root = createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
