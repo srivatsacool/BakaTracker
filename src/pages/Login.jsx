@@ -25,10 +25,10 @@ export const Login = () => {
         {/* Logo section */}
         <div className="flex-1 flex flex-col items-center justify-center mt-12 mb-8">
           <div className="mb-8 relative">
-            <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center border border-primary/20 shadow-[0_0_30px_-5px_rgba(19,236,128,0.2)]">
-              <span className="material-symbols-outlined text-primary text-5xl">check_circle</span>
+            <div className="w-28 h-28 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center border border-primary/20 shadow-[0_0_30px_-5px_rgba(59,130,246,0.3)] overflow-hidden">
+              <img src="/logo.png" alt="BakaTracker Logo" className="w-20 h-20 object-contain" />
             </div>
-            <div className="absolute -top-2 -right-2 w-6 h-6 bg-primary rounded-full flex items-center justify-center text-background-dark animate-bounce">
+            <div className="absolute -top-2 -right-2 w-6 h-6 bg-primary rounded-full flex items-center justify-center text-white animate-bounce">
               <span className="material-symbols-outlined text-sm font-bold">bolt</span>
             </div>
           </div>
@@ -54,6 +54,21 @@ export const Login = () => {
             </svg>
             <span className="text-base font-bold tracking-wide">Continue with Google</span>
           </button>
+          
+          {/* Dev Mode Bypass - TODO: Remove in production */}
+          {import.meta.env.DEV && (
+            <button
+              onClick={() => {
+                // Simulate a logged-in user for development
+                window.localStorage.setItem('bakatracker_dev_mode', 'true');
+                window.location.reload();
+              }}
+              className="flex w-full cursor-pointer items-center justify-center overflow-hidden rounded-xl h-12 px-5 bg-slate-200 dark:bg-surface-dark text-slate-600 dark:text-slate-300 gap-2 transition-all active:scale-[0.98] hover:bg-slate-300 dark:hover:bg-white/10 text-sm font-medium"
+            >
+              <span className="material-symbols-outlined text-lg">developer_mode</span>
+              <span>Skip Login (Dev Mode)</span>
+            </button>
+          )}
           
           <p className="text-center text-xs text-slate-500 dark:text-slate-500 mt-4 px-6 leading-5">
             By continuing, you agree to our{' '}

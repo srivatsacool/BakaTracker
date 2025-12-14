@@ -1,8 +1,9 @@
 // Main App Component with Routing
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AppProvider, useApp } from './context/AppContext';
+import { ThemeProvider } from './context/ThemeContext';
 import { LoadingSpinner } from './components';
-import { Login, Dashboard, Habits, Tasks, Stats, Settings, SpeechMode } from './pages';
+import { Login, Dashboard, Habits, Tasks, Stats, Settings, SpeechMode, ScreenshotAlarm, Goals, Pomodoro } from './pages';
 import './index.css';
 
 // Protected Route wrapper
@@ -87,6 +88,30 @@ const AppRoutes = () => {
           </ProtectedRoute>
         }
       />
+      <Route
+        path="/screenshot-alarm"
+        element={
+          <ProtectedRoute>
+            <ScreenshotAlarm />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/goals"
+        element={
+          <ProtectedRoute>
+            <Goals />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/pomodoro"
+        element={
+          <ProtectedRoute>
+            <Pomodoro />
+          </ProtectedRoute>
+        }
+      />
       {/* Catch all - redirect to dashboard or login */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
@@ -96,11 +121,13 @@ const AppRoutes = () => {
 function App() {
   return (
     <BrowserRouter>
-      <AppProvider>
-        <div className="min-h-screen bg-background-light dark:bg-background-dark">
-          <AppRoutes />
-        </div>
-      </AppProvider>
+      <ThemeProvider>
+        <AppProvider>
+          <div className="min-h-screen bg-background-light dark:bg-background-dark transition-colors duration-200">
+            <AppRoutes />
+          </div>
+        </AppProvider>
+      </ThemeProvider>
     </BrowserRouter>
   );
 }

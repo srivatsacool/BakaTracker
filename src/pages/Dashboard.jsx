@@ -25,7 +25,7 @@ export const Dashboard = () => {
   };
   
   return (
-    <div className="bg-background-light dark:bg-background-dark text-slate-900 dark:text-white font-display h-auto min-h-screen w-full flex flex-col overflow-x-hidden pb-28">
+    <div className="bg-background-light dark:bg-background-dark text-slate-900 dark:text-white font-display h-auto min-h-screen w-full flex flex-col overflow-x-hidden pb-28 page-transition">
       {/* Header */}
       <header className="sticky top-0 z-30 bg-background-light/90 dark:bg-background-dark/90 backdrop-blur-md px-4 py-3 flex items-center justify-between border-b border-transparent dark:border-white/5 transition-all">
         <div className="flex items-center gap-3">
@@ -163,31 +163,53 @@ export const Dashboard = () => {
         </div>
       </section>
       
-      {/* Screenshot to Alarm Feature */}
+      {/* Quick Actions */}
       <section className="px-4 pb-4">
-        <button
-          onClick={() => navigate('/screenshot-upload')}
-          className="relative w-full flex items-center gap-4 p-4 rounded-2xl bg-surface-light dark:bg-surface-dark border border-gray-200 dark:border-white/5 shadow-sm overflow-hidden group hover:border-primary/50 dark:hover:border-primary/50 transition-all active:scale-[0.98]"
-        >
-          <div className="relative shrink-0 flex items-center justify-center size-12 rounded-xl bg-primary/10 text-primary group-hover:scale-110 transition-transform duration-300">
-            <span className="material-symbols-outlined" style={{ fontSize: '26px' }}>add_a_photo</span>
-          </div>
-          <div className="flex-1 text-left z-10">
-            <div className="flex items-center gap-2 mb-1">
-              <h4 className="text-sm font-bold text-slate-900 dark:text-white">Screenshot to Alarm</h4>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-primary text-background-dark shadow-sm">
-                NEW
-              </span>
+        <div className="grid grid-cols-4 gap-2">
+          {/* Pomodoro Timer */}
+          <button
+            onClick={() => navigate('/pomodoro')}
+            className="relative flex flex-col items-center gap-2 p-3 rounded-2xl bg-surface-light dark:bg-surface-dark border border-gray-200 dark:border-white/5 shadow-sm overflow-hidden group hover:border-primary/50 transition-all active:scale-[0.98]"
+          >
+            <div className="size-9 rounded-xl bg-red-500/10 flex items-center justify-center text-red-500">
+              <span className="material-symbols-outlined text-xl">timer</span>
             </div>
-            <p className="text-xs font-medium text-gray-500 dark:text-gray-400">
-              Turn your screenshots into alarms instantly
-            </p>
-          </div>
-          <div className="shrink-0 flex items-center justify-center size-8 rounded-full bg-gray-100 dark:bg-white/5 text-gray-400 dark:text-gray-400 group-hover:bg-primary group-hover:text-background-dark transition-colors">
-            <span className="material-symbols-outlined text-lg">arrow_forward</span>
-          </div>
-          <div className="absolute -right-8 -bottom-8 size-24 bg-primary/10 rounded-full blur-2xl group-hover:bg-primary/20 transition-all" />
-        </button>
+            <span className="text-[10px] font-semibold text-slate-700 dark:text-white text-center leading-tight">Pomodoro</span>
+          </button>
+          
+          {/* Goals */}
+          <button
+            onClick={() => navigate('/goals')}
+            className="relative flex flex-col items-center gap-2 p-3 rounded-2xl bg-surface-light dark:bg-surface-dark border border-gray-200 dark:border-white/5 shadow-sm overflow-hidden group hover:border-primary/50 transition-all active:scale-[0.98]"
+          >
+            <div className="size-9 rounded-xl bg-purple-500/10 flex items-center justify-center text-purple-500">
+              <span className="material-symbols-outlined text-xl">flag</span>
+            </div>
+            <span className="text-[10px] font-semibold text-slate-700 dark:text-white text-center leading-tight">Goals</span>
+          </button>
+          
+          {/* Screenshot to Alarm */}
+          <button
+            onClick={() => navigate('/screenshot-alarm')}
+            className="relative flex flex-col items-center gap-2 p-3 rounded-2xl bg-surface-light dark:bg-surface-dark border border-gray-200 dark:border-white/5 shadow-sm overflow-hidden group hover:border-primary/50 transition-all active:scale-[0.98]"
+          >
+            <div className="size-9 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+              <span className="material-symbols-outlined text-xl">photo_camera</span>
+            </div>
+            <span className="text-[10px] font-semibold text-slate-700 dark:text-white text-center leading-tight">Scan</span>
+          </button>
+          
+          {/* Speech Mode */}
+          <button
+            onClick={() => navigate('/speech-mode')}
+            className="relative flex flex-col items-center gap-2 p-3 rounded-2xl bg-surface-light dark:bg-surface-dark border border-gray-200 dark:border-white/5 shadow-sm overflow-hidden group hover:border-primary/50 transition-all active:scale-[0.98]"
+          >
+            <div className="size-9 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-500">
+              <span className="material-symbols-outlined text-xl">mic</span>
+            </div>
+            <span className="text-[10px] font-semibold text-slate-700 dark:text-white text-center leading-tight">Voice</span>
+          </button>
+        </div>
       </section>
       
       {/* Today's Tasks */}
