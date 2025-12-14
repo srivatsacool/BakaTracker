@@ -55,21 +55,6 @@ export const Login = () => {
             <span className="text-base font-bold tracking-wide">Continue with Google</span>
           </button>
           
-          {/* Dev Mode Bypass - TODO: Remove in production */}
-          {import.meta.env.DEV && (
-            <button
-              onClick={() => {
-                // Simulate a logged-in user for development
-                window.localStorage.setItem('bakatracker_dev_mode', 'true');
-                window.location.reload();
-              }}
-              className="flex w-full cursor-pointer items-center justify-center overflow-hidden rounded-xl h-12 px-5 bg-slate-200 dark:bg-surface-dark text-slate-600 dark:text-slate-300 gap-2 transition-all active:scale-[0.98] hover:bg-slate-300 dark:hover:bg-white/10 text-sm font-medium"
-            >
-              <span className="material-symbols-outlined text-lg">developer_mode</span>
-              <span>Skip Login (Dev Mode)</span>
-            </button>
-          )}
-          
           <p className="text-center text-xs text-slate-500 dark:text-slate-500 mt-4 px-6 leading-5">
             By continuing, you agree to our{' '}
             <a className="underline hover:text-slate-700 dark:hover:text-slate-300" href="#">

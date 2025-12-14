@@ -31,31 +31,6 @@ export const AppProvider = ({ children }) => {
   // Initialize Google APIs
   useEffect(() => {
     const init = async () => {
-      // DEV MODE: Skip Google auth if dev mode flag is set
-      const isDevMode = import.meta.env.DEV && localStorage.getItem('bakatracker_dev_mode') === 'true';
-      
-      if (isDevMode) {
-        console.log('🔧 Dev Mode: Skipping Google Auth');
-        setUser({
-          name: 'Dev User',
-          given_name: 'Dev',
-          email: 'dev@localhost',
-          picture: null,
-        });
-        // Use sample data in dev mode
-        setHabits([
-          { id: 'habit_1', name: 'Drink Water', icon: 'water_drop', frequency: 'daily', streak: '5' },
-          { id: 'habit_2', name: 'Exercise', icon: 'fitness_center', frequency: 'daily', streak: '3' },
-          { id: 'habit_3', name: 'Read', icon: 'menu_book', frequency: 'daily', streak: '7' },
-        ]);
-        setTasks([
-          { id: 'task_1', title: 'Review project docs', dueDate: new Date().toISOString().split('T')[0], priority: 'high', category: 'work', completed: 'false' },
-          { id: 'task_2', title: 'Call mom', dueDate: new Date().toISOString().split('T')[0], priority: 'medium', category: 'personal', completed: 'false' },
-        ]);
-        setLoading(false);
-        return;
-      }
-      
       try {
         await initGapiClient();
         
@@ -123,7 +98,6 @@ export const AppProvider = ({ children }) => {
   
   // Handle sign out
   const handleSignOut = useCallback(() => {
-    localStorage.removeItem('bakatracker_dev_mode');
     signOut();
     setUser(null);
     setHabits([]);
