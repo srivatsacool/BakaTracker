@@ -31,7 +31,10 @@ class SheetsClient:
                 time.sleep(sleep_time)
 
             try:
-                with httpx.Client(timeout=config.TIMEOUT) as httpx_client:
+                with httpx.Client(
+    timeout=config.TIMEOUT,
+    follow_redirects=True
+) as httpx_client:
                     if method == "GET":
                         response = httpx_client.get(url, **kwargs)
                     elif method == "POST":
