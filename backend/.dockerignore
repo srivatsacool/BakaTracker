@@ -1,0 +1,10 @@
+# Docker build ignore patterns
+.venv/
+.env
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.log
+.pytest_cache/
+.uv/
