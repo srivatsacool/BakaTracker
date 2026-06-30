@@ -96,9 +96,20 @@ function getApiKey(spreadsheet) {
 }
 
 function createJsonResponse(data) {
-  return ContentService.createTextOutput(JSON.stringify(data))
-     .setMimeType(ContentService.MimeType.JSON)
-     .setHeader('Access-Control-Allow-Origin', '*');
+  try {
+    return ContentService
+      .createTextOutput(JSON.stringify(data))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService
+      .createTextOutput(
+        JSON.stringify({
+          status: "error",
+          message: String(err)
+        })
+      )
+      .setMimeType(ContentService.MimeType.JSON);
+  }
 }
 
 function initializeSheets(spreadsheet) {
