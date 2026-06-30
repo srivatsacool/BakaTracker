@@ -1,0 +1,39 @@
+steps:
+  # 1. Build the container image using the cached image if available
+  - name: 'gcr.io/cloud-builders/docker'
+    args: [
+      'build',
+      '-t', 'gcr.io/$PROJECT_ID/bakatracker-mcp:$COMMIT_SHA',
+      '-t', 'gcr.io/$PROJECT_ID/bakatracker-mcp:latest',
+      '.'
+    ]
+
+  # 2. Push the container image to Container Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/bakatracker-mcp:$COMMIT_SHA']
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/bakatracker-mcp:latest']
+
+  # 3. Deploy container image to Google Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: 'gcloud'
+    args: [
+      'run',
+      'deploy',
+      'bakatracker-mcp',
+      '--image', 'gcr.io/$PROJECT_ID/bakatracker-mcp:$COMMIT_SHA',
+      '--region', 'us-central1',
+      '--platform', 'managed',
+      '--cpu', '0.25',
+      '--memory', '512Mi',
+      '--concurrency', '80',
+      '--timeout', '300',
+      '--min-instances', '0',
+      '--max-instances', '5',
+      '--allow-unauthenticated'
+    ]
+
+images:
+  - 'gcr.io/$PROJECT_ID/bakatracker-mcp:$COMMIT_SHA'
+  - 'gcr.io/$PROJECT_ID/bakatracker-mcp:latest'

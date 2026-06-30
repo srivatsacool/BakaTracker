@@ -1,0 +1,246 @@
+@import "tailwindcss";
+
+:root {
+  --bg-primary: #F8F5F0;
+  --surface: #FFFFFF;
+  --text-primary: #000000;
+  --border-primary: #000000;
+  --accent-pink: #FF90E8;
+  --success: #22C55E;
+  --warning: #F59E0B;
+  --danger: #EF4444;
+  --shadow-color: rgba(0, 0, 0, 1);
+}
+
+html.dark {
+  --bg-primary: #1C1B19;
+  --surface: #2C2B28;
+  --text-primary: #F8F5F0;
+  --border-primary: #5A5955;
+  --accent-pink: #FF90E8;
+  --success: #22C55E;
+  --warning: #F59E0B;
+  --danger: #EF4444;
+  --shadow-color: rgba(255, 144, 232, 0.45);
+}
+
+@theme {
+  --color-bg-primary: var(--bg-primary);
+  --color-surface: var(--surface);
+  --color-text-primary: var(--text-primary);
+  --color-border-primary: var(--border-primary);
+  --color-accent-pink: var(--accent-pink);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+
+  --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  
+  /* Custom shadows and borders for Gumroad look */
+  --shadow-gumroad: 4px 4px 0px 0px var(--shadow-color);
+  --shadow-gumroad-sm: 2px 2px 0px 0px var(--shadow-color);
+  --shadow-gumroad-lg: 6px 6px 0px 0px var(--shadow-color);
+}
+
+/* Base resets & fonts */
+body {
+  background-color: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+  margin: 0;
+  padding: 0;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Custom classes for Gumroad styling */
+.neo-card {
+  background-color: var(--color-surface);
+  border: 2px solid var(--color-border-primary);
+  box-shadow: var(--shadow-gumroad);
+  border-radius: 8px;
+  transition: all 0.15s ease-in-out;
+}
+
+.neo-card-interactive:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 5px 5px 0px 0px var(--shadow-color);
+}
+
+.neo-card-interactive:active {
+  transform: translate(1px, 1px);
+  box-shadow: 3px 3px 0px 0px var(--shadow-color);
+}
+
+.neo-button {
+  background-color: var(--color-accent-pink);
+  color: #000000;
+  border: 2px solid var(--color-border-primary);
+  box-shadow: var(--shadow-gumroad-sm);
+  font-weight: 600;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.1s ease-in-out;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.neo-button:hover:not(:disabled) {
+  transform: translate(-1px, -1px);
+  box-shadow: 3px 3px 0px 0px var(--shadow-color);
+}
+
+.neo-button:active:not(:disabled) {
+  transform: translate(1px, 1px);
+  box-shadow: 1px 1px 0px 0px var(--shadow-color);
+}
+
+.neo-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.neo-input {
+  border: 2px solid var(--color-border-primary);
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  outline: none;
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  transition: border-color 0.2s, background-color 0.3s, color 0.3s;
+  box-shadow: 2px 2px 0px 0px var(--shadow-color);
+}
+
+.neo-input:focus {
+  border-color: var(--color-accent-pink);
+  transform: translate(-1px, -1px);
+  box-shadow: 3px 3px 0px 0px var(--shadow-color);
+}
+
+/* Hide scrollbar for clean UI but allow scrolling */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Custom keyframes for XP float animation */
+@keyframes xp-float-up {
+  0% {
+    transform: translateY(0) scale(0.8);
+    opacity: 0;
+  }
+  15% {
+    transform: translateY(-12px) scale(1.1);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-60px) scale(1);
+    opacity: 0;
+  }
+}
+
+.animate-xp-float {
+  animation: xp-float-up 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  pointer-events: none;
+}
+
+/* Confetti particles keyframes */
+@keyframes confetti-fall {
+  0% {
+    transform: translateY(-20px) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(100vh) rotate(360deg);
+    opacity: 0;
+  }
+}
+
+.confetti-particle {
+  position: absolute;
+  top: -20px;
+  animation: confetti-fall 3.2s linear forwards;
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* Handdrawn style for highlights in dark mode or custom font */
+.handdrawn-font {
+  font-family: 'Architects Daughter', 'Gochi Hand', cursive, sans-serif;
+}
+
+/* Spotlight overlay and task focus effect */
+.spotlight-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 40;
+  pointer-events: none;
+  animation: fade-in 0.2s ease-out forwards;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.spotlight-active {
+  z-index: 45;
+  position: relative;
+}
+
+.spotlight-pulse {
+  animation: pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse-ring {
+  0%, 100% {
+    box-shadow: 0 0 0 0px var(--color-accent-pink);
+  }
+  50% {
+    box-shadow: 0 0 0 8px var(--color-accent-pink);
+  }
+}
+
+/* Global dark mode overrides for light-mode text-gray and border-black classes */
+html.dark .text-gray-700 {
+  color: var(--color-text-primary) !important;
+  opacity: 0.9 !important;
+}
+html.dark .text-gray-600 {
+  color: var(--color-text-primary) !important;
+  opacity: 0.75 !important;
+}
+html.dark .text-gray-500 {
+  color: var(--color-text-primary) !important;
+  opacity: 0.65 !important;
+}
+html.dark .text-gray-400 {
+  color: var(--color-text-primary) !important;
+  opacity: 0.5 !important;
+}
+html.dark .text-gray-300 {
+  color: var(--color-text-primary) !important;
+  opacity: 0.4 !important;
+}
+html.dark .border-black {
+  border-color: var(--color-border-primary) !important;
+}
+html.dark .border-black\/10 {
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+html.dark .border-black\/5 {
+  border-color: rgba(255, 255, 255, 0.05) !important;
+}
+html.dark .border-black\/20 {
+  border-color: rgba(255, 255, 255, 0.15) !important;
+}
+html.dark .bg-bg-primary {
+  background-color: var(--color-bg-primary) !important;
+}
+
