@@ -99,40 +99,72 @@ class AuthAndLoggingMiddleware(BaseHTTPMiddleware):
         request_id = str(uuid.uuid4())
         request.state.request_id = request_id
         start_time = time.time()
+
         path = request.url.path
-        
-        # 1. Exclude public endpoints from bearer verification
-        public_paths = {"/", "/health", "/version"}
+
+        # Public endpoints
+        public_paths = {
+            "/",
+            "/health",
+            "/version",
+        }
+
+        # Allow all MCP transport endpoints
+        if path.startswith("/mcp"):
+            response = await call_next(request)
+
+            execution_time = time.time() - start_time
+
+            logger.info(
+                f"RequestID: {request_id} | "
+                f"Path: {path} | "
+                f"Method: {request.method} | "
+                f"ExecutionTime: {execution_time:.4f}s"
+            )
+
+            metrics_tracker.increment_request_count()
+
+            return response
+
+        # Protect only management endpoints
         if path not in public_paths:
-            # Check Authorization Header
+
             auth_header = request.headers.get("Authorization")
-            expected_token = f"Bearer {config.AUTH_TOKEN}"
-            
-            if not config.AUTH_TOKEN:
-                logger.error("AUTH_TOKEN is not configured on the server")
-                return JSONResponse({"detail": "Server authentication token is unconfigured"}, status_code=500)
-                
-            if not auth_header or auth_header != expected_token:
-                logger.warning(f"RequestID: {request_id} | Unauthorized request to {path} from {request.client.host}")
+            expected = f"Bearer {config.AUTH_TOKEN}"
+
+            if auth_header != expected:
+                logger.warning(
+                    f"RequestID: {request_id} | Unauthorized request to {path}"
+                )
+
                 metrics_tracker.increment_request_count()
-                return JSONResponse({"detail": "Unauthorized"}, status_code=401)
-        
-        # 2. Process request
+
+                return JSONResponse(
+                    status_code=401,
+                    content={"detail": "Unauthorized"},
+                )
+
         metrics_tracker.increment_request_count()
+
         try:
             response = await call_next(request)
-            status_str = "success" if response.status_code < 400 else "failure"
-        except Exception as e:
-            status_str = "exception"
-            logger.exception(f"Unhandled exception during request {request_id}: {str(e)}")
-            raise e
-        finally:
-            execution_time = time.time() - start_time
-            logger.info(
-                f"RequestID: {request_id} | Path: {path} | Method: {request.method} | "
-                f"Status: {status_str} | ExecutionTime: {execution_time:.4f}s"
+
+        except Exception:
+
+            logger.exception(
+                f"Unhandled exception during request {request_id}"
             )
-            
+            raise
+
+        execution_time = time.time() - start_time
+
+        logger.info(
+            f"RequestID: {request_id} | "
+            f"{request.method} {path} | "
+            f"{response.status_code} | "
+            f"{execution_time:.4f}s"
+        )
+
         return response
 
 app.add_middleware(AuthAndLoggingMiddleware)
@@ -162,6 +194,7 @@ def api_discovery():
         "version": config.VERSION,
         "status": "running",
         "transport": transport_name,
+        "mcp": "/mcp",
         "docs": "/info",
         "health": "/health"
     }
