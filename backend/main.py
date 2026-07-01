@@ -276,6 +276,18 @@ async def metrics():
         "sdk_version": sdk_ver,
         "cloud_run": is_cloud_run
     }
+    
+@app.get("/routes")
+def routes():
+    return [
+        {
+            "path": route.path,
+            "name": route.name,
+            "methods": list(route.methods) if hasattr(route, "methods") else []
+        }
+        for route in app.routes
+    ]
+
 
 if __name__ == "__main__":
     import uvicorn
