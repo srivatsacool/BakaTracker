@@ -80,10 +80,14 @@ async def validate_startup():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Run startup validations
     await validate_startup()
-    yield
-    # Run graceful shutdown logic
+
+    if hasattr(mcp, "session_manager"):
+        async with mcp.session_manager.run():
+            yield
+    else:
+        yield
+
     logger.info("Shutting down: Flushing logs and terminating HTTP client sessions.")
     logger.info("Graceful shutdown completed successfully.")
 
@@ -171,6 +175,7 @@ app.add_middleware(AuthAndLoggingMiddleware)
 
 # Expose FastMCP HTTP transport (prefer Streamable HTTP, fall back to SSE)
 if hasattr(mcp, "streamable_http_app"):
+    mcp.settings.streamable_http_path = "/"
     mcp_app = mcp.streamable_http_app()
     transport_name = "Streamable HTTP"
     logger.info("Registering MCP over official Streamable HTTP transport app")
