@@ -4,7 +4,7 @@ All notable changes to BakaTracker will be documented in this file.
 
 ---
 
-## [1.0.0] — 2026-06-30
+## [1.0.0] — 2026-07-02
 
 ### Added
 * **Google Cloud Run Deployment:** Created containerization configuration allowing the FastMCP server to be deployed as an online service.

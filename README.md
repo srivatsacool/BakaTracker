@@ -14,16 +14,6 @@
 
 ---
 
-## 📸 Screenshots
-
-| 🗓️ Habits Board (Today & Month View) | 🎯 Quests & Kanban (Master Backlog) |
-| :---: | :---: |
-| ![Habits Board Grid](https://placehold.co/600x400/2a2a2a/ffffff?text=Habits+Board+Mobile+and+Desktop) | ![Tasks Kanban Board](https://placehold.co/600x400/2a2a2a/ffffff?text=Master+Kanban+and+Today+Board) |
-| **💡 Daily reflections & Mood ratings** | **⚔️ Character RPG Sheet & Analytics** |
-| ![Journal Reflections](https://placehold.co/600x400/2a2a2a/ffffff?text=Single-Line+Highlight+Journal) | ![Character Progression](https://placehold.co/600x400/2a2a2a/ffffff?text=Character+RPG+Sheet+and+Analytics) |
-
----
-
 ## 🗺️ Table of Contents
 
 1. [Introduction](#-introduction)
@@ -260,27 +250,76 @@ BakaTracker exposes **22 tools** and **5 Markdown resources** to connected LLM c
 ### Client Integration Setups
 
 #### Cursor Configuration
-Go to **Settings** > **Features** > **MCP** > **Add New MCP Server**:
-* **Name:** `BakaTracker`
-* **Type:** `sse`
-* **URL:** `https://your-cloud-run-url.a.run.app/mcp/sse`
-* **Headers:** Key: `Authorization`, Value: `Bearer <AUTH_TOKEN>`
+1. Open Cursor Settings -> **Features** -> **MCP**.
+2. Click **+ Add New MCP Server**.
+3. Configure the settings:
+   - **Name**: `BakaTracker`
+   - **Type**: `http`
+   - **URL**: `http://localhost:8080/mcp/`
+   - **Headers**:
+     - Key: `Authorization`
+     - Value: `Bearer <your_auth_token>`
 
 #### Claude Desktop
-Add this to your `claude_desktop_config.json`:
+Open your Claude Desktop configuration file (`claude_desktop_config.json`):
+- **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
+- **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+
+Add the following under the `mcpServers` block (using `uv` to spawn it locally):
 ```json
 {
   "mcpServers": {
     "bakatracker": {
-      "type": "sse",
-      "url": "https://your-cloud-run-url.a.run.app/mcp/sse",
-      "headers": {
-        "Authorization": "Bearer your_auth_token_here"
+      "command": "uv",
+      "args": [
+        "--directory",
+        "C:/path/to/BakaTracker/backend",
+        "run",
+        "main.py"
+      ],
+      "env": {
+        "GOOGLE_APPS_SCRIPT_URL": "https://script.google.com/macros/s/.../exec",
+        "AUTH_TOKEN": "your_auth_token_here",
+        "GOOGLE_APPS_SCRIPT_API_KEY": "your_api_key_here"
       }
     }
   }
 }
 ```
+
+#### VS Code / Cline Setup
+Open your Cline settings configuration (`cline_mcp_settings.json`):
+```json
+{
+  "mcpServers": {
+    "bakatracker": {
+      "command": "uv",
+      "args": [
+        "--directory",
+        "C:/path/to/BakaTracker/backend",
+        "run",
+        "main.py"
+      ],
+      "env": {
+        "GOOGLE_APPS_SCRIPT_URL": "https://script.google.com/macros/s/.../exec",
+        "AUTH_TOKEN": "your_auth_token_here"
+      }
+    }
+  }
+}
+```
+
+#### MCP Inspector Setup
+To test and debug using the official MCP Inspector:
+1. Run the inspector client:
+   ```bash
+   npx @modelcontextprotocol/inspector
+   ```
+2. In the browser UI, configure the connection:
+   - **Transport**: `Streamable HTTP`
+   - **URL**: `http://localhost:8080/mcp`
+   - **Headers**: `Authorization: Bearer <your_auth_token>`
+
 
 ---
 

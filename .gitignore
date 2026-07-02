@@ -25,7 +25,6 @@ dist-ssr
 
 # Python environments & caches
 .venv/
-.env
 __pycache__/
 *.pyc
 *.pyo
@@ -33,4 +32,33 @@ __pycache__/
 .pytest_cache/
 .uv/
 .python-version
+build/
+develop-eggs/
+downloads/
+eggs/
+.eggs/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Environment variables (sensitive)
+.env
+.env.local
+.env.*.local
+*.env
+
+# Local database/temporary files
+*.db
+*.sqlite
+
+# IDE/Tool configs
+.gemini/
+.agents/
+.copilot/
+
 
