@@ -4,6 +4,11 @@ All notable changes to BakaTracker will be documented in this file.
 
 ---
 
+## [1.0.1] — 2026-07-03
+
+### Fixed
+* **Cloudflare Build**: Fixed `package-lock.json` dependency sync issue for clean install by regenerating the lockfile.
+
 ## [1.0.0] — 2026-07-02
 
 ### Added

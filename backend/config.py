@@ -7,7 +7,7 @@ load_dotenv()
 
 class Config:
     PROJECT_NAME = "BakaTracker MCP"
-    VERSION = "1.0.0"
+    VERSION = "1.0.1"
     PORT = int(os.getenv("PORT", "8080"))
     DEBUG = os.getenv("DEBUG", "False").lower() in ("true", "1", "t")
     LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
