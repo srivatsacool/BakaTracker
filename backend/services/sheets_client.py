@@ -72,11 +72,24 @@ class SheetsClient:
         if self.api_key:
             params["apiKey"] = self.api_key
 
+        # Propagate user context from thread/task local contextvars
+        headers = {}
+        from auth import context
+        user = context.get_current_user()
+        auth_mode = context.get_auth_mode()
+        if user:
+            headers["X-Authenticated-User-Id"] = user.id
+            headers["X-Authenticated-User-Email"] = user.email
+            headers["X-Authenticated-User-Provider"] = user.provider
+        if auth_mode:
+            headers["X-Authenticated-User-Auth-Mode"] = auth_mode
+
         response = self._execute_with_retry(
             operation="fetch_db",
             method="GET",
             url=self.url,
-            params=params
+            params=params,
+            headers=headers
         )
 
         if response.status_code != 200:
@@ -104,11 +117,24 @@ class SheetsClient:
         if self.api_key:
             payload["apiKey"] = self.api_key
 
+        # Propagate user context from thread/task local contextvars
+        headers = {}
+        from auth import context
+        user = context.get_current_user()
+        auth_mode = context.get_auth_mode()
+        if user:
+            headers["X-Authenticated-User-Id"] = user.id
+            headers["X-Authenticated-User-Email"] = user.email
+            headers["X-Authenticated-User-Provider"] = user.provider
+        if auth_mode:
+            headers["X-Authenticated-User-Auth-Mode"] = auth_mode
+
         response = self._execute_with_retry(
             operation="save_db",
             method="POST",
             url=self.url,
-            json=payload
+            json=payload,
+            headers=headers
         )
             
         if response.status_code != 200:

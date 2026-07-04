@@ -17,6 +17,7 @@ if current_dir not in sys.path:
 from config import config
 from server import mcp
 from services.sheets_client import client
+from auth.middleware import JWTAuthMiddleware
 
 # Setup global metrics tracker
 class MetricsTracker:
@@ -48,13 +49,16 @@ logger = logging.getLogger("bakatracker")
 async def validate_startup():
     logger.info("Executing BakaTracker V1.0 startup verification checklist...")
     
+    # Validate core authentication settings first
+    try:
+        config.validate()
+    except ValueError as e:
+        logger.critical(f"Startup validation failed: {str(e)}")
+        raise
+
     # 1. Validate required environment variables exist
     if not config.GOOGLE_APPS_SCRIPT_URL:
         logger.critical("Startup validation failed: GOOGLE_APPS_SCRIPT_URL configuration is missing.")
-        sys.exit(1)
-        
-    if not config.AUTH_TOKEN:
-        logger.critical("Startup validation failed: AUTH_TOKEN configuration is missing.")
         sys.exit(1)
         
     # 2. Verify Apps Script URL format is valid
@@ -82,7 +86,8 @@ async def validate_startup():
 async def lifespan(app: FastAPI):
     await validate_startup()
 
-    if hasattr(mcp, "session_manager"):
+    # Only run the streamable HTTP session manager context if it was initialized
+    if getattr(mcp, "_session_manager", None) is not None:
         async with mcp.session_manager.run():
             yield
     else:
@@ -111,42 +116,44 @@ class AuthAndLoggingMiddleware(BaseHTTPMiddleware):
             "/",
             "/health",
             "/version",
+            "/docs",
+            "/redoc",
+            "/openapi.json",
         }
 
-        # Allow all MCP transport endpoints
-        if path.startswith("/mcp"):
-            response = await call_next(request)
 
-            execution_time = time.time() - start_time
-
-            logger.info(
-                f"RequestID: {request_id} | "
-                f"Path: {path} | "
-                f"Method: {request.method} | "
-                f"ExecutionTime: {execution_time:.4f}s"
-            )
-
-            metrics_tracker.increment_request_count()
-
-            return response
 
         # Protect only management endpoints
         if path not in public_paths:
+            if config.AUTH_MODE == "legacy":
+                auth_header = request.headers.get("Authorization")
+                expected = f"Bearer {config.AUTH_TOKEN}"
 
-            auth_header = request.headers.get("Authorization")
-            expected = f"Bearer {config.AUTH_TOKEN}"
+                if auth_header != expected:
+                    logger.warning(
+                        f"RequestID: {request_id} | Unauthorized request to {path} (legacy mode)"
+                    )
 
-            if auth_header != expected:
-                logger.warning(
-                    f"RequestID: {request_id} | Unauthorized request to {path}"
+                    metrics_tracker.increment_request_count()
+
+                    return JSONResponse(
+                        status_code=401,
+                        content={"detail": "Unauthorized"},
+                    )
+                request.state.auth_mode = "legacy"
+                
+                # Bind legacy context variables
+                from auth import context
+                from auth.models import AuthenticatedUser
+                dummy_user = AuthenticatedUser(
+                    id="legacy_owner",
+                    email=config.OWNER_EMAIL or "owner@bakatracker.local",
+                    name="Owner",
+                    provider="legacy"
                 )
-
-                metrics_tracker.increment_request_count()
-
-                return JSONResponse(
-                    status_code=401,
-                    content={"detail": "Unauthorized"},
-                )
+                request.state.user = dummy_user
+                context.current_user.set(dummy_user)
+                context.auth_mode.set("legacy")
 
         metrics_tracker.increment_request_count()
 
@@ -172,21 +179,27 @@ class AuthAndLoggingMiddleware(BaseHTTPMiddleware):
         return response
 
 app.add_middleware(AuthAndLoggingMiddleware)
+app.add_middleware(
+    JWTAuthMiddleware,
+    exclude_paths={
+        "/",
+        "/health",
+        "/version",
+        "/docs",
+        "/redoc",
+        "/openapi.json",
+    },
+    exclude_prefixes=set()
+)
 
-# Expose FastMCP HTTP transport (prefer Streamable HTTP, fall back to SSE)
-if hasattr(mcp, "streamable_http_app"):
-    mcp.settings.streamable_http_path = "/"
-    mcp_app = mcp.streamable_http_app()
-    transport_name = "Streamable HTTP"
-    logger.info("Registering MCP over official Streamable HTTP transport app")
-elif hasattr(mcp, "sse_app"):
+# Expose FastMCP SSE transport under /mcp for universal remote client compatibility (ChatGPT, Cursor, Claude Desktop)
+if hasattr(mcp, "sse_app"):
     mcp_app = mcp.sse_app()
+    app.mount("/mcp", mcp_app)
     transport_name = "SSE"
-    logger.info("Registering MCP over official Server-Sent Events (SSE) transport app")
+    logger.info("Mounted FastMCP SSE transport app on /mcp")
 else:
-    raise RuntimeError("Installed mcp package does not support streamable_http_app or sse_app.")
-
-app.mount("/mcp", mcp_app)
+    raise RuntimeError("Installed mcp package does not support sse_app.")
 
 # ----------------------------------------------------
 # PUBLIC ROUTES

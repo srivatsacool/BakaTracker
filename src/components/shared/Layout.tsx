@@ -4,6 +4,8 @@ import { Flame, ListTodo, Target, BookOpen, Compass, Cloud, CloudOff, Settings a
 import { useStore } from '../../store/useStore';
 import { calculateDailyScore, getTodayDateString } from '../../lib/utils';
 import { OnboardingBanner } from './OnboardingBanner';
+import { UserMenu } from '../user/UserMenu';
+
 
 export const Layout: React.FC = () => {
   const location = useLocation();
@@ -151,7 +153,11 @@ export const Layout: React.FC = () => {
                 >
                   <SettingsIcon className="w-3.5 h-3.5 text-black" />
                 </button>
+
+                {/* User Menu */}
+                <UserMenu />
               </div>
+
             ) : (
               // Expanded Stats Card layout
               <>
@@ -197,7 +203,11 @@ export const Layout: React.FC = () => {
                     >
                       <SettingsIcon className="w-3.5 h-3.5 text-black" />
                     </button>
+
+                    {/* User Menu */}
+                    <UserMenu />
                   </div>
+
                 </div>
 
                 {/* XP Bar */}
@@ -326,6 +336,9 @@ export const Layout: React.FC = () => {
             >
               <SettingsIcon className="w-3.5 h-3.5 text-black" />
             </button>
+
+            {/* User Menu */}
+            <UserMenu />
           </div>
         </header>
 

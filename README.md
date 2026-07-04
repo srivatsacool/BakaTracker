@@ -423,7 +423,12 @@ gcloud run deploy bakatracker-mcp \
 | Variable Name | Environment | Default Value | Description |
 | :--- | :--- | :--- | :--- |
 | `GOOGLE_APPS_SCRIPT_URL` | Backend / Frontend | `None` (Required) | The Web App execution URL of your Apps Script deployment. |
-| `AUTH_TOKEN` | Backend | `None` (Required) | Secret Bearer Token required to authorize incoming MCP calls. |
+| `AUTH_TOKEN` | Backend | `None` (Required) | Secret Bearer Token required to authorize incoming MCP calls in legacy mode. |
+| `AUTH_MODE` | Backend | `legacy` | Authentication mode: `legacy` (static token) or `jwt` (Auth0 validation). |
+| `OWNER_EMAIL` | Backend | `None` (Required in `jwt` mode) | Authorized email address permitted to access BakaTracker data. |
+| `AUTH0_DOMAIN` | Backend | `None` | Your Auth0 tenant domain (e.g. `tenant.auth0.com`). |
+| `AUTH0_AUDIENCE` | Backend | `None` | Your Auth0 API Identifier (audience). |
+| `AUTH0_ISSUER` | Backend | `None` | Token issuer URL (e.g. `https://tenant.auth0.com/`). |
 | `GOOGLE_APPS_SCRIPT_API_KEY`| Backend / Frontend | `None` (Optional) | Security key protecting the Google Apps Script Web App. |
 | `PORT` | Backend | `8080` | Port uvicorn binds to. |
 | `LOG_LEVEL` | Backend | `INFO` | Standard log output severity. |
@@ -433,9 +438,53 @@ gcloud run deploy bakatracker-mcp \
 
 ## 🛡️ Authentication & Security
 
-* **Bearer Token Gateway:** All protected FastAPI endpoints and mounted MCP sub-apps require `Authorization: Bearer <AUTH_TOKEN>` headers.
-* **Sheets API Key:** Prevents access to the public Google Apps Script Web App if the URL is discovered. Set this in the spreadsheet settings tab.
-* **Workload Security:** Secrets are injected in production using Cloud Run environment variables to keep them out of source control.
+BakaTracker uses a multi-mode authentication model to secure the user interface, routing, and backend API endpoints.
+
+### Authentication Modes (`AUTH_MODE`)
+The backend API server can run in two modes:
+1. **`legacy` (Default)**: Leverages a static `AUTH_TOKEN` shared secret between frontend and backend.
+2. **`jwt`**: Leverages cryptographic Auth0 JWT verification with JWKS public key downloading, signature checks, audience validation, and owner email containment constraints.
+
+### 1. How to Configure Auth0 for BakaTracker
+1. Log in to the [Auth0 Dashboard](https://manage.auth0.com/).
+2. **SPA Setup**: Create a **Single Page Web Application** (`BakaTracker SPA`):
+   - **Allowed Callback URLs**: `http://localhost:5173`
+   - **Allowed Logout URLs**: `http://localhost:5173`
+   - **Allowed Web Origins**: `http://localhost:5173`
+3. **API Setup**: Go to **Applications** > **APIs** and click **Create API**:
+   - **Name**: `BakaTracker API`
+   - **Identifier (Audience)**: e.g., `https://api.bakatracker.buildsrivatssa.qzz.io`
+   - **Signing Algorithm**: `RS256`
+
+### 2. Environment Variables Configuration
+Configure the following in your backend `.env` (or server environment settings):
+```env
+AUTH_MODE=jwt
+OWNER_EMAIL=your-owner-email@example.com
+AUTH0_DOMAIN=your-tenant.auth0.com
+AUTH0_AUDIENCE=https://api.bakatracker.buildsrivatssa.qzz.io
+AUTH0_ISSUER=https://your-tenant.auth0.com/
+```
+
+### 3. How Authentication Flows Work
+* **Login & Logout**: The React frontend uses `@auth0/auth0-react` with PKCE to securely authenticate.
+* **Access Tokens**: The frontend silently retrieves a fresh JWT access token using `getAccessTokenSilently()` and appends it to all requests.
+* **Backend Verification**:
+  - The `JWTAuthMiddleware` checks incoming requests to protected routes.
+  - The server downloads and caches (in-memory for 24 hours) the Auth0 JWKS public keys.
+  - The JWT signature, expiration, issuer, and audience are verified.
+  - The user's email is checked against `OWNER_EMAIL` using the owner verification module.
+  - If successful, an `AuthenticatedUser` is resolved and attached to the request context.
+
+### 4. Rollback and Migration Instructions
+If you need to roll back to static token authentication:
+1. Change `AUTH_MODE=legacy` in the environment.
+2. Ensure `AUTH_TOKEN` is configured with your shared secret.
+3. Restart the server. The middleware will immediately fall back to validating the shared static token.
+
+### 5. Production Hardening Notes
+* **Fail-Fast Startup Validation**: If `AUTH_MODE=jwt`, BakaTracker performs strict format and presence validation on all parameters (`AUTH0_DOMAIN`, `AUTH0_AUDIENCE`, `AUTH0_ISSUER`, and `OWNER_EMAIL`) during boot time. If any parameters are missing or invalid (e.g., malformed domains or non-HTTPS issuers), the server logs a critical startup error, raises a `ValueError`, and halts startup.
+* **PII Protection**: BakaTracker enforces zero PII logging inside console and server logs. Successful authentications log the unique Auth0 Subject (`sub`) ID instead of user email addresses. Access tokens, Authorization headers, and private email claims are never logged.
 
 ---
 

@@ -7,6 +7,7 @@ import { Tasks } from './pages/Tasks';
 import { Today } from './pages/Today';
 import { Journal } from './pages/Journal';
 import { Journey } from './pages/Journey';
+import { ProtectedRoute } from './auth/ProtectedRoute';
 
 function App() {
   const init = useStore(state => state.init);
@@ -19,7 +20,7 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Layout />}>
+        <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
           <Route index element={<Navigate to="/habits" replace />} />
           <Route path="habits" element={<Habits />} />
           <Route path="tasks" element={<Tasks />} />
@@ -34,3 +35,4 @@ function App() {
 }
 
 export default App;
+
