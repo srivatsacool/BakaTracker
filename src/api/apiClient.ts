@@ -1,63 +1,114 @@
-export interface ApiClientConfig {
-  baseUrl: string;
-  version: string;
+export class AuthError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'AuthError';
+  }
 }
 
+export class SessionExpiredError extends AuthError {
+  constructor(message: string = 'Your session has expired. Please sign in again.') {
+    super(message);
+    this.name = 'SessionExpiredError';
+  }
+}
+
+export class ForbiddenError extends AuthError {
+  constructor(message: string = 'This account is not authorized to use this BakaTracker instance.') {
+    super(message);
+    this.name = 'ForbiddenError';
+  }
+}
+
+export class NetworkError extends Error {
+  constructor(message: string = 'Unable to reach your BakaTracker server.') {
+    super(message);
+    this.name = 'NetworkError';
+  }
+}
+
+export class BackendUnavailableError extends Error {
+  constructor(message: string = 'Unable to reach your BakaTracker server.') {
+    super(message);
+    this.name = 'BackendUnavailableError';
+  }
+}
+
+export interface ApiClientConfig {
+  baseUrl: string;
+}
 
 export class ApiClient {
   private baseUrl: string;
-  private version: string;
-  private getToken: () => Promise<string>;
+  private getToken: (options?: any) => Promise<string>;
 
-  constructor(apiClientConfig: ApiClientConfig, getToken: () => Promise<string>) {
+  constructor(apiClientConfig: ApiClientConfig, getToken: (options?: any) => Promise<string>) {
     this.baseUrl = apiClientConfig.baseUrl.replace(/\/$/, ''); // Remove trailing slash
-    this.version = apiClientConfig.version;
     this.getToken = getToken;
   }
 
-  private get apiRoot(): string {
-    return `${this.baseUrl}/api/${this.version}`;
-  }
-
   async request<T>(path: string, options: RequestInit = {}): Promise<T> {
-    try {
-      const token = await this.getToken();
-      
+    const makeRequest = async (token: string) => {
       const cleanPath = path.startsWith('/') ? path : `/${path}`;
-      const url = `${this.apiRoot}${cleanPath}`;
+      const url = `${this.baseUrl}${cleanPath}`;
 
       const headers = new Headers(options.headers || {});
-      headers.set('Authorization', `Bearer ${token}`);
+      if (token) {
+        headers.set('Authorization', `Bearer ${token}`);
+      }
       headers.set('Content-Type', 'application/json');
 
-      const response = await fetch(url, {
-        ...options,
-        headers,
-      });
-
-      if (!response.ok) {
-        let errorMessage = `API Error ${response.status}: ${response.statusText}`;
-        try {
-          const errData = await response.json();
-          if (errData && errData.detail) {
-            errorMessage = typeof errData.detail === 'string' 
-              ? errData.detail 
-              : JSON.stringify(errData.detail);
-          }
-        } catch {
-          // Response body was not JSON
-        }
-        throw new Error(errorMessage);
+      try {
+        return await fetch(url, {
+          ...options,
+          headers,
+        });
+      } catch (err) {
+        throw new NetworkError();
       }
+    };
 
-      if (response.status === 204) {
-        return {} as T;
+    let token = '';
+    try {
+      token = await this.getToken();
+    } catch (err) {
+      throw new SessionExpiredError();
+    }
+
+    let response: Response;
+    try {
+      response = await makeRequest(token);
+    } catch (err) {
+      throw new NetworkError();
+    }
+
+    if (response.status === 401) {
+      // Retry once after forcing a silent refresh
+      try {
+        token = await this.getToken({ ignoreCache: true });
+        response = await makeRequest(token);
+      } catch (err) {
+        throw new SessionExpiredError();
       }
+    }
 
+    if (!response.ok) {
+      if (response.status === 401) {
+        throw new SessionExpiredError();
+      } else if (response.status === 403) {
+        throw new ForbiddenError();
+      } else {
+        throw new BackendUnavailableError();
+      }
+    }
+
+    if (response.status === 204) {
+      return {} as T;
+    }
+
+    try {
       return await response.json() as T;
-    } catch (error) {
-      console.error(`Request to ${path} failed:`, error);
-      throw error;
+    } catch {
+      return {} as T;
     }
   }
 

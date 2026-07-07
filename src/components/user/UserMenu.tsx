@@ -1,18 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useAuth } from '../../auth/useAuth';
+import { useAuth } from '../../features/auth';
 import { LogOut, User as UserIcon } from 'lucide-react';
 
 export const UserMenu: React.FC = () => {
   const { user, logout } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
-
-  const { getAccessToken } = useAuth();
-
-  const handlePrintToken = async () => {
-    const token = await getAccessToken();
-    console.log("ACCESS TOKEN:", token);
-  };
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {

@@ -7,32 +7,47 @@ import { Tasks } from './pages/Tasks';
 import { Today } from './pages/Today';
 import { Journal } from './pages/Journal';
 import { Journey } from './pages/Journey';
-import { ProtectedRoute } from './auth/ProtectedRoute';
+import { Landing } from './pages/Landing';
+import { ProtectedRoute, useAuth } from './features/auth';
+import { useApiClient } from './api/authFetch';
 
 function App() {
   const init = useStore(state => state.init);
+  const { isAuthenticated, isLoading } = useAuth();
+  const apiClient = useApiClient();
 
   useEffect(() => {
-    // Initialize user data, fetch from Sheets if connected, or load from localStorage
+    // Initial local cache load
     init();
   }, [init]);
+
+  useEffect(() => {
+    // Trigger remote fetch once authenticated
+    if (!isLoading && isAuthenticated) {
+      init(apiClient);
+    }
+  }, [isAuthenticated, isLoading, apiClient, init]);
 
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
-          <Route index element={<Navigate to="/habits" replace />} />
-          <Route path="habits" element={<Habits />} />
-          <Route path="tasks" element={<Tasks />} />
-          <Route path="today" element={<Today />} />
-          <Route path="journal" element={<Journal />} />
-          <Route path="journey" element={<Journey />} />
-          <Route path="*" element={<Navigate to="/habits" replace />} />
+        {/* Public Landing & Login page */}
+        <Route path="/" element={<Landing />} />
+
+        {/* Protected Dashboard/App Pages */}
+        <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
+          <Route path="/journey" element={<Journey />} />
+          <Route path="/habits" element={<Habits />} />
+          <Route path="/tasks" element={<Tasks />} />
+          <Route path="/today" element={<Today />} />
+          <Route path="/journal" element={<Journal />} />
         </Route>
+
+        {/* Fallback redirect */}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
   );
 }
 
 export default App;
-

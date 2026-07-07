@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { Habit, HabitLog, Task, JournalEntry, Quote, Settings, UserStats, TaskArea, EventLog, CharacterRecord, WeeklyStatsRecord } from '../types';
-import { sheetsService } from '../services/sheetsService';
+import { stateService } from '../services/stateService';
+import { ApiClient } from '../api/apiClient';
 import { generateUUID } from '../lib/utils';
 import { createHabit } from '../services/habits/createHabit';
 import { deleteHabit } from '../services/habits/deleteHabit';
@@ -31,10 +32,11 @@ interface BakaState {
   weeklyStats: WeeklyStatsRecord[];
   
   // Actions
-  init: () => Promise<void>;
-  syncWithSheets: () => Promise<void>;
+  init: (apiClient?: ApiClient) => Promise<void>;
+  syncWithSheets: (apiClient?: ApiClient) => Promise<void>;
   setSheetsUrl: (url: string) => Promise<void>;
   setApiKey: (key: string) => Promise<void>;
+  resetStore: () => void;
   
   // Habits Actions
   toggleHabit: (id: string, date: string) => Promise<void>;
@@ -214,7 +216,35 @@ export const useStore = create<BakaState>((set, get) => ({
   character: [],
   weeklyStats: [],
 
-  init: async () => {
+  resetStore: () => {
+    // Clear application local storage keys
+    localStorage.removeItem('bt_habits');
+    localStorage.removeItem('bt_logs');
+    localStorage.removeItem('bt_tasks');
+    localStorage.removeItem('bt_journal');
+    localStorage.removeItem('bt_events');
+    localStorage.removeItem('bt_character');
+    localStorage.removeItem('bt_weekly_stats');
+    // Keep bt_theme, bt_sidebar_collapsed, and accent colors intact!
+
+    // Reset store state to initial/default values
+    set({
+      habits: [],
+      habitLogs: [],
+      tasks: [],
+      journal: [],
+      quotes: DEFAULT_QUOTES,
+      events: [],
+      currentQuote: DEFAULT_QUOTES[0],
+      stats: { level: 1, xp: 0, discipline: 0, health: 0, knowledge: 0, creativity: 0, career: 0 },
+      character: [],
+      weeklyStats: [],
+      syncStatus: 'idle',
+      syncError: null,
+    });
+  },
+
+  init: async (apiClient?: ApiClient) => {
     // 0. Load theme
     const savedTheme = (localStorage.getItem('bt_theme') as 'light' | 'dark') || 'light';
     if (savedTheme === 'dark') {
@@ -322,11 +352,11 @@ export const useStore = create<BakaState>((set, get) => ({
     if (!storedQuotes) localStorage.setItem('bt_quotes', JSON.stringify(quotes));
     if (!storedSettings) localStorage.setItem('bt_settings', JSON.stringify(settings));
 
-    // 2. If sheets URL is defined, fetch from sheets
-    if (settings.sheets_url) {
+    // 2. If apiClient is provided, fetch from backend proxy
+    if (apiClient) {
       try {
         set({ syncStatus: 'loading' });
-        const remoteData = await sheetsService.fetchData(settings.sheets_url, settings.api_key);
+        const remoteData = await stateService.fetchData(apiClient);
         if (remoteData) {
           // Merge settings
           const remoteSettings: Settings = { ...settings };
@@ -411,9 +441,9 @@ export const useStore = create<BakaState>((set, get) => ({
     }
   },
 
-  syncWithSheets: async () => {
+  syncWithSheets: async (apiClient) => {
     const { settings, habits, habitLogs, tasks, journal, events, character, weeklyStats } = get();
-    if (!settings.sheets_url) return;
+    if (!apiClient) return;
 
     try {
       set({ syncStatus: 'loading', syncError: null });
@@ -427,7 +457,7 @@ export const useStore = create<BakaState>((set, get) => ({
         { schema_version: '2.0', xp_formula: 'completed_tasks_if_today + habit_logs + journal_highlights', last_sync: new Date().toISOString() }
       ];
 
-      const success = await sheetsService.syncData(settings.sheets_url, {
+      const success = await stateService.syncData(apiClient, {
         habits,
         habitLogs,
         tasks,
@@ -437,7 +467,7 @@ export const useStore = create<BakaState>((set, get) => ({
         metadata: formatMetadata,
         character,
         weeklyStats
-      }, settings.api_key);
+      });
 
       if (success) {
         set({ syncStatus: 'success' });

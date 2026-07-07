@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { useAuth } from '../auth/useAuth';
+import { useAuth } from '../features/auth';
 import { ApiClient } from './apiClient';
 import { config } from '../config/env';
 
@@ -10,7 +10,6 @@ export const useApiClient = (): ApiClient => {
     return new ApiClient(
       {
         baseUrl: config.api.baseUrl,
-        version: config.api.version,
       },
       getAccessToken
     );

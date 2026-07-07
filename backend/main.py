@@ -235,6 +235,46 @@ def version():
 # PROTECTED ROUTES
 # ----------------------------------------------------
 
+@app.get("/state")
+def fetch_db():
+    try:
+        data = client.fetch_db()
+        return {"status": "success", "data": data}
+    except Exception as e:
+        logger.error(f"Failed to fetch database: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to fetch database from Sheets: {str(e)}"
+        )
+
+@app.post("/state")
+async def save_db(request: Request):
+    try:
+        body = await request.json()
+        data = body.get("data")
+        if not data:
+            raise HTTPException(
+                status_code=400,
+                detail="Missing data payload"
+            )
+        success = client.save_db(data)
+        if success:
+            return {"status": "success"}
+        else:
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to sync database to Sheets"
+            )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to save database: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to sync database to Sheets: {str(e)}"
+        )
+
+
 @app.get("/ready")
 def ready():
     try:

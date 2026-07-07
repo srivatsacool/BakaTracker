@@ -1,21 +1,28 @@
-import React, { createContext, useMemo } from 'react';
+import React, { createContext, useMemo, useState } from 'react';
 import { Auth0Provider, useAuth0 } from '@auth0/auth0-react';
-import { authConfig } from './authConfig';
-import type { IdentityProvider } from './provider';
-import type { User } from '../types/User';
+import { authConfig } from './config';
+import type { IdentityProvider, User } from './types';
+import { useStore } from '../../store/useStore';
+import { LoadingScreen } from './components/LoadingScreen';
 
 export const AuthContext = createContext<IdentityProvider | undefined>(undefined);
 
 const AuthProviderInner: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const {
     user: auth0User,
-    isAuthenticated,
-    isLoading,
-    error,
+    isAuthenticated: auth0Authenticated,
+    isLoading: auth0Loading,
+    error: auth0Error,
     loginWithRedirect,
     logout: auth0Logout,
     getAccessTokenSilently,
   } = useAuth0();
+
+  const [isSigningOut, setIsSigningOut] = useState(false);
+  const [isRedirecting, setIsRedirecting] = useState(false);
+
+  // Clear state on logout
+  const resetStore = useStore(state => state.resetStore);
 
   const mappedUser = useMemo<User | null>(() => {
     if (!auth0User || !auth0User.sub || !auth0User.email) {
@@ -32,24 +39,53 @@ const AuthProviderInner: React.FC<{ children: React.ReactNode }> = ({ children }
 
   const value = useMemo<IdentityProvider>(() => ({
     user: mappedUser,
-    isAuthenticated,
-    isLoading,
-    error: error || null,
+    isAuthenticated: auth0Authenticated,
+    isLoading: auth0Loading || isSigningOut,
+    error: auth0Error || null,
     login: async (options) => {
-      await loginWithRedirect(options);
+      setIsRedirecting(true);
+      try {
+        await loginWithRedirect(options);
+      } finally {
+        setIsRedirecting(false);
+      }
     },
     logout: async (options) => {
-      await auth0Logout({
-        logoutParams: {
-          returnTo: options?.returnTo || window.location.origin,
-        },
-        ...options,
-      });
+      setIsSigningOut(true);
+      try {
+        // Clear local storage and Zustand state
+        resetStore();
+        await auth0Logout({
+          logoutParams: {
+            returnTo: options?.returnTo || window.location.origin,
+          },
+          ...options,
+        });
+      } finally {
+        setIsSigningOut(false);
+      }
     },
     getAccessToken: async (options) => {
       return (await getAccessTokenSilently(options)) as unknown as string;
     },
-  }), [mappedUser, isAuthenticated, isLoading, error, loginWithRedirect, auth0Logout, getAccessTokenSilently]);
+  }), [mappedUser, auth0Authenticated, auth0Loading, isSigningOut, auth0Error, loginWithRedirect, auth0Logout, getAccessTokenSilently, resetStore]);
+
+  // Handle simplified loading states
+  const isCallback = window.location.search.includes('code=') && window.location.search.includes('state=');
+  
+  const loadingMessage = isSigningOut
+    ? 'Signing out...'
+    : isRedirecting
+      ? 'Checking session...' // Keep it simple and transition smooth
+      : isCallback
+        ? 'Signing in...'
+        : 'Checking session...';
+
+  const showLoading = auth0Loading || isSigningOut || isRedirecting;
+
+  if (showLoading) {
+    return <LoadingScreen message={loadingMessage} />;
+  }
 
   return (
     <AuthContext.Provider value={value}>
@@ -90,7 +126,8 @@ VITE_AUTH0_REDIRECT_URI=http://localhost:5173`}
         audience: authConfig.audience || undefined,
         scope: 'openid profile email',
       }}
-      useRefreshTokens={true}
+      cacheLocation="memory"
+      useRefreshTokens={false}
     >
       <AuthProviderInner>
         {children}

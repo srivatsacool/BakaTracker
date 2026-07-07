@@ -1,4 +1,10 @@
-import type { User } from '../types/User';
+export interface User {
+  id: string;
+  email: string;
+  name: string;
+  picture?: string;
+  provider: 'auth0';
+}
 
 export interface IdentityProvider {
   user: User | null;
