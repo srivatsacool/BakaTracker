@@ -1,3 +1,15 @@
+import os
+import sys
+
+# Ensure both the backend directory and its parent (BakaTracker root) are in Python path
+backend_dir = os.path.dirname(os.path.abspath(__file__))
+if backend_dir not in sys.path:
+    sys.path.append(backend_dir)
+
+root_dir = os.path.dirname(backend_dir)
+if root_dir not in sys.path:
+    sys.path.insert(0, root_dir)
+
 from mcp.server.fastmcp import FastMCP
 from typing import Optional, Dict, Any, List, Union
 from datetime import date as dt_date
@@ -12,7 +24,7 @@ from tools.journey import get_character_sheet, get_weekly_stats, get_day_summary
 from tools.quick_log import quick_log
 
 # Initialize FastMCP Server
-mcp = FastMCP("BakaTracker")
+mcp = FastMCP("BakaTracker", host="0.0.0.0")
 
 # ==========================================
 # REGISTER TOOLS
@@ -360,6 +372,17 @@ System Status:
 - Total Tasks Created:     {total_tasks}
 - Total Tasks Completed:   {total_completed_tasks}
 =================================================="""
+
+# ==========================================
+# REGISTER PROMPTS
+# ==========================================
+
+@mcp.prompt("daily_review")
+def prompt_daily_review() -> str:
+    """
+    RPG-themed Daily Review prompt.
+    """
+    return "Please retrieve my character profile resource, today's quests, and my daily reflections to generate a comprehensive daily briefing and action plan."
 
 if __name__ == "__main__":
     mcp.run()

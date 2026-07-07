@@ -7,6 +7,7 @@ import importlib.metadata
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 
 # Ensure backend directory is in Python path for imports
@@ -18,6 +19,8 @@ from config import config
 from server import mcp
 from services.sheets_client import client
 from auth.middleware import JWTAuthMiddleware
+from mcp.server.fastmcp.server import StreamableHTTPASGIApp
+from mcp.server.sse import SseServerTransport
 
 # Setup global metrics tracker
 class MetricsTracker:
@@ -102,16 +105,34 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 # Authentication and Logging Middleware
-class AuthAndLoggingMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next):
+class AuthAndLoggingMiddleware:
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        request = Request(scope, receive)
         request_id = str(uuid.uuid4())
-        request.state.request_id = request_id
-        start_time = time.time()
+        
+        if "state" not in scope:
+            scope["state"] = {}
+        scope["state"]["request_id"] = request_id
 
         path = request.url.path
 
-        # Public endpoints
+        # Public endpoints and prefixes
         public_paths = {
             "/",
             "/health",
@@ -119,12 +140,23 @@ class AuthAndLoggingMiddleware(BaseHTTPMiddleware):
             "/docs",
             "/redoc",
             "/openapi.json",
+            "/info",
+            "/routes",
         }
 
+        public_prefixes = (
+            "/.well-known",
+            "/oauth",
+            "/mcp",
+        )
 
+        is_public = (
+            path in public_paths
+            or any(path.startswith(prefix) for prefix in public_prefixes)
+        )
 
         # Protect only management endpoints
-        if path not in public_paths:
+        if not is_public:
             if config.AUTH_MODE == "legacy":
                 auth_header = request.headers.get("Authorization")
                 expected = f"Bearer {config.AUTH_TOKEN}"
@@ -136,11 +168,14 @@ class AuthAndLoggingMiddleware(BaseHTTPMiddleware):
 
                     metrics_tracker.increment_request_count()
 
-                    return JSONResponse(
+                    response = JSONResponse(
                         status_code=401,
                         content={"detail": "Unauthorized"},
                     )
-                request.state.auth_mode = "legacy"
+                    await response(scope, receive, send)
+                    return
+                    
+                scope["state"]["auth_mode"] = "legacy"
                 
                 # Bind legacy context variables
                 from auth import context
@@ -151,32 +186,34 @@ class AuthAndLoggingMiddleware(BaseHTTPMiddleware):
                     name="Owner",
                     provider="legacy"
                 )
-                request.state.user = dummy_user
+                scope["state"]["user"] = dummy_user
                 context.current_user.set(dummy_user)
                 context.auth_mode.set("legacy")
 
         metrics_tracker.increment_request_count()
+        start_time = time.time()
+        status_code = [200]
+
+        async def logging_send(message):
+            if message["type"] == "http.response.start":
+                status_code[0] = message["status"]
+            await send(message)
 
         try:
-            response = await call_next(request)
-
+            await self.app(scope, receive, logging_send)
         except Exception:
-
             logger.exception(
                 f"Unhandled exception during request {request_id}"
             )
             raise
-
-        execution_time = time.time() - start_time
-
-        logger.info(
-            f"RequestID: {request_id} | "
-            f"{request.method} {path} | "
-            f"{response.status_code} | "
-            f"{execution_time:.4f}s"
-        )
-
-        return response
+        finally:
+            execution_time = time.time() - start_time
+            logger.info(
+                f"RequestID: {request_id} | "
+                f"{request.method} {path} | "
+                f"{status_code[0]} | "
+                f"{execution_time:.4f}s"
+            )
 
 app.add_middleware(AuthAndLoggingMiddleware)
 app.add_middleware(
@@ -188,18 +225,89 @@ app.add_middleware(
         "/docs",
         "/redoc",
         "/openapi.json",
+        "/info",
+        "/routes",
     },
-    exclude_prefixes=set()
+    exclude_prefixes={
+        "/.well-known",
+        "/oauth",
+        "/mcp",
+    }
 )
 
-# Expose FastMCP SSE transport under /mcp for universal remote client compatibility (ChatGPT, Cursor, Claude Desktop)
-if hasattr(mcp, "sse_app"):
-    mcp_app = mcp.sse_app()
-    app.mount("/mcp", mcp_app)
-    transport_name = "SSE"
-    logger.info("Mounted FastMCP SSE transport app on /mcp")
+# Wrapper class to bypass Starlette's request_response wrapper check for ASGI apps
+class ASGIAppWrapper:
+    def __init__(self, asgi_app):
+        self.asgi_app = asgi_app
+    async def __call__(self, scope, receive, send):
+        await self.asgi_app(scope, receive, send)
+
+# Initialize session manager for Streamable HTTP transport
+if hasattr(mcp, "streamable_http_app"):
+    if mcp._session_manager is None:
+        from mcp.server.streamable_http_manager import StreamableHTTPSessionManager
+        mcp._session_manager = StreamableHTTPSessionManager(
+            app=mcp._mcp_server,
+            event_store=mcp._event_store,
+            retry_interval=mcp._retry_interval,
+            json_response=mcp.settings.json_response,
+            stateless=mcp.settings.stateless_http,
+            security_settings=mcp.settings.transport_security,
+        )
+    streamable_http_asgi = StreamableHTTPASGIApp(mcp.session_manager)
+    app.mount("/mcp/http", streamable_http_asgi)
+    app.add_route("/mcp/http", ASGIAppWrapper(streamable_http_asgi), methods=["GET", "POST", "DELETE", "OPTIONS"])
+    logger.info("Mounted FastMCP Streamable HTTP ASGI app directly on /mcp/http")
 else:
-    raise RuntimeError("Installed mcp package does not support sse_app.")
+    logger.warning("Installed mcp package does not support streamable_http_app.")
+
+# Expose FastMCP SSE transport directly
+sse_transport = SseServerTransport(
+    endpoint="/mcp/messages/",
+    security_settings=mcp.settings.transport_security
+)
+
+async def sse_get_handler(scope, receive, send):
+    async with sse_transport.connect_sse(scope, receive, send) as streams:
+        await mcp._mcp_server.run(
+            streams[0],
+            streams[1],
+            mcp._mcp_server.create_initialization_options(),
+        )
+    return Response()
+
+app.mount("/mcp/sse", sse_get_handler)
+app.add_route("/mcp/sse", ASGIAppWrapper(sse_get_handler), methods=["GET", "OPTIONS"])
+
+app.mount("/mcp/messages", sse_transport.handle_post_message)
+app.add_route("/mcp/messages", ASGIAppWrapper(sse_transport.handle_post_message), methods=["POST", "OPTIONS"])
+
+app.add_route("/mcp", ASGIAppWrapper(sse_get_handler), methods=["GET", "OPTIONS"])
+
+logger.info("Mounted FastMCP SSE transport app directly on /mcp, /mcp/sse, and /mcp/messages")
+
+transport_name = "SSE + Streamable HTTP"
+
+# ----------------------------------------------------
+# OIDC / OAUTH DISCOVERY ENDPOINTS (ChatGPT / Auth0)
+# ----------------------------------------------------
+
+@app.get("/.well-known/oauth-authorization-server")
+@app.get("/.well-known/openid-configuration")
+def oauth_discovery(request: Request):
+    return {
+        "issuer": config.AUTH0_ISSUER,
+        "authorization_endpoint": f"https://{config.AUTH0_DOMAIN}/authorize",
+        "token_endpoint": f"https://{config.AUTH0_DOMAIN}/oauth/token",
+        "jwks_uri": f"https://{config.AUTH0_DOMAIN}/.well-known/jwks.json",
+        "scopes_supported": ["openid", "profile", "email", "offline_access"],
+        "response_types_supported": ["code"],
+        "grant_types_supported": ["authorization_code", "refresh_token"],
+        "code_challenge_methods_supported": ["S256"],
+        "token_endpoint_auth_methods_supported": ["client_secret_post", "client_secret_basic", "none"],
+        "subject_types_supported": ["public"],
+        "id_token_signing_alg_values_supported": ["RS256"]
+    }
 
 # ----------------------------------------------------
 # PUBLIC ROUTES
@@ -211,8 +319,10 @@ def api_discovery():
         "name": "BakaTracker MCP Gateway",
         "version": config.VERSION,
         "status": "running",
-        "transport": transport_name,
-        "mcp": "/mcp",
+        "transports": {
+            "sse": "/mcp",
+            "streamable_http": "/mcp/http"
+        },
         "docs": "/info",
         "health": "/health"
     }

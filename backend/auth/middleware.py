@@ -11,25 +11,33 @@ from backend.auth.responses import unauthorized, forbidden
 
 logger = logging.getLogger("bakatracker.auth")
 
-class JWTAuthMiddleware(BaseHTTPMiddleware):
+class JWTAuthMiddleware:
     def __init__(
         self,
         app,
         exclude_paths: Set[str] = None,
         exclude_prefixes: Set[str] = None
     ):
-        super().__init__(app)
+        self.app = app
         self.exclude_paths = exclude_paths or set()
         self.exclude_prefixes = exclude_prefixes or set()
 
-    async def dispatch(self, request: Request, call_next):
+    async def __call__(self, scope, receive, send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        request = Request(scope, receive)
+
         # Skip authentication for OPTIONS requests (CORS preflight)
         if request.method == "OPTIONS":
-            return await call_next(request)
+            await self.app(scope, receive, send)
+            return
 
         # Dynamically check the auth mode flag for seamless migration/testing
         if config.AUTH_MODE != "jwt":
-            return await call_next(request)
+            await self.app(scope, receive, send)
+            return
 
         path = request.url.path
 
@@ -39,13 +47,16 @@ class JWTAuthMiddleware(BaseHTTPMiddleware):
         )
 
         if is_excluded:
-            return await call_next(request)
+            await self.app(scope, receive, send)
+            return
 
         # Enforce JWT authentication
         try:
             user = await run_in_threadpool(authenticate_request, request)
-            request.state.user = user
-            request.state.auth_mode = "jwt"
+            if "state" not in scope:
+                scope["state"] = {}
+            scope["state"]["user"] = user
+            scope["state"]["auth_mode"] = "jwt"
             
             # Set global context variables for tools/sheetsclient
             from backend.auth import context
@@ -59,16 +70,22 @@ class JWTAuthMiddleware(BaseHTTPMiddleware):
             logger.error(
                 f"Authentication forbidden | Mode: jwt | Error: {str(e)}"
             )
-            return forbidden(detail=str(e))
+            response = forbidden(detail=str(e))
+            await response(scope, receive, send)
+            return
         except AuthError as e:
             logger.error(
                 f"Authentication failure | Mode: jwt | Error: {str(e)}"
             )
-            return unauthorized(detail=str(e))
+            response = unauthorized(detail=str(e))
+            await response(scope, receive, send)
+            return
         except Exception as e:
             logger.exception(
                 f"Unexpected error during authentication | Mode: jwt | Error: {str(e)}"
             )
-            return unauthorized(detail="Internal authentication error.")
+            response = unauthorized(detail="Internal authentication error.")
+            await response(scope, receive, send)
+            return
 
-        return await call_next(request)
+        await self.app(scope, receive, send)

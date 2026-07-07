@@ -93,6 +93,11 @@ jobs:
             GOOGLE_APPS_SCRIPT_URL=${{ secrets.GOOGLE_APPS_SCRIPT_URL }}
             GOOGLE_APPS_SCRIPT_API_KEY=${{ secrets.GOOGLE_APPS_SCRIPT_API_KEY }}
             AUTH_TOKEN=${{ secrets.AUTH_TOKEN }}
+            AUTH_MODE=jwt
+            AUTH0_DOMAIN=buildsrivatsa.us.auth0.com
+            AUTH0_AUDIENCE=https://api.bakatracker.buildsrivatssa.qzz.io
+            AUTH0_ISSUER=https://buildsrivatsa.us.auth0.com/
+            OWNER_EMAIL=srivatsacool@gmail.com
             LOG_LEVEL=INFO
 
       # 10. Post-Deployment Remote Health Check
