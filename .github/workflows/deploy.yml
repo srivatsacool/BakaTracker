@@ -38,18 +38,34 @@ jobs:
           AUTH_TOKEN: "ci_cd_test_token"
         run: |
           cd backend
-          # Run uvicorn in the background
-          uv run uvicorn main:app --port 8080 &
+          # Run uvicorn in the background and redirect output
+          uv run uvicorn main:app --port 8080 > uvicorn.log 2>&1 &
+          UVICORN_PID=$!
           # Wait for server to boot up
           sleep 5
-          # Perform health checks
-          curl -f http://localhost:8080/health
-          curl -f http://localhost:8080/version
-          curl -f http://localhost:8080/
-          # Verify readiness with mock auth headers
-          curl -f -H "Authorization: Bearer ci_cd_test_token" http://localhost:8080/ready
+          # Perform health checks, print uvicorn logs if anything fails
+          if ! curl -f http://localhost:8080/health; then
+            echo "=== UVICORN LOGS ==="
+            cat uvicorn.log
+            exit 1
+          fi
+          if ! curl -f http://localhost:8080/version; then
+            echo "=== UVICORN LOGS ==="
+            cat uvicorn.log
+            exit 1
+          fi
+          if ! curl -f http://localhost:8080/; then
+            echo "=== UVICORN LOGS ==="
+            cat uvicorn.log
+            exit 1
+          fi
+          if ! curl -f -H "Authorization: Bearer ci_cd_test_token" http://localhost:8080/ready; then
+            echo "=== UVICORN LOGS ==="
+            cat uvicorn.log
+            exit 1
+          fi
           # Stop the background process
-          kill %1
+          kill $UVICORN_PID
 
       # 5. Authenticate to Google Cloud
       - name: Google Auth
