@@ -29,6 +29,7 @@ class Config:
     AUTH0_DOMAIN = os.getenv("AUTH0_DOMAIN", "")
     AUTH0_AUDIENCE = os.getenv("AUTH0_AUDIENCE", "")
     AUTH0_ISSUER = os.getenv("AUTH0_ISSUER", "")
+    AUTH0_CLIENT_ID = os.getenv("AUTH0_CLIENT_ID", "")
 
     def validate(self):
         """
@@ -57,6 +58,9 @@ class Config:
                 raise ValueError("AUTH0_ISSUER must be configured in jwt mode.")
             if not self.AUTH0_ISSUER.startswith("https://"):
                 raise ValueError("AUTH0_ISSUER must be an HTTPS URL starting with https://.")
+
+            if not self.AUTH0_CLIENT_ID:
+                raise ValueError("AUTH0_CLIENT_ID must be configured in jwt mode.")
 
             if not self.OWNER_EMAIL:
                 raise ValueError("OWNER_EMAIL must be configured in jwt mode.")

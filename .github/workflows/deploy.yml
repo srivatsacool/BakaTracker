@@ -97,6 +97,7 @@ jobs:
             AUTH0_DOMAIN=buildsrivatsa.us.auth0.com
             AUTH0_AUDIENCE=https://api.bakatracker.buildsrivatssa.qzz.io
             AUTH0_ISSUER=https://buildsrivatsa.us.auth0.com/
+            AUTH0_CLIENT_ID=${{ secrets.AUTH0_CLIENT_ID }}
             OWNER_EMAIL=srivatsacool@gmail.com
             LOG_LEVEL=INFO
 

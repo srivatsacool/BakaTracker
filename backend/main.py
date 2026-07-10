@@ -146,8 +146,6 @@ class AuthAndLoggingMiddleware:
 
         public_prefixes = (
             "/.well-known",
-            "/oauth",
-            "/mcp",
         )
 
         is_public = (
@@ -156,7 +154,7 @@ class AuthAndLoggingMiddleware:
         )
 
         # Protect only management endpoints
-        if not is_public:
+        if not is_public and request.method != "OPTIONS":
             if config.AUTH_MODE == "legacy":
                 auth_header = request.headers.get("Authorization")
                 expected = f"Bearer {config.AUTH_TOKEN}"
@@ -230,8 +228,6 @@ app.add_middleware(
     },
     exclude_prefixes={
         "/.well-known",
-        "/oauth",
-        "/mcp",
     }
 )
 
@@ -299,14 +295,18 @@ def oauth_discovery(request: Request):
         "issuer": config.AUTH0_ISSUER,
         "authorization_endpoint": f"https://{config.AUTH0_DOMAIN}/authorize",
         "token_endpoint": f"https://{config.AUTH0_DOMAIN}/oauth/token",
+        "userinfo_endpoint": f"https://{config.AUTH0_DOMAIN}/userinfo",
         "jwks_uri": f"https://{config.AUTH0_DOMAIN}/.well-known/jwks.json",
         "scopes_supported": ["openid", "profile", "email", "offline_access"],
-        "response_types_supported": ["code"],
-        "grant_types_supported": ["authorization_code", "refresh_token"],
+        "response_types_supported": ["code", "token", "id_token"],
+        "grant_types_supported": ["authorization_code", "refresh_token", "implicit"],
         "code_challenge_methods_supported": ["S256"],
         "token_endpoint_auth_methods_supported": ["client_secret_post", "client_secret_basic", "none"],
         "subject_types_supported": ["public"],
-        "id_token_signing_alg_values_supported": ["RS256"]
+        "id_token_signing_alg_values_supported": ["RS256"],
+        "claims_supported": ["sub", "iss", "aud", "exp", "iat", "email", "email_verified", "name", "picture"],
+        "client_id": config.AUTH0_CLIENT_ID,
+        "audience": config.AUTH0_AUDIENCE
     }
 
 # ----------------------------------------------------
