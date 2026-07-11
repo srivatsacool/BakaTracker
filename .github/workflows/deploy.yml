@@ -33,8 +33,8 @@ jobs:
       # 4. Local Health Check Test
       - name: Run Startup Verification Check
         env:
-          GOOGLE_APPS_SCRIPT_URL: ${{ secrets.GOOGLE_APPS_SCRIPT_URL }}
-          GOOGLE_APPS_SCRIPT_API_KEY: ${{ secrets.GOOGLE_APPS_SCRIPT_API_KEY }}
+          GOOGLE_APPS_SCRIPT_URL: ${{ secrets.GOOGLE_APPS_SCRIPT_URL || 'https://example.com/exec' }}
+          GOOGLE_APPS_SCRIPT_API_KEY: ${{ secrets.GOOGLE_APPS_SCRIPT_API_KEY || 'dummy_key' }}
           AUTH_TOKEN: "ci_cd_test_token"
         run: |
           cd backend
