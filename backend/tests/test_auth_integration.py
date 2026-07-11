@@ -6,12 +6,10 @@ from unittest.mock import patch
 
 # Align Python paths so main and config match the runtime sys.modules namespaces
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
 from main import app
-from config import config as config_direct
-from backend.config import config as config_backend
-from backend.auth.exceptions import (
+from config import config as config
+from auth.exceptions import (
     ExpiredToken,
     InvalidAudience,
     InvalidIssuer,
@@ -25,71 +23,62 @@ def client():
 
 def test_legacy_auth_success(client):
     """Test legacy authentication with a valid token."""
-    with patch.object(config_direct, "AUTH_MODE", "legacy"), \
-         patch.object(config_backend, "AUTH_MODE", "legacy"), \
-         patch.object(config_direct, "AUTH_TOKEN", "legacy_secret_token"), \
-         patch.object(config_backend, "AUTH_TOKEN", "legacy_secret_token"):
+    with patch.object(config, "AUTH_MODE", "legacy"), \
+         patch.object(config, "AUTH_TOKEN", "legacy_secret_token"):
         response = client.get("/metrics", headers={"Authorization": "Bearer legacy_secret_token"})
         assert response.status_code == 200
         assert isinstance(response.json(), dict)
 
 def test_legacy_auth_failure(client):
     """Test legacy authentication with an invalid token."""
-    with patch.object(config_direct, "AUTH_MODE", "legacy"), \
-         patch.object(config_backend, "AUTH_MODE", "legacy"), \
-         patch.object(config_direct, "AUTH_TOKEN", "legacy_secret_token"), \
-         patch.object(config_backend, "AUTH_TOKEN", "legacy_secret_token"):
+    with patch.object(config, "AUTH_MODE", "legacy"), \
+         patch.object(config, "AUTH_TOKEN", "legacy_secret_token"):
         response = client.get("/metrics", headers={"Authorization": "Bearer bad_token"})
         assert response.status_code == 401
         assert response.json() == {"detail": "Unauthorized"}
 
 def test_jwt_auth_missing_header(client):
     """Test JWT authentication with a missing Authorization header."""
-    with patch.object(config_direct, "AUTH_MODE", "jwt"), \
-         patch.object(config_backend, "AUTH_MODE", "jwt"):
+    with patch.object(config, "AUTH_MODE", "jwt"):
         response = client.get("/metrics")
         assert response.status_code == 401
         assert "Missing Authorization header" in response.json()["detail"]
 
 def test_jwt_auth_invalid_header_format(client):
     """Test JWT authentication with an invalid Authorization header format."""
-    with patch.object(config_direct, "AUTH_MODE", "jwt"), \
-         patch.object(config_backend, "AUTH_MODE", "jwt"):
+    with patch.object(config, "AUTH_MODE", "jwt"):
         response = client.get("/metrics", headers={"Authorization": "invalid_format"})
         assert response.status_code == 401
         assert "Expected Format: Bearer" in response.json()["detail"]
 
-@patch("backend.core.security.verify_jwt")
+@patch("core.security.verify_jwt")
 def test_jwt_auth_expired_token(mock_verify, client):
     """Test JWT authentication with an expired token."""
     mock_verify.side_effect = ExpiredToken("The token has expired.")
-    with patch.object(config_direct, "AUTH_MODE", "jwt"), \
-         patch.object(config_backend, "AUTH_MODE", "jwt"):
+    with patch.object(config, "AUTH_MODE", "jwt"):
         response = client.get("/metrics", headers={"Authorization": "Bearer some_token"})
         assert response.status_code == 401
         assert "The token has expired" in response.json()["detail"]
 
-@patch("backend.core.security.verify_jwt")
+@patch("core.security.verify_jwt")
 def test_jwt_auth_invalid_audience(mock_verify, client):
     """Test JWT authentication with a wrong audience."""
     mock_verify.side_effect = InvalidAudience("Invalid audience.")
-    with patch.object(config_direct, "AUTH_MODE", "jwt"), \
-         patch.object(config_backend, "AUTH_MODE", "jwt"):
+    with patch.object(config, "AUTH_MODE", "jwt"):
         response = client.get("/metrics", headers={"Authorization": "Bearer some_token"})
         assert response.status_code == 401
         assert "Invalid audience" in response.json()["detail"]
 
-@patch("backend.core.security.verify_jwt")
+@patch("core.security.verify_jwt")
 def test_jwt_auth_invalid_issuer(mock_verify, client):
     """Test JWT authentication with a wrong issuer."""
     mock_verify.side_effect = InvalidIssuer("Invalid issuer.")
-    with patch.object(config_direct, "AUTH_MODE", "jwt"), \
-         patch.object(config_backend, "AUTH_MODE", "jwt"):
+    with patch.object(config, "AUTH_MODE", "jwt"):
         response = client.get("/metrics", headers={"Authorization": "Bearer some_token"})
         assert response.status_code == 401
         assert "Invalid issuer" in response.json()["detail"]
 
-@patch("backend.core.security.verify_jwt")
+@patch("core.security.verify_jwt")
 def test_jwt_auth_wrong_owner_email(mock_verify, client):
     """Test JWT authentication with a wrong owner email."""
     mock_verify.return_value = {
@@ -97,15 +86,13 @@ def test_jwt_auth_wrong_owner_email(mock_verify, client):
         "email": "intruder@example.com",
         "name": "Intruder"
     }
-    with patch.object(config_direct, "AUTH_MODE", "jwt"), \
-         patch.object(config_backend, "AUTH_MODE", "jwt"), \
-         patch.object(config_direct, "OWNER_EMAIL", "owner@example.com"), \
-         patch.object(config_backend, "OWNER_EMAIL", "owner@example.com"):
+    with patch.object(config, "AUTH_MODE", "jwt"), \
+         patch.object(config, "OWNER_EMAIL", "owner@example.com"):
         response = client.get("/metrics", headers={"Authorization": "Bearer some_token"})
         assert response.status_code == 403
         assert "is not authorized" in response.json()["detail"].lower()
 
-@patch("backend.core.security.verify_jwt")
+@patch("core.security.verify_jwt")
 def test_jwt_auth_success(mock_verify, client):
     """Test JWT authentication with successful owner validation."""
     mock_verify.return_value = {
@@ -113,22 +100,19 @@ def test_jwt_auth_success(mock_verify, client):
         "email": "owner@example.com",
         "name": "Owner User"
     }
-    with patch.object(config_direct, "AUTH_MODE", "jwt"), \
-         patch.object(config_backend, "AUTH_MODE", "jwt"), \
-         patch.object(config_direct, "OWNER_EMAIL", "owner@example.com"), \
-         patch.object(config_backend, "OWNER_EMAIL", "owner@example.com"):
+    with patch.object(config, "AUTH_MODE", "jwt"), \
+         patch.object(config, "OWNER_EMAIL", "owner@example.com"):
         response = client.get("/metrics", headers={"Authorization": "Bearer some_token"})
         assert response.status_code == 200
         assert isinstance(response.json(), dict)
 
 def test_jwt_auth_options_bypass(client):
     """Test that OPTIONS requests bypass JWT authentication completely (CORS preflight)."""
-    with patch.object(config_direct, "AUTH_MODE", "jwt"), \
-         patch.object(config_backend, "AUTH_MODE", "jwt"):
+    with patch.object(config, "AUTH_MODE", "jwt"):
         response = client.options("/metrics")
         assert response.status_code != 401
 
-@patch("backend.core.security.verify_jwt")
+@patch("core.security.verify_jwt")
 def test_jwt_auth_multiple_spaces(mock_verify, client):
     """Test JWT authentication handles multiple spaces in Authorization header."""
     mock_verify.return_value = {
@@ -136,44 +120,38 @@ def test_jwt_auth_multiple_spaces(mock_verify, client):
         "email": "owner@example.com",
         "name": "Owner User"
     }
-    with patch.object(config_direct, "AUTH_MODE", "jwt"), \
-         patch.object(config_backend, "AUTH_MODE", "jwt"), \
-         patch.object(config_direct, "OWNER_EMAIL", "owner@example.com"), \
-         patch.object(config_backend, "OWNER_EMAIL", "owner@example.com"):
+    with patch.object(config, "AUTH_MODE", "jwt"), \
+         patch.object(config, "OWNER_EMAIL", "owner@example.com"):
         response = client.get("/metrics", headers={"Authorization": "Bearer   some_token"})
         assert response.status_code == 200
 
-@patch("backend.core.security.verify_jwt")
+@patch("core.security.verify_jwt")
 def test_jwt_auth_missing_email(mock_verify, client):
     """Test JWT authentication fails if the email claim is missing."""
     mock_verify.return_value = {
         "sub": "auth0|owner_id",
         "name": "Owner User"
     }
-    with patch.object(config_direct, "AUTH_MODE", "jwt"), \
-         patch.object(config_backend, "AUTH_MODE", "jwt"), \
-         patch.object(config_direct, "OWNER_EMAIL", "owner@example.com"), \
-         patch.object(config_backend, "OWNER_EMAIL", "owner@example.com"):
+    with patch.object(config, "AUTH_MODE", "jwt"), \
+         patch.object(config, "OWNER_EMAIL", "owner@example.com"):
         response = client.get("/metrics", headers={"Authorization": "Bearer some_token"})
         assert response.status_code == 401
         assert "payload is missing an 'email' claim" in response.json()["detail"]
 
-@patch("backend.core.security.verify_jwt")
+@patch("core.security.verify_jwt")
 def test_jwt_auth_missing_sub(mock_verify, client):
     """Test JWT authentication fails if the sub (user ID) claim is missing."""
     mock_verify.return_value = {
         "email": "owner@example.com",
         "name": "Owner User"
     }
-    with patch.object(config_direct, "AUTH_MODE", "jwt"), \
-         patch.object(config_backend, "AUTH_MODE", "jwt"), \
-         patch.object(config_direct, "OWNER_EMAIL", "owner@example.com"), \
-         patch.object(config_backend, "OWNER_EMAIL", "owner@example.com"):
+    with patch.object(config, "AUTH_MODE", "jwt"), \
+         patch.object(config, "OWNER_EMAIL", "owner@example.com"):
         response = client.get("/metrics", headers={"Authorization": "Bearer some_token"})
         assert response.status_code == 401
         assert "payload is missing a 'sub' claim" in response.json()["detail"]
 
-@patch("backend.core.security.verify_jwt")
+@patch("core.security.verify_jwt")
 def test_jwt_auth_success_no_pii_logged(mock_verify, client, caplog):
     """Test JWT authentication logs success without leaking plain user emails."""
     import logging
@@ -182,10 +160,8 @@ def test_jwt_auth_success_no_pii_logged(mock_verify, client, caplog):
         "email": "owner@example.com",
         "name": "Owner User"
     }
-    with patch.object(config_direct, "AUTH_MODE", "jwt"), \
-         patch.object(config_backend, "AUTH_MODE", "jwt"), \
-         patch.object(config_direct, "OWNER_EMAIL", "owner@example.com"), \
-         patch.object(config_backend, "OWNER_EMAIL", "owner@example.com"), \
+    with patch.object(config, "AUTH_MODE", "jwt"), \
+         patch.object(config, "OWNER_EMAIL", "owner@example.com"), \
          caplog.at_level(logging.INFO):
         response = client.get("/metrics", headers={"Authorization": "Bearer some_token"})
         assert response.status_code == 200
@@ -201,19 +177,12 @@ def test_jwt_auth_success_no_pii_logged(mock_verify, client, caplog):
 
 def test_startup_validation_missing_domain():
     """Test that app lifespan fails to start when AUTH0_DOMAIN is missing in jwt mode."""
-    with patch.object(config_direct, "AUTH_MODE", "jwt"), \
-         patch.object(config_backend, "AUTH_MODE", "jwt"), \
-         patch.object(config_direct, "AUTH0_DOMAIN", ""), \
-         patch.object(config_backend, "AUTH0_DOMAIN", ""), \
-         patch.object(config_direct, "OWNER_EMAIL", "owner@example.com"), \
-         patch.object(config_backend, "OWNER_EMAIL", "owner@example.com"), \
-         patch.object(config_direct, "AUTH0_AUDIENCE", "api_audience"), \
-         patch.object(config_backend, "AUTH0_AUDIENCE", "api_audience"), \
-         patch.object(config_direct, "AUTH0_ISSUER", "https://issuer.auth0.com/"), \
-         patch.object(config_backend, "AUTH0_ISSUER", "https://issuer.auth0.com/"), \
-         patch.object(config_direct, "AUTH0_CLIENT_ID", "client_id"), \
-         patch.object(config_backend, "AUTH0_CLIENT_ID", "client_id"):
-        
+    with patch.object(config, "AUTH_MODE", "jwt"), \
+         patch.object(config, "AUTH0_DOMAIN", ""), \
+         patch.object(config, "OWNER_EMAIL", "owner@example.com"), \
+         patch.object(config, "AUTH0_AUDIENCE", "api_audience"), \
+         patch.object(config, "AUTH0_ISSUER", "https://issuer.auth0.com/"), \
+         patch.object(config, "AUTH0_CLIENT_ID", "client_id"):
         with pytest.raises(ValueError) as excinfo:
             with TestClient(app):
                 pass
@@ -221,19 +190,12 @@ def test_startup_validation_missing_domain():
 
 def test_startup_validation_missing_owner_email():
     """Test that app lifespan fails to start when OWNER_EMAIL is missing in jwt mode."""
-    with patch.object(config_direct, "AUTH_MODE", "jwt"), \
-         patch.object(config_backend, "AUTH_MODE", "jwt"), \
-         patch.object(config_direct, "AUTH0_DOMAIN", "tenant.auth0.com"), \
-         patch.object(config_backend, "AUTH0_DOMAIN", "tenant.auth0.com"), \
-         patch.object(config_direct, "OWNER_EMAIL", ""), \
-         patch.object(config_backend, "OWNER_EMAIL", ""), \
-         patch.object(config_direct, "AUTH0_AUDIENCE", "api_audience"), \
-         patch.object(config_backend, "AUTH0_AUDIENCE", "api_audience"), \
-         patch.object(config_direct, "AUTH0_ISSUER", "https://issuer.auth0.com/"), \
-         patch.object(config_backend, "AUTH0_ISSUER", "https://issuer.auth0.com/"), \
-         patch.object(config_direct, "AUTH0_CLIENT_ID", "client_id"), \
-         patch.object(config_backend, "AUTH0_CLIENT_ID", "client_id"):
-        
+    with patch.object(config, "AUTH_MODE", "jwt"), \
+         patch.object(config, "AUTH0_DOMAIN", "tenant.auth0.com"), \
+         patch.object(config, "OWNER_EMAIL", ""), \
+         patch.object(config, "AUTH0_AUDIENCE", "api_audience"), \
+         patch.object(config, "AUTH0_ISSUER", "https://issuer.auth0.com/"), \
+         patch.object(config, "AUTH0_CLIENT_ID", "client_id"):
         with pytest.raises(ValueError) as excinfo:
             with TestClient(app):
                 pass
@@ -241,19 +203,12 @@ def test_startup_validation_missing_owner_email():
 
 def test_startup_validation_missing_client_id():
     """Test that app lifespan fails to start when AUTH0_CLIENT_ID is missing in jwt mode."""
-    with patch.object(config_direct, "AUTH_MODE", "jwt"), \
-         patch.object(config_backend, "AUTH_MODE", "jwt"), \
-         patch.object(config_direct, "AUTH0_DOMAIN", "tenant.auth0.com"), \
-         patch.object(config_backend, "AUTH0_DOMAIN", "tenant.auth0.com"), \
-         patch.object(config_direct, "OWNER_EMAIL", "owner@example.com"), \
-         patch.object(config_backend, "OWNER_EMAIL", "owner@example.com"), \
-         patch.object(config_direct, "AUTH0_AUDIENCE", "api_audience"), \
-         patch.object(config_backend, "AUTH0_AUDIENCE", "api_audience"), \
-         patch.object(config_direct, "AUTH0_ISSUER", "https://issuer.auth0.com/"), \
-         patch.object(config_backend, "AUTH0_ISSUER", "https://issuer.auth0.com/"), \
-         patch.object(config_direct, "AUTH0_CLIENT_ID", ""), \
-         patch.object(config_backend, "AUTH0_CLIENT_ID", ""):
-        
+    with patch.object(config, "AUTH_MODE", "jwt"), \
+         patch.object(config, "AUTH0_DOMAIN", "tenant.auth0.com"), \
+         patch.object(config, "OWNER_EMAIL", "owner@example.com"), \
+         patch.object(config, "AUTH0_AUDIENCE", "api_audience"), \
+         patch.object(config, "AUTH0_ISSUER", "https://issuer.auth0.com/"), \
+         patch.object(config, "AUTH0_CLIENT_ID", ""):
         with pytest.raises(ValueError) as excinfo:
             with TestClient(app):
                 pass
@@ -261,9 +216,7 @@ def test_startup_validation_missing_client_id():
 
 def test_startup_validation_invalid_auth_mode():
     """Test that app lifespan fails to start when AUTH_MODE is invalid."""
-    with patch.object(config_direct, "AUTH_MODE", "invalid_mode"), \
-         patch.object(config_backend, "AUTH_MODE", "invalid_mode"):
-        
+    with patch.object(config, "AUTH_MODE", "invalid_mode"):
         with pytest.raises(ValueError) as excinfo:
             with TestClient(app):
                 pass
@@ -271,36 +224,26 @@ def test_startup_validation_invalid_auth_mode():
 
 def test_startup_validation_success():
     """Test that app lifespan starts successfully with a valid JWT configuration."""
-    with patch.object(config_direct, "AUTH_MODE", "jwt"), \
-         patch.object(config_backend, "AUTH_MODE", "jwt"), \
+    with patch.object(config, "AUTH_MODE", "jwt"), \
          patch("main.client.fetch_db") as mock_fetch, \
-         patch.object(config_direct, "AUTH0_DOMAIN", "tenant.auth0.com"), \
-         patch.object(config_backend, "AUTH0_DOMAIN", "tenant.auth0.com"), \
-         patch.object(config_direct, "OWNER_EMAIL", "owner@example.com"), \
-         patch.object(config_backend, "OWNER_EMAIL", "owner@example.com"), \
-         patch.object(config_direct, "AUTH0_AUDIENCE", "api_audience"), \
-         patch.object(config_backend, "AUTH0_AUDIENCE", "api_audience"), \
-         patch.object(config_direct, "AUTH0_ISSUER", "https://issuer.auth0.com/"), \
-         patch.object(config_backend, "AUTH0_ISSUER", "https://issuer.auth0.com/"), \
-         patch.object(config_direct, "AUTH0_CLIENT_ID", "client_id"), \
-         patch.object(config_backend, "AUTH0_CLIENT_ID", "client_id"):
-        
+         patch.object(config, "AUTH0_DOMAIN", "tenant.auth0.com"), \
+         patch.object(config, "OWNER_EMAIL", "owner@example.com"), \
+         patch.object(config, "AUTH0_AUDIENCE", "api_audience"), \
+         patch.object(config, "AUTH0_ISSUER", "https://issuer.auth0.com/"), \
+         patch.object(config, "AUTH0_CLIENT_ID", "client_id"):
         with TestClient(app) as test_client:
             assert test_client.get("/health").status_code == 200
 
 def test_mcp_auth_jwt_missing_header(client):
     """Test that /mcp/sse requires authentication under JWT mode."""
-    with patch.object(config_direct, "AUTH_MODE", "jwt"), \
-         patch.object(config_backend, "AUTH_MODE", "jwt"):
+    with patch.object(config, "AUTH_MODE", "jwt"):
         response = client.get("/mcp/sse")
         assert response.status_code == 401
 
 def test_mcp_auth_legacy_missing_header(client):
     """Test that /mcp/sse requires authentication under Legacy mode."""
-    with patch.object(config_direct, "AUTH_MODE", "legacy"), \
-         patch.object(config_backend, "AUTH_MODE", "legacy"), \
-         patch.object(config_direct, "AUTH_TOKEN", "secret_token"), \
-         patch.object(config_backend, "AUTH_TOKEN", "secret_token"):
+    with patch.object(config, "AUTH_MODE", "legacy"), \
+         patch.object(config, "AUTH_TOKEN", "secret_token"):
         response = client.get("/mcp/sse")
         assert response.status_code == 401
 
@@ -349,15 +292,10 @@ def test_sheets_client_propagates_user_context(client):
 
 def test_oauth_discovery_endpoints(client):
     """Test that discovery endpoints return standard metadata based on Auth0 configuration."""
-    with patch.object(config_direct, "AUTH0_DOMAIN", "tenant.auth0.com"), \
-         patch.object(config_backend, "AUTH0_DOMAIN", "tenant.auth0.com"), \
-         patch.object(config_direct, "AUTH0_ISSUER", "https://issuer.auth0.com/"), \
-         patch.object(config_backend, "AUTH0_ISSUER", "https://issuer.auth0.com/"), \
-         patch.object(config_direct, "AUTH0_AUDIENCE", "api_audience"), \
-         patch.object(config_backend, "AUTH0_AUDIENCE", "api_audience"), \
-         patch.object(config_direct, "AUTH0_CLIENT_ID", "client_id"), \
-         patch.object(config_backend, "AUTH0_CLIENT_ID", "client_id"):
-        
+    with patch.object(config, "AUTH0_DOMAIN", "tenant.auth0.com"), \
+         patch.object(config, "AUTH0_ISSUER", "https://issuer.auth0.com/"), \
+         patch.object(config, "AUTH0_AUDIENCE", "api_audience"), \
+         patch.object(config, "AUTH0_CLIENT_ID", "client_id"):
         # Test /.well-known/openid-configuration
         response = client.get("/.well-known/openid-configuration")
         assert response.status_code == 200
@@ -392,8 +330,7 @@ def test_options_cors_preflight(client):
 def test_public_endpoints(client):
     """Test that public endpoints do not require authentication."""
     # Under JWT mode
-    with patch.object(config_direct, "AUTH_MODE", "jwt"), \
-         patch.object(config_backend, "AUTH_MODE", "jwt"):
+    with patch.object(config, "AUTH_MODE", "jwt"):
         assert client.get("/").status_code == 200
         assert client.get("/health").status_code == 200
         assert client.get("/version").status_code == 200

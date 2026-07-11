@@ -4,10 +4,10 @@ from fastapi.concurrency import run_in_threadpool
 import logging
 from typing import Set
 
-from backend.config import config
-from backend.core.security import authenticate_request
-from backend.auth.exceptions import AuthError, ForbiddenUser
-from backend.auth.responses import unauthorized, forbidden
+from config import config
+from core.security import authenticate_request
+from auth.exceptions import AuthError, ForbiddenUser
+from auth.responses import unauthorized, forbidden
 
 logger = logging.getLogger("bakatracker.auth")
 
@@ -59,7 +59,7 @@ class JWTAuthMiddleware:
             scope["state"]["auth_mode"] = "jwt"
             
             # Set global context variables for tools/sheetsclient
-            from backend.auth import context
+            from auth import context
             context.current_user.set(user)
             context.auth_mode.set("jwt")
             

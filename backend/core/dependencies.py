@@ -1,6 +1,6 @@
 from typing import Annotated
 from fastapi import Depends, Request, HTTPException
-from backend.auth.models import AuthenticatedUser
+from auth.models import AuthenticatedUser
 
 async def get_current_user(request: Request) -> AuthenticatedUser:
     """

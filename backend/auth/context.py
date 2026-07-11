@@ -1,6 +1,6 @@
 from contextvars import ContextVar
 from typing import Optional
-from backend.auth.models import AuthenticatedUser
+from auth.models import AuthenticatedUser
 
 # Global context variables for tracking request-level authentication state
 current_user: ContextVar[Optional[AuthenticatedUser]] = ContextVar("current_user", default=None)

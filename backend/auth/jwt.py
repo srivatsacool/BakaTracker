@@ -5,7 +5,7 @@ import threading
 from jwt.algorithms import RSAAlgorithm
 from typing import Dict, Any, Optional
 
-from backend.auth.exceptions import (
+from auth.exceptions import (
     AuthError,
     InvalidToken,
     ExpiredToken,
@@ -13,7 +13,7 @@ from backend.auth.exceptions import (
     InvalidIssuer,
     MissingKey,
 )
-from backend.config import config
+from config import config
 
 class JWKSKeyManager:
     def __init__(self, domain: str, cache_ttl: int = 86400):

@@ -1,5 +1,5 @@
-from backend.config import config
-from backend.auth.exceptions import ForbiddenUser
+from config import config
+from auth.exceptions import ForbiddenUser
 
 def verify_owner(email: str) -> None:
     """

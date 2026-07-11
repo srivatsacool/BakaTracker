@@ -2,14 +2,11 @@ import sys
 import os
 
 # Align Python path to locate BakaTracker packages
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-# pyrefly: ignore [missing-import]
-from backend.auth.jwt import verify_jwt
-# pyrefly: ignore [missing-import]
-from backend.auth.exceptions import AuthError
-# pyrefly: ignore [missing-import]
-from backend.config import config
+from auth.jwt import verify_jwt
+from auth.exceptions import AuthError
+from config import config
 
 def main():
     if len(sys.argv) < 2:

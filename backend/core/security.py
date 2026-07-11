@@ -1,8 +1,8 @@
 from fastapi import Request
-from backend.auth.jwt import verify_jwt
-from backend.auth.owner import verify_owner
-from backend.auth.models import AuthenticatedUser
-from backend.auth.exceptions import InvalidToken
+from auth.jwt import verify_jwt
+from auth.owner import verify_owner
+from auth.models import AuthenticatedUser
+from auth.exceptions import InvalidToken
 
 def authenticate_request(request: Request) -> AuthenticatedUser:
     """
