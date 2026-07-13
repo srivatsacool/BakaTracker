@@ -446,7 +446,7 @@ The backend API server can run in two modes:
    - **Allowed Web Origins**: `http://localhost:5173`
 3. **API Setup**: Go to **Applications** > **APIs** and click **Create API**:
    - **Name**: `BakaTracker API`
-   - **Identifier (Audience)**: e.g., `https://api.bakatracker.buildsrivatssa.qzz.io`
+   - **Identifier (Audience)**: e.g., `https://api.bakatracker.buildsrivatsa.qzz.io`
    - **Signing Algorithm**: `RS256`
 
 ### 2. Environment Variables Configuration
@@ -455,7 +455,7 @@ Configure the following in your backend `.env` (or server environment settings):
 AUTH_MODE=jwt
 OWNER_EMAIL=your-owner-email@example.com
 AUTH0_DOMAIN=your-tenant.auth0.com
-AUTH0_AUDIENCE=https://api.bakatracker.buildsrivatssa.qzz.io
+AUTH0_AUDIENCE=https://api.bakatracker.buildsrivatsa.qzz.io
 AUTH0_ISSUER=https://your-tenant.auth0.com/
 ```
 
