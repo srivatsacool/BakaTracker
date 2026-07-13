@@ -19,6 +19,7 @@ export function createTask(
     today,
     due_date: dueDate,
     xp,
+    quadrant: null,
     created_at: now,
     updated_at: now,
     completed_at: ''

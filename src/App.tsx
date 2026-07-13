@@ -8,6 +8,7 @@ import { Today } from './pages/Today';
 import { Journal } from './pages/Journal';
 import { Journey } from './pages/Journey';
 import { Landing } from './pages/Landing';
+import { Eisenhower } from './pages/Eisenhower';
 import { ProtectedRoute, useAuth } from './features/auth';
 import { useApiClient } from './api/authFetch';
 
@@ -39,6 +40,7 @@ function App() {
           <Route path="/journey" element={<Journey />} />
           <Route path="/habits" element={<Habits />} />
           <Route path="/tasks" element={<Tasks />} />
+          <Route path="/eisenhower" element={<Eisenhower />} />
           <Route path="/today" element={<Today />} />
           <Route path="/journal" element={<Journal />} />
         </Route>

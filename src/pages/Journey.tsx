@@ -367,7 +367,7 @@ export const Journey: React.FC = () => {
         </div>
 
         {/* Core Attributes */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 mt-2">
+        <div id="journey-stat-bars" className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 mt-2">
           {statConfig.map(stat => {
             const statLvl = Math.floor(stat.value / 100) + 1;
             const progress = stat.value % 100;
@@ -450,7 +450,7 @@ export const Journey: React.FC = () => {
       </section>
 
       {/* GitHub Heatmap Grid */}
-      <section className="neo-card p-5 bg-white dark:bg-surface text-text-primary">
+      <section id="journey-heatmap" className="neo-card p-5 bg-white dark:bg-surface text-text-primary">
         <h3 className="text-md font-black uppercase tracking-wider border-b-2 border-black dark:border-white pb-2 mb-4 flex items-center gap-2">
           <Calendar className="w-4.5 h-4.5 text-accent-pink" />
           <span>Consistency Heatmap</span>

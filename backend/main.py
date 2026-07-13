@@ -146,6 +146,7 @@ class AuthAndLoggingMiddleware:
 
         public_prefixes = (
             "/.well-known",
+            "/mcp/.well-known",
         )
 
         is_public = (
@@ -237,6 +238,7 @@ app.add_middleware(
     },
     exclude_prefixes={
         "/.well-known",
+        "/mcp/.well-known",
     }
 )
 
@@ -300,6 +302,9 @@ transport_name = "SSE + Streamable HTTP"
 # RFC 9728: OAuth 2.0 Protected Resource Metadata
 # This endpoint tells MCP clients (like Claude) where to authenticate.
 @app.get("/.well-known/oauth-protected-resource")
+@app.get("/.well-known/oauth-protected-resource/{subpath:path}")
+@app.get("/mcp/.well-known/oauth-protected-resource")
+@app.get("/mcp/.well-known/oauth-protected-resource/{subpath:path}")
 def protected_resource_metadata():
     """RFC 9728 - OAuth 2.0 Protected Resource Metadata.
     
@@ -319,6 +324,8 @@ def protected_resource_metadata():
 # Kept for backward compatibility with clients that query this directly.
 @app.get("/.well-known/oauth-authorization-server")
 @app.get("/.well-known/openid-configuration")
+@app.get("/mcp/.well-known/oauth-authorization-server")
+@app.get("/mcp/.well-known/openid-configuration")
 def oauth_discovery(request: Request):
     return {
         "issuer": config.AUTH0_ISSUER,

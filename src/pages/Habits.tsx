@@ -354,6 +354,7 @@ export const Habits: React.FC = () => {
 
         {/* Add Habit Toggle */}
         <button
+          id="add-habit-btn"
           onClick={() => setShowAddForm(!showAddForm)}
           className="neo-button flex items-center justify-center gap-2 py-2.5"
         >
@@ -447,8 +448,8 @@ export const Habits: React.FC = () => {
 
       {/* Main Trackers View */}
       {viewMode === 'today' ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {habits.map(habit => {
+        <div id="habit-list-container" className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {habits.map((habit, index) => {
             const todayLog = getLogForToday(habit.id);
             const streak = calculateHabitStreak(habit, habitLogs);
             const completed = isHabitCompleted(habit, todayLog);
@@ -456,6 +457,7 @@ export const Habits: React.FC = () => {
             return (
               <div 
                 key={habit.id} 
+                id={index === 0 ? "habit-first-row" : undefined}
                 className={`neo-card p-6 flex flex-col justify-between gap-4 text-text-primary transition-all ${
                   completed 
                     ? 'border-success bg-success/5 dark:bg-success/5 shadow-none translate-x-[1px] translate-y-[1px]' 

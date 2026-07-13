@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Habit, HabitLog, Task, JournalEntry, Quote, Settings, UserStats, TaskArea, EventLog, CharacterRecord, WeeklyStatsRecord } from '../types';
+import type { Habit, HabitLog, Task, JournalEntry, Quote, Settings, UserStats, TaskArea, EventLog, CharacterRecord, WeeklyStatsRecord, EisenhowerQuadrant } from '../types';
 import { stateService } from '../services/stateService';
 import { ApiClient } from '../api/apiClient';
 import { generateUUID } from '../lib/utils';
@@ -63,16 +63,15 @@ interface BakaState {
   theme: 'light' | 'dark';
   toggleTheme: () => void;
   setAccentColors: (lightColor: string, darkColor: string) => void;
+
+  // Eisenhower Action
+  assignQuadrant: (taskId: string, quadrant: EisenhowerQuadrant) => Promise<void>;
+
+  // Data Management
+  loadDemoData: () => Promise<void>;
+  clearDataByDays: (days: number | 'all') => Promise<void>;
 }
 
-const DEFAULT_HABITS: Habit[] = [
-  { id: 'h1', name: 'Gym Workout', type: 'checkbox', icon: '💪', xp: 10, stat: 'health', active: true, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
-  { id: 'h2', name: 'Read Book Pages', type: 'counter', icon: '📖', xp: 2, stat: 'knowledge', active: true, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
-  { id: 'h3', name: 'Take Medication', type: 'checkbox', icon: '💊', xp: 5, stat: 'discipline', active: true, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
-  { id: 'h4', name: 'Night Sleep', type: 'numeric', icon: '🌙', xp: 5, stat: 'health', active: true, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
-  { id: 'h5', name: 'Daily Mood check', type: 'mood', icon: '😊', xp: 5, stat: 'discipline', active: true, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
-  { id: 'h6', name: 'Screen Time Limit', type: 'numeric', icon: '📱', xp: 5, stat: 'discipline', active: true, created_at: new Date().toISOString(), updated_at: new Date().toISOString() }
-];
 
 const DEFAULT_QUOTES: Quote[] = [
   { id: 'q1', quote: 'Small progress is still progress.', author: 'Anonymous', category: 'Motivation', active: true },
@@ -264,7 +263,7 @@ export const useStore = create<BakaState>((set, get) => ({
     const storedCharacter = localStorage.getItem('bt_character');
     const storedWeeklyStats = localStorage.getItem('bt_weekly_stats');
 
-    const habits = storedHabits ? JSON.parse(storedHabits) : DEFAULT_HABITS;
+    const habits = storedHabits ? JSON.parse(storedHabits) : [];
     const habitLogs = storedLogs ? JSON.parse(storedLogs) : [];
     const tasks = storedTasks ? JSON.parse(storedTasks) : [];
     const journal = storedJournal ? JSON.parse(storedJournal) : [];
@@ -294,6 +293,7 @@ export const useStore = create<BakaState>((set, get) => ({
 
     const normalizedTasks = tasks.map((t: any) => ({
       ...t,
+      quadrant: t.quadrant !== undefined ? t.quadrant : null,
       updated_at: t.updated_at || t.created_at || new Date().toISOString(),
       created_at: t.created_at || new Date().toISOString(),
       completed_at: t.completed_at || ''
@@ -973,5 +973,178 @@ export const useStore = create<BakaState>((set, get) => ({
 
     // Auto background sync
     get().syncWithSheets().catch(console.error);
-  }
+  },
+
+  assignQuadrant: async (taskId: string, quadrant: EisenhowerQuadrant) => {
+    const { tasks } = get();
+    const updatedTasks = tasks.map(t =>
+      t.id === taskId ? { ...t, quadrant, updated_at: new Date().toISOString() } : t
+    );
+    set({ tasks: updatedTasks });
+    localStorage.setItem('bt_tasks', JSON.stringify(updatedTasks));
+    get().syncWithSheets().catch(console.error);
+  },
+
+  loadDemoData: async () => {
+    const { addHabit, addTask, saveJournalEntry } = get();
+    const today = new Date();
+    const fmt = (d: Date) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    const dayOffset = (n: number) => { const d = new Date(today); d.setDate(d.getDate() - n); return d; };
+
+    // Add Habits
+    await addHabit({ name: 'Morning Workout', type: 'checkbox', icon: '💪', xp: 10, stat: 'health' });
+    await addHabit({ name: 'Read Pages', type: 'counter', icon: '📖', xp: 2, stat: 'knowledge' });
+    await addHabit({ name: 'Mood Check', type: 'mood', icon: '😊', xp: 5, stat: 'discipline' });
+    await addHabit({ name: 'Hours of Sleep', type: 'numeric', icon: '🌙', xp: 5, stat: 'health' });
+    await addHabit({ name: 'Meditation', type: 'checkbox', icon: '🧘', xp: 8, stat: 'discipline' });
+    await addHabit({ name: 'Learn Something', type: 'checkbox', icon: '🎯', xp: 7, stat: 'knowledge' });
+
+    // Add Tasks (with quadrant via direct store injection after addTask)
+    await addTask('Review weekly goals', 'Plan and review your objectives for the week', 'career', 15, false);
+    await addTask('Plan this month', 'Set monthly targets for all life areas', 'career', 20, false);
+    await addTask('Set up Google Sheets sync', 'Deploy the Apps Script and connect BakaTracker to your Sheet', 'career', 25, true);
+    await addTask('Start morning routine', 'Design a 30-minute morning routine including exercise and reflection', 'health', 20, true);
+    await addTask("Write today's journal", 'Daily reflection and highlight entry', 'personal', 10, true);
+    await addTask('Complete app onboarding', 'Finish the BakaTracker setup and first tour', 'personal', 15, false);
+
+    // Move some tasks to different statuses
+    const { tasks: tasksAfter } = get();
+    const findTask = (title: string) => tasksAfter.find(t => t.title === title);
+    const doingTask = findTask("Write today's journal");
+    const doneTask = findTask('Complete app onboarding');
+    if (doingTask) await get().moveTask(doingTask.id, 'doing');
+    if (doneTask) await get().moveTask(doneTask.id, 'done');
+
+    // Assign quadrants
+    const q_do = findTask('Set up Google Sheets sync');
+    const q_do2 = findTask('Complete app onboarding');
+    const q_sched = findTask('Start morning routine');
+    const q_sched2 = findTask("Write today's journal");
+    const q_sched3 = findTask('Review weekly goals');
+    const q_delegate = findTask('Plan this month');
+    if (q_do) await get().assignQuadrant(q_do.id, 'do');
+    if (q_do2) await get().assignQuadrant(q_do2.id, 'do');
+    if (q_sched) await get().assignQuadrant(q_sched.id, 'schedule');
+    if (q_sched2) await get().assignQuadrant(q_sched2.id, 'schedule');
+    if (q_sched3) await get().assignQuadrant(q_sched3.id, 'schedule');
+    if (q_delegate) await get().assignQuadrant(q_delegate.id, 'delegate');
+
+    // Journal entries
+    const moods: JournalEntry['mood'][] = ['🙂', '🙂', '😐', '😞', '🙂'];
+    const highlights = [
+      'Started using BakaTracker — excited to build better habits!',
+      'Had a productive morning routine session. Feeling focused.',
+      'Decent day, got a few tasks done but could have done more.',
+      'Tough day. Skipped workout but journaled — still a win.',
+      'Great day! All habits completed and feeling on top of things.',
+    ];
+    for (let i = 4; i >= 0; i--) {
+      await saveJournalEntry(
+        fmt(dayOffset(i)),
+        highlights[4 - i],
+        '',
+        moods[4 - i]
+      );
+    }
+
+    // Backfill habit logs for 7 days
+    const { habits: demoHabits } = get();
+    const workoutHabit = demoHabits.find(h => h.name === 'Morning Workout');
+    const pagesHabit = demoHabits.find(h => h.name === 'Read Pages');
+    const sleepHabit = demoHabits.find(h => h.name === 'Hours of Sleep');
+    const meditationHabit = demoHabits.find(h => h.name === 'Meditation');
+    const learnHabit = demoHabits.find(h => h.name === 'Learn Something');
+
+    const workoutDays = [0, 1, 3, 4, 5]; // skip day 2 & 6
+    const meditationDays = [0, 1, 2, 4, 6];
+    const learnDays = [0, 1, 2, 3, 5];
+    const sleepValues = [7, 6, 8, 7, 6, 8, 7];
+    const pagesValues = [20, 15, 30, 10, 25, 18, 22];
+
+    const newLogs: HabitLog[] = [];
+    const newEvents: EventLog[] = [];
+
+    for (let i = 6; i >= 0; i--) {
+      const dateStr = fmt(dayOffset(i));
+      const dayIdx = 6 - i;
+
+      if (workoutHabit && workoutDays.includes(dayIdx)) {
+        newLogs.push({ id: generateUUID('log_'), date: dateStr, habit_id: workoutHabit.id, value: 1, xp_earned: workoutHabit.xp, created_at: new Date(dateStr+'T08:00:00').toISOString() });
+        newEvents.push({ id: generateUUID('evt_'), type: 'habit_completed', source: 'habit', entity: workoutHabit.name, entity_id: workoutHabit.id, xp: workoutHabit.xp, stat: workoutHabit.stat, timestamp: new Date(dateStr+'T08:00:00').toISOString() });
+      }
+      if (pagesHabit) {
+        const val = pagesValues[dayIdx];
+        newLogs.push({ id: generateUUID('log_'), date: dateStr, habit_id: pagesHabit.id, value: val, xp_earned: val * pagesHabit.xp, created_at: new Date(dateStr+'T09:00:00').toISOString() });
+        newEvents.push({ id: generateUUID('evt_'), type: 'habit_completed', source: 'habit', entity: pagesHabit.name, entity_id: pagesHabit.id, xp: val * pagesHabit.xp, stat: pagesHabit.stat, metadata: JSON.stringify({ value: val }), timestamp: new Date(dateStr+'T09:00:00').toISOString() });
+      }
+      if (sleepHabit) {
+        const val = sleepValues[dayIdx];
+        newLogs.push({ id: generateUUID('log_'), date: dateStr, habit_id: sleepHabit.id, value: val, xp_earned: sleepHabit.xp, created_at: new Date(dateStr+'T07:00:00').toISOString() });
+      }
+      if (meditationHabit && meditationDays.includes(dayIdx)) {
+        newLogs.push({ id: generateUUID('log_'), date: dateStr, habit_id: meditationHabit.id, value: 1, xp_earned: meditationHabit.xp, created_at: new Date(dateStr+'T06:30:00').toISOString() });
+        newEvents.push({ id: generateUUID('evt_'), type: 'habit_completed', source: 'habit', entity: meditationHabit.name, entity_id: meditationHabit.id, xp: meditationHabit.xp, stat: meditationHabit.stat, timestamp: new Date(dateStr+'T06:30:00').toISOString() });
+      }
+      if (learnHabit && learnDays.includes(dayIdx)) {
+        newLogs.push({ id: generateUUID('log_'), date: dateStr, habit_id: learnHabit.id, value: 1, xp_earned: learnHabit.xp, created_at: new Date(dateStr+'T20:00:00').toISOString() });
+        newEvents.push({ id: generateUUID('evt_'), type: 'habit_completed', source: 'habit', entity: learnHabit.name, entity_id: learnHabit.id, xp: learnHabit.xp, stat: learnHabit.stat, timestamp: new Date(dateStr+'T20:00:00').toISOString() });
+      }
+    }
+
+    const { habitLogs: existingLogs, events: existingEvents, habits: finalHabits, tasks: finalTasks, journal: finalJournal } = get();
+    const mergedLogs = [...existingLogs, ...newLogs];
+    const mergedEvents = [...existingEvents, ...newEvents];
+    set({ habitLogs: mergedLogs, events: mergedEvents });
+    localStorage.setItem('bt_logs', JSON.stringify(mergedLogs));
+    localStorage.setItem('bt_events', JSON.stringify(mergedEvents));
+    updateStatsAndSummaries(set, get, finalHabits, mergedLogs, finalTasks, finalJournal, mergedEvents);
+    get().syncWithSheets().catch(console.error);
+  },
+
+  clearDataByDays: async (days: number | 'all') => {
+    if (days === 'all') {
+      // Nuclear clear — reset everything
+      localStorage.removeItem('bt_habits');
+      localStorage.removeItem('bt_logs');
+      localStorage.removeItem('bt_tasks');
+      localStorage.removeItem('bt_journal');
+      localStorage.removeItem('bt_events');
+      localStorage.removeItem('bt_character');
+      localStorage.removeItem('bt_weekly_stats');
+      localStorage.removeItem('bt_first_run'); // wizard re-appears
+      set({
+        habits: [],
+        habitLogs: [],
+        tasks: [],
+        journal: [],
+        events: [],
+        currentQuote: DEFAULT_QUOTES[0],
+        stats: { level: 1, xp: 0, discipline: 0, health: 0, knowledge: 0, creativity: 0, career: 0 },
+        character: [],
+        weeklyStats: [],
+        syncStatus: 'idle',
+        syncError: null,
+      });
+      get().syncWithSheets().catch(console.error);
+      return;
+    }
+
+    const { habits, habitLogs, tasks, journal, events } = get();
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - (days as number));
+    const cutoffStr = `${cutoff.getFullYear()}-${String(cutoff.getMonth()+1).padStart(2,'0')}-${String(cutoff.getDate()).padStart(2,'0')}`;
+
+    const newLogs = habitLogs.filter(l => l.date < cutoffStr);
+    const newTasks = tasks.filter(t => (t.created_at || '').slice(0,10) < cutoffStr);
+    const newJournal = journal.filter(j => j.date < cutoffStr);
+    const newEvents = events.filter(e => (e.timestamp || '').slice(0,10) < cutoffStr);
+
+    set({ habitLogs: newLogs, tasks: newTasks, journal: newJournal, events: newEvents });
+    localStorage.setItem('bt_logs', JSON.stringify(newLogs));
+    localStorage.setItem('bt_tasks', JSON.stringify(newTasks));
+    localStorage.setItem('bt_journal', JSON.stringify(newJournal));
+    localStorage.setItem('bt_events', JSON.stringify(newEvents));
+    updateStatsAndSummaries(set, get, habits, newLogs, newTasks, newJournal, newEvents);
+    get().syncWithSheets().catch(console.error);
+  },
 }));

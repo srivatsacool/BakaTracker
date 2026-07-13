@@ -235,7 +235,7 @@ export const Tasks: React.FC = () => {
       </div>
 
       {/* Kanban Board Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 min-h-[400px]">
+      <div id="task-kanban-cols" className="grid grid-cols-1 md:grid-cols-4 gap-6 min-h-[400px]">
         {columns.map(col => {
           const columnTasks = filteredTasks.filter(t => t.status === col.id);
           

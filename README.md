@@ -10,67 +10,63 @@
 [![PWA Ready](https://img.shields.io/badge/PWA-Ready-purple.svg)](https://developer.mozilla.org/en-US/docs/Web/Progressive_web_apps)
 [![Open Source](https://img.shields.io/badge/Open%20Source-%E2%9D%A4-red.svg)](#)
 
-> A minimalist, ADHD-friendly life operating system and RPG planner powered by Google Sheets and the Model Context Protocol (MCP).
+> **BakaTracker** is a minimalist, ADHD-friendly personal life operating system and RPG planner powered by Google Sheets and the Model Context Protocol (MCP). Built on a local-first philosophy, BakaTracker lets you own your metrics completely while maintaining a private, zero-cost cloud replication layer.
 
 ---
-
 
 ## 🗺️ Table of Contents
 
-1. [Introduction](#-introduction)
+1. [Philosophies & Core Principles](#-philosophies--core-principles)
 2. [Feature Showcase](#-feature-showcase)
 3. [Technical Architecture](#-technical-architecture)
-4. [Technology Stack](#-technology-stack)
-5. [Folder Structure](#-folder-structure)
-6. [Database Schema](#-database-schema)
-7. [Model Context Protocol (MCP)](#-model-context-protocol-mcp)
-8. [API Specifications](#-api-specifications)
-9. [Installation Guide](#-installation-guide)
-10. [Deployment Guide](#-deployment-guide)
-11. [Configuration](#-configuration)
-12. [Authentication & Security](#-authentication--security)
-13. [User Workflows](#-user-workflows)
-14. [Developer Guide](#-developer-guide)
-15. [Contributing](#-contributing)
-16. [Roadmap](#-roadmap)
-17. [Frequently Asked Questions (FAQ)](#-frequently-asked-questions-faq)
-18. [Troubleshooting](#-troubleshooting)
-19. [Changelog](#-changelog)
-20. [License & Credits](#-license--credits)
-21. [Future Vision](#-future-vision)
+4. [Folder Structure](#-folder-structure)
+5. [Database Schema Mapping](#-database-schema-mapping)
+6. [Authentication & Security Modes](#-authentication--security-modes)
+7. [Model Context Protocol (MCP) Integration](#-model-context-protocol-mcp-integration)
+8. [Installation Guide](#-installation-guide)
+9. [Deployment Guide](#-deployment-guide)
+10. [Developer Guidelines](#-developer-guidelines)
+11. [Troubleshooting & FAQ](#-troubleshooting--faq)
+12. [Roadmap & Contribution](#-roadmap--contribution)
 
 ---
 
-## 📌 Introduction
+## 🧠 Philosophies & Core Principles
 
-### Why BakaTracker Exists
-Modern productivity applications are often designed as complex project management tools. They overwhelm users with nested databases, tags, subtasks, and analytics, inducing "productivity guilt" when a day is missed. 
+Traditional productivity applications often feel like additional jobs. They induce "productivity guilt" by demanding endless nested organization, classification tags, and complex setups. BakaTracker is the antidote.
 
-BakaTracker is designed to be the antidote. It separates **planning** (Master board backlog) from **doing** (Today board focus) and encourages **consistency** over optimization.
-
-### Philosophies
-* **ADHD-First Design:** Minimizes execution friction. Check-ins are quick, and progress bars provide clear positive reinforcement.
-* **Local-First Reliability:** UI renders instantly using local storage. Synchronization runs in the background.
-* **Serverless Simplicity:** Uses Google Sheets as a relational database, hosted for free on your Google Drive.
-* **Isolated AI Interface:** No AI assistant code cluttering the React client. Instead, it exposes an isolated Model Context Protocol (MCP) server so coding agents can access your data.
+* **ADHD-First UI Design**: Decreases executive dysfunction and friction. Daily check-ins are quick, drag-and-drop is limited to high-priority areas, and positive 8-bit aesthetic feedback keeps users engaged without overwhelming them.
+* **Consistency over Intensity**: Streaks are calculated supportively, and daily scores reward showing up over achieving perfection.
+* **Local-First & Offline-Capable**: The React client stores data directly inside LocalStorage. Changes are instant, and state updates sync in the background when an internet connection is available.
+* **Zero-Cost Personal Cloud**: No external database hosting costs or subscriptions. A personal Google Sheet serves as the serverless relational database backend, proxied by a Google Apps Script Web App.
+* **Isolated AI Interface**: No AI assistant cluttering the frontend codebase. Instead, BakaTracker exposes a standard Model Context Protocol (MCP) server so coding assistants (like Cursor, Claude Desktop, or Roo Code) can interact directly with your lifecycle ledger.
 
 ---
 
 ## 🎨 Feature Showcase
 
-* **Habits Tracker:** Supports boolean checkbox toggles, counter habits (with per-click multipliers), mood ratings (`😞`, `😐`, `🙂`), energy logs (`Low`, `Medium`, `High`), and numeric inputs (e.g. sleep duration).
-* **Kanban Backlog:** Track long-term tasks through a 4-column master board (`Backlog`, `Todo`, `Doing`, `Done`).
-* **Today Focus Board:** Stars tasks from your backlog to pin them on a 3-column daily execution board (`Today`, `Doing`, `Done`).
-* **Highlight Journaling:** Encourages logging a single highlight per day, with optional secondary notes.
-* **RPG Character Engine:** Level up your profile across five attributes: **Discipline, Health, Knowledge, Creativity, and Career** based on habit and task categories.
-* **Visual Analytics:** Custom Recharts charts for trends, and consistency heatmaps.
-* **FastMCP Gateway:** Connects BakaTracker directly to Cursor, Claude, or VS Code using 22 tools and 5 Markdown resources.
+* **Habits Tracker**: Logs daily behaviors with tailored interaction types:
+  * *Checkbox*: Single completion toggle (e.g. GYM).
+  * *Counter*: Incremental tally tracker (e.g. glasses of water, pages read).
+  * *Numeric*: Numerical logs (e.g. sleep duration, screen time).
+  * *Mood & Energy*: Emoji selections (`😞`, `😐`, `🙂`) and level scales (`Low`, `Medium`, `High`).
+* **Kanban Backlog Planner**: Organize long-term tasks across a 4-column master board (`Backlog`, `Todo`, `Doing`, `Done`).
+* **Today Focus Board**: A dedicated viewport containing starred tasks from your master backlog.
+* **Spotlight Focus Mode**: When you drag a Quest to the "Doing" column on your Today board, the screen dims around it to eliminate digital distractions.
+* **Highlight Journaling**: Encourages reflection by prompting you to record a single-sentence daily win alongside optional bullet journals.
+* **RPG Character HUD**: Earn attribute experience (XP) across **Discipline, Health, Knowledge, Creativity, and Career** categories. Level up your character and unlock tier milestones.
+* **Journey Analytics**: View consistency heatmaps, Recharts weekly recap graphs, and automatic insights.
 
 ---
 
 ## 🏗️ Technical Architecture
 
-### Component Layout Diagram
+BakaTracker uses a highly distributed, decoupled architecture:
+1. **React Web App Client**: Deployed to Cloudflare Pages. Built as a Progressive Web App (PWA). Uses Zustand for state management and local replication.
+2. **FastAPI & FastMCP Web Service**: Containerized API gateway hosted on Google Cloud Run. Validates OIDC JWT tokens or Bearer tokens, registers MCP tools, and routes client requests.
+3. **Google Sheets Database Layer**: Google Sheet spreadsheets with a Google Apps Script API proxy acting as a transactional endpoint.
+
+### System Topology
 
 ```mermaid
 graph TD
@@ -103,9 +99,9 @@ graph TD
     Cursor[Cursor / Claude Desktop / ChatGPT] <-->|Bearer Auth JSON-RPC| FastAPI
 ```
 
-### Core Workflows
+### Data Flows
 
-#### PWA State Synchronization Flow
+#### Local-First Background Synchronization
 ```mermaid
 sequenceDiagram
     participant User as React UI
@@ -128,7 +124,7 @@ sequenceDiagram
     end
 ```
 
-#### Bearer Token Authentication Flow
+#### Protected Remote MCP Access (JSON-RPC)
 ```mermaid
 sequenceDiagram
     participant Client as MCP Client (Cursor)
@@ -154,109 +150,113 @@ sequenceDiagram
 
 ---
 
-## 💻 Technology Stack
-
-* **React (v19) & Vite (v5):** React handles UI reactivity, while Vite provides fast HMR and builds.
-* **TypeScript (v5):** Ensures type safety across store actions and database collections.
-* **TailwindCSS (v4):** Handles layout styling.
-* **Zustand (v4):** Manages local state persistence and background sync queues.
-* **FastAPI (v0.115) & FastMCP (v1.28):** FastAPI handles web routing, and FastMCP registers tools.
-* **Uvicorn (v0.34) & HTTPX (v0.28):** Uvicorn runs the server, and HTTPX handles resilient retries.
-* **Google Sheets & Apps Script:** Serves as a free, serverless relational database.
-* **Cloudflare Pages & Google Cloud Run:** Host the static frontend and containerized backend gateway.
-
----
-
 ## 📂 Folder Structure
 
 ```
 BakaTracker/
-├── .github/                  # GitHub Actions CI/CD workflows
+├── .github/                  # GitHub Actions CI/CD pipelines
 │   └── workflows/
-│       └── deploy.yml              # Backend Docker test and deployment gate
-├── backend/                  # Python FastMCP server & FastAPI app
-│   ├── models/                     # Pydantic schemas for sheets data
+│       └── deploy.yml              # Test execution and Docker build triggers
+├── backend/                  # FastMCP service & FastAPI gateway code
+│   ├── auth/                       # JWT validation & middleware modules
+│   ├── models/                     # Pydantic schemas for Google Sheets collections
 │   ├── services/
-│   │   └── sheets_client.py        # Database client (10s timeout, 3x backoff)
-│   ├── tools/                      # MCP tools (habits, tasks, quotes, events)
-│   ├── main.py                     # FastAPI server and health check routes
-│   ├── server.py                   # FastMCP instance registrations
-│   ├── config.py                   # Centralized configuration parser
-│   ├── Dockerfile                  # Container build config
-│   ├── pyproject.toml              # UV project dependencies
-│   ├── cloudbuild.yaml             # Google Cloud Build triggers
-│   └── README.md                   # Backend local setup & dev guide
-├── docs/                     # BakaTracker Documentation References
-│   ├── ARCHITECTURE.md             # Systems overview & workflow diagrams
-│   ├── DATABASE.md                 # Table mappings
-│   ├── API.md                      # API endpoints
-│   ├── MCP.md                      # Model Context Protocol
-│   └── USER_GUIDE.md               # User manuals
-├── public/                   # Frontend public assets (icons, manifest)
-├── src/                      # Frontend source code (React 19)
-│   ├── assets/                     # Styles, SVG icons, and drawings
-│   ├── components/                 # UI components and layout screens
-│   ├── lib/                        # XP, formulas, and timing utilities
-│   ├── pages/                      # Habits, Tasks, Today, Journal, Journey
-│   └── services/                   # Frontend sheets REST services
-├── google-apps-script.js     # Sheets database proxy code
-└── package.json              # Frontend node packages
+│   │   └── sheets_client.py        # Resilient Sheets API proxy client
+│   ├── tools/                      # MCP tool action controllers
+│   ├── config.py                   # Environment configuration loader
+│   ├── Dockerfile                  # Container packaging spec
+│   ├── main.py                     # FastAPI server entry point
+│   └── server.py                   # FastMCP instance setup & tool registrations
+├── docs/                     # Detailed architectural manuals
+│   ├── ARCHITECTURE.md             # Topology design guidelines
+│   ├── API.md                      # FastAPI REST endpoints
+│   ├── DATABASE.md                 # Spreadsheet schemas
+│   ├── USER_GUIDE.md               # User interface instruction manual
+│   └── MCP.md                      # Model Context Protocol details
+├── public/                   # Public assets (PWA manifest, icons)
+├── src/                      # React 19 Frontend source code
+│   ├── components/                 # Reusable layout and modular screens
+│   ├── lib/                        # Stats, streaks, and utility functions
+│   ├── pages/                      # Habits, Tasks, Today, Journal, and Journey pages
+│   ├── services/                   # Frontend sheet REST endpoints wrapper
+│   ├── store/
+│   │   └── useStore.ts             # State store (Zustand + local caching)
+│   └── types/
+│       └── index.ts                # TypeScript interfaces
+├── google-apps-script.js     # Sheets transactional REST script
+└── package.json              # NPM configuration
 ```
 
 ---
 
-## 🗄️ Database Schema
+## 🗄️ Database Schema Mapping
 
-BakaTracker stores data in **10 sheets** inside your Google Sheet.
+BakaTracker maps **10 database tables** to tabs in a single Google Sheets spreadsheet:
 
-### Table Reference Schema
-
-| Table Name | Primary Key | Foreign Keys | Key Columns | Purpose |
+| Table Name | Primary Key | Foreign Keys | Description | Key Columns |
 | :--- | :--- | :--- | :--- | :--- |
-| **Settings** | `None` | `None` | `sheets_url`, `xp_per_level`, `api_key` | System URLs and security passcodes. |
-| **Habits** | `id` | `None` | `name`, `type`, `xp`, `stat`, `active` | Configured tracker definitions. |
-| **HabitLogs** | `Composite` | `habit_id` $\to$ `Habits.id` | `date`, `value`, `xp_earned` | Historical completion logs. |
-| **Tasks** | `id` | `None` | `title`, `notes`, `status`, `today`, `xp` | Master and Today Kanban tasks. |
-| **Journal** | `date` | `quote_id` $\to$ `Quotes.id` | `highlight`, `notes`, `mood` | Reflections journal timeline. |
-| **Events** | `id` | `entity_id` $\to$ `Habits/Tasks` | `type`, `xp`, `stat`, `timestamp` | Audit log of all XP actions. |
-| **Character** | `date` | `None` | `level`, `xp`, `discipline`, `health` | Chronological attribute snapshots. |
-| **WeeklyStats** | `week_key` | `None` | `habits_completed`, `avg_sleep`, `xp_earned` | Aggregated weekly summaries. |
-| **Metadata** | `key` | `None` | `value` | Key-value settings metadata. |
-| **Quotes** | `id` | `None` | `quote`, `author`, `category`, `active` | Motivational quotes library. |
+| **Settings** | `key` | *None* | Configuration settings. | `sheets_url`, `xp_per_level`, `api_key` |
+| **Habits** | `id` | *None* | Definitions for habits. | `name`, `type`, `xp`, `stat`, `active` |
+| **HabitLogs** | `id` | `habit_id` $\to$ `Habits.id` | Daily habit completion logs. | `date`, `value`, `xp_earned` |
+| **Tasks** | `id` | *None* | Backlog and daily tasks. | `title`, `status`, `today`, `due_date`, `xp` |
+| **Journal** | `id` | `quote_id` $\to$ `Quotes.id` | Daily journals and highlight. | `date`, `highlight`, `notes`, `mood` |
+| **Events** | `id` | `entity_id` $\to$ `Habits/Tasks` | System-wide ledger of XP gains. | `type`, `source`, `xp`, `stat`, `timestamp` |
+| **Character** | `id` | *None* | User character profiles cache. | `level`, `total_xp`, `discipline`, `health` |
+| **WeeklyStats** | `week_start` | *None* | Summarized weekly attribute XP. | `xp`, `health`, `knowledge`, `career` |
+| **Metadata** | `schema_version`| *None* | System schema metadata. | `schema_version`, `last_sync` |
+| **Quotes** | `id` | *None* | Motivational quote library. | `quote`, `author`, `category`, `active` |
 
-For column definitions and data types, see the [DATABASE.md](docs/DATABASE.md) manual.
+For columns, data types, and constraint definitions, refer to [DATABASE.md](docs/DATABASE.md).
 
 ---
 
-## 🔌 Model Context Protocol (MCP)
+## 🛡️ Authentication & Security Modes
 
-BakaTracker exposes **22 tools** and **5 Markdown resources** to connected LLM clients.
+BakaTracker implements a dual-mode authentication layer to secure backend endpoints:
 
-### Available Tools Mappings
+### 1. Legacy Mode (`AUTH_MODE=legacy`)
+Recommended for simple private self-hosting. In this mode, the gateway checks for a matching static token:
+* Secure incoming requests using `Authorization: Bearer <AUTH_TOKEN>`.
+* The `AUTH_TOKEN` is shared between the React PWA and the FastAPI backend.
 
-* **Habits:** `get_habits()`, `get_habit_logs(date)`, `log_habit(habit_id, date)`, `increment_habit(habit_id, amount, date)`, `set_habit_value(habit_id, value, date)`.
-* **Tasks:** `get_tasks()`, `get_today_tasks()`, `create_task(title, notes, area, status, due_date, xp, today)`, `update_task(task_id, ...)`, `delete_task(task_id)`.
-* **Journal:** `get_journal_entries()`, `save_journal_entry(date, highlight, notes, mood, quote_id)`.
-* **Quotes:** `get_quotes()`, `get_random_quote()`.
-* **Events:** `get_events()`, `get_recent_events(limit)`.
-* **Journey & Quick Log:** `get_character_sheet()`, `get_weekly_stats()`, `get_day_summary(date)`, `get_weekly_wins(week_key)`, `quick_log(text)`.
+### 2. JWT Mode (`AUTH_MODE=jwt`)
+For secure installations or multi-device setups using OIDC. It integrates [Auth0](https://auth0.com/) for OAuth 2.0 token validation:
+* **JWT Signature Checks**: Downloads the JWKS public key from the Auth0 tenant and validates signatures (`RS256`).
+* **Audience & Issuer Validation**: Validates the payload claims against configured parameters.
+* **Owner Constraint**: Ensures the verified token's `email` matches the configured `OWNER_EMAIL`.
 
-### Resources
-* `bakatracker://character`: Returns level, attributes, and tier titles.
-* `bakatracker://today`: Returns today's active tasks and habit completion checklist.
-* `bakatracker://weekly`: Returns weekly stats summaries.
-* `bakatracker://journal`: Returns a reverse-chronological highlight timeline.
-* `bakatracker://events`: Returns recent event transaction logs.
+### Fail-Fast Startup Validation
+When using JWT authentication, the server performs checks on startup. If any parameters are missing, malformed, or unsecured (e.g. http:// instead of https:// for issuer URLs), the FastAPI application halts startup immediately.
 
-### Client Integration Setups
+---
 
-BakaTracker supports both **Streamable HTTP** (recommended for modern HTTP-based clients) and **SSE** (backward compatible server-sent events).
+## 🔌 Model Context Protocol (MCP) Integration
 
-#### 1. Cursor Configuration
-Cursor supports connecting directly to HTTP/SSE endpoints:
-1. Open Cursor Settings -> **Features** -> **MCP**.
-2. Click **+ Add New MCP Server**.
-3. Configure the settings:
+BakaTracker includes a **FastMCP** server that exposes its features as tools, prompts, and resources. This allows coding assistants (like Cursor, Claude Desktop, and ChatGPT) to read and modify your life tracking data.
+
+### Exposed Interface
+
+```
+                       ┌──────────────────────┐
+                       │   FastMCP Instance   │
+                       └──────────┬───────────┘
+                                  │
+          ┌───────────────────────┼───────────────────────┐
+          ▼                       ▼                       ▼
+     [22 Tools]              [6 Resources]            [1 Prompt]
+  • get_habits            • bakatracker://character • daily_review
+  • log_habit             • bakatracker://today
+  • create_task           • bakatracker://weekly
+  • save_journal_entry    • bakatracker://journal
+  • quick_log             • bakatracker://events
+  • export_life_report    • bakatracker://journey
+```
+
+### Client Configuration Setups
+
+#### 1. Cursor Setup
+1. Go to **Cursor Settings** > **Features** > **MCP**.
+2. Click **+ Add New MCP Server**:
    - **Name**: `BakaTracker`
    - **Type**: `http`
    - **URL**: `http://localhost:8080/mcp/http/` (Streamable HTTP, recommended) or `http://localhost:8080/mcp` (SSE)
@@ -265,12 +265,11 @@ Cursor supports connecting directly to HTTP/SSE endpoints:
      - Value: `Bearer <your_auth_token>`
 
 #### 2. Claude Desktop Setup
-Claude Desktop can connect locally via standard input/output (stdio) or via SSE:
-Open your Claude Desktop configuration file (`claude_desktop_config.json`):
-- **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
-- **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+Open your configuration file (`claude_desktop_config.json`):
+* **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
+* **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
 
-Add the following under the `mcpServers` block:
+Add the following config:
 ```json
 {
   "mcpServers": {
@@ -292,47 +291,17 @@ Add the following under the `mcpServers` block:
 }
 ```
 
-#### 3. ChatGPT custom GPT Action
-ChatGPT supports Custom Actions using standard REST/HTTP endpoints, making BakaTracker's **Streamable HTTP** transport the ideal fit:
-1. Create a custom GPT in ChatGPT.
-2. Go to **Configure** -> **Actions** -> **Create new action**.
-3. Import the OpenAPI schema generated by FastAPI at `http://localhost:8080/openapi.json`.
-4. Set the authentication mode to **API Key**:
-   - **Auth Type**: `Bearer`
-   - **Token**: `<your_auth_token>`
-5. Direct requests will route seamlessly through the Streamable HTTP gateway.
-
-#### 4. MCP Inspector Setup
-The official Model Context Protocol inspector is excellent for debugging:
-1. Start the inspector using npx:
-   ```bash
-   npx @modelcontextprotocol/inspector
-   ```
-2. In the inspector's browser UI, select:
-   - **Transport**: `Streamable HTTP` (Recommended) or `SSE`
-   - **URL**: `http://localhost:8080/mcp/http/` (or `http://localhost:8080/mcp/sse`)
-   - **Headers**: `Authorization: Bearer <your_auth_token>`
-3. Click **Connect** to interactively run tools, resources, and prompts.
-
-
----
-
-## 🌐 API Specifications
-
-### FastAPI Endpoints
-* `GET /` (Public): Returns service configuration status.
-* `GET /health` (Public): Returns server health status.
-* `GET /version` (Public): Returns version numbers and environment metadata.
-* `GET /ready` (Protected): Confirms connection to Google Apps Script.
-* `GET /info` (Protected): Returns active tool/resource counts and SDK metadata.
-* `GET /metrics` (Protected): Returns server uptime and total request volume.
-* `/mcp` (Protected): SSE or Streamable HTTP endpoint for MCP.
-
-For request/response JSON payload schemas, review the [API.md](docs/API.md) manual.
+#### 3. Custom GPT Action (ChatGPT)
+FastMCP's streamable HTTP endpoint supports Custom GPT actions:
+1. Create a custom GPT.
+2. In **Actions** > **Create new action**, import the OpenAPI spec from `http://localhost:8080/openapi.json`.
+3. Set authentication to **API Key (Bearer)** and supply your `AUTH_TOKEN`.
 
 ---
 
 ## ⚙️ Installation Guide
+
+Follow these steps to set up BakaTracker:
 
 ### Step 1: Clone the Repository
 ```bash
@@ -340,13 +309,14 @@ git clone https://github.com/srivatsacool/BakaTracker.git
 cd BakaTracker
 ```
 
-### Step 2: Configure Google Sheets Database
-1. Create a blank Google Sheet.
-2. Go to **Extensions** > **Apps Script**, delete the boilerplate code, and paste the contents of [google-apps-script.js](google-apps-script.js).
-3. Click **Deploy** > **New deployment** > **Select type: Web app**.
-4. Set **Execute as** to `Me` and **Who has access** to `Anyone`.
-5. Deploy the script and copy the **Web App URL**.
-6. Set a custom security passcode in the `api_key` cell under the newly created **Settings** tab.
+### Step 2: Set Up the Google Sheets Database
+1. Create a blank spreadsheet in Google Sheets.
+2. Go to **Extensions** > **Apps Script**.
+3. Delete the default boilerplate code, copy the contents of [google-apps-script.js](google-apps-script.js), and paste it in.
+4. Click **Deploy** > **New deployment**.
+5. Select **Type: Web app**, set **Execute as** to `Me` and **Who has access** to `Anyone`.
+6. Click Deploy, authorize the script permissions, and copy the **Web App URL**.
+7. In the newly created **Settings** tab in your Google Sheet, find the row with `api_key` and add a secure password.
 
 ### Step 3: Run the React PWA locally
 1. Install dependencies:
@@ -357,22 +327,22 @@ cd BakaTracker
    ```bash
    npm run dev
    ```
-3. Access the app at `http://localhost:5173`. Open the Settings tab (gear icon) and configure your Apps Script URL.
+3. Open `http://localhost:5173`. Open the Settings panel (gear icon) and configure your Apps Script URL and API key.
 
-### Step 4: Run the Backend locally
+### Step 4: Run the Backend Gateway locally
 1. Install [uv](https://github.com/astral-sh/uv). Navigate to the `backend/` directory:
    ```bash
    cd backend
    uv sync
    ```
-2. Create `.env` from the template:
+2. Copy the environment template:
    ```bash
    cp .env.example .env
    ```
-3. Start the server locally:
+3. Set your environment variables:
    ```bash
    # Windows PowerShell
-   $env:GOOGLE_APPS_SCRIPT_URL="https://script.google.com/macros/s/your_script/exec"
+   $env:GOOGLE_APPS_SCRIPT_URL="https://script.google.com/macros/s/your_deployed_script/exec"
    $env:AUTH_TOKEN="test_token"
    uv run uvicorn main:app --port 8080
    ```
@@ -382,17 +352,17 @@ cd BakaTracker
 ## 🚢 Deployment Guide
 
 ### Frontend Deployment (Cloudflare Pages)
-1. In the Cloudflare Dashboard, select **Workers & Pages** > **Pages** > **Connect to Git**.
-2. Select your repository. Set build parameters:
-   * **Framework preset:** `Vite`
-   * **Build command:** `npm run build`
-   * **Build output directory:** `dist`
-3. Add environment variables:
+1. Log in to the Cloudflare Dashboard and go to **Workers & Pages** > **Pages** > **Connect to Git**.
+2. Select your repository and configure the build settings:
+   * **Framework Preset**: `Vite`
+   * **Build Command**: `npm run build`
+   * **Build Output Directory**: `dist`
+3. Add these environment variables:
    * `VITE_GOOGLE_APPS_SCRIPT_URL`: Your Apps Script deployment URL.
-   * `VITE_GOOGLE_APPS_SCRIPT_API_KEY`: (Optional) Your security passcode.
+   * `VITE_GOOGLE_APPS_SCRIPT_API_KEY`: (Optional) Your Apps Script security passcode.
 
 ### Backend Deployment (Google Cloud Run)
-Deploy the backend using the Cloud SDK CLI:
+Build and deploy the backend container using the Google Cloud SDK:
 ```bash
 cd backend
 gcloud run deploy bakatracker-mcp \
@@ -411,299 +381,42 @@ gcloud run deploy bakatracker-mcp \
 
 ---
 
-## 🔧 Configuration Options
+## 🛠️ Developer Guidelines
 
-| Variable Name | Environment | Default Value | Description |
-| :--- | :--- | :--- | :--- |
-| `GOOGLE_APPS_SCRIPT_URL` | Backend / Frontend | `None` (Required) | The Web App execution URL of your Apps Script deployment. |
-| `AUTH_TOKEN` | Backend | `None` (Required) | Secret Bearer Token required to authorize incoming MCP calls in legacy mode. |
-| `AUTH_MODE` | Backend | `legacy` | Authentication mode: `legacy` (static token) or `jwt` (Auth0 validation). |
-| `OWNER_EMAIL` | Backend | `None` (Required in `jwt` mode) | Authorized email address permitted to access BakaTracker data. |
-| `AUTH0_DOMAIN` | Backend | `None` | Your Auth0 tenant domain (e.g. `tenant.auth0.com`). |
-| `AUTH0_AUDIENCE` | Backend | `None` | Your Auth0 API Identifier (audience). |
-| `AUTH0_ISSUER` | Backend | `None` | Token issuer URL (e.g. `https://tenant.auth0.com/`). |
-| `GOOGLE_APPS_SCRIPT_API_KEY`| Backend / Frontend | `None` (Optional) | Security key protecting the Google Apps Script Web App. |
-| `PORT` | Backend | `8080` | Port uvicorn binds to. |
-| `LOG_LEVEL` | Backend | `INFO` | Standard log output severity. |
-| `TIMEOUT` | Backend | `10.0` | Maximum timeout in seconds for Apps Script requests. |
+If you want to contribute to BakaTracker, please follow these guidelines:
+
+1. **Zustand Core Actions**: Never trigger direct backend REST calls inside React components. All operations should run through Zustand store actions in `src/store/useStore.ts` to ensure local caching and sync queuing work properly.
+2. **Explicit Awaits**: FastMCP actions are asynchronous. Ensure you use `await` statements on all database pings.
+3. **Resiliency Policies**: The Sheets client uses an exponential **3x retry backoff** (0.5s, 1s, 2s) with a **10s request timeout** to handle network hiccups. Ensure custom endpoints use similar retry mechanics.
+4. **Clean Diffs**: Retain unrelated comments and docstrings. Check that your code compiles using `npm run build` before pushing.
 
 ---
 
-## 🛡️ Authentication & Security
+## 💬 Troubleshooting & FAQ
 
-BakaTracker uses a multi-mode authentication model to secure the user interface, routing, and backend API endpoints.
+### 1. Why am I getting CORS errors on the frontend?
+Ensure the Apps Script web app is deployed with **Who has access** set to `Anyone`. If it is set to `Anyone with a Google account`, the browser will block requests due to CORS.
 
-### Authentication Modes (`AUTH_MODE`)
-The backend API server can run in two modes:
-1. **`legacy` (Default)**: Leverages a static `AUTH_TOKEN` shared secret between frontend and backend.
-2. **`jwt`**: Leverages cryptographic Auth0 JWT verification with JWKS public key downloading, signature checks, audience validation, and owner email containment constraints.
+### 2. Can I use Excel instead of Google Sheets?
+No. BakaTracker's sync engine is built around Google Apps Script Web App endpoints, which are unique to the Google Workspace ecosystem.
 
-### 1. How to Configure Auth0 for BakaTracker
-1. Log in to the [Auth0 Dashboard](https://manage.auth0.com/).
-2. **SPA Setup**: Create a **Single Page Web Application** (`BakaTracker SPA`):
-   - **Allowed Callback URLs**: `http://localhost:5173`
-   - **Allowed Logout URLs**: `http://localhost:5173`
-   - **Allowed Web Origins**: `http://localhost:5173`
-3. **API Setup**: Go to **Applications** > **APIs** and click **Create API**:
-   - **Name**: `BakaTracker API`
-   - **Identifier (Audience)**: e.g., `https://api.bakatracker.buildsrivatsa.qzz.io`
-   - **Signing Algorithm**: `RS256`
+### 3. How does BakaTracker handle conflicts if I update data on multiple devices?
+Currently, BakaTracker uses a "last-write-wins" policy. Implementing an offline merge-timestamp conflict resolution dashboard is a goal for Version 1.1.
 
-### 2. Environment Variables Configuration
-Configure the following in your backend `.env` (or server environment settings):
-```env
-AUTH_MODE=jwt
-OWNER_EMAIL=your-owner-email@example.com
-AUTH0_DOMAIN=your-tenant.auth0.com
-AUTH0_AUDIENCE=https://api.bakatracker.buildsrivatsa.qzz.io
-AUTH0_ISSUER=https://your-tenant.auth0.com/
-```
+### 4. What happens if the backend fails to connect to Google Sheets during boot?
+The backend will log a warning but will continue to run to allow you to configure settings. Ensure `GOOGLE_APPS_SCRIPT_URL` is set correctly in your environment variables.
 
-### 3. How Authentication Flows Work
-* **Login & Logout**: The React frontend uses `@auth0/auth0-react` with PKCE to securely authenticate.
-* **Access Tokens**: The frontend silently retrieves a fresh JWT access token using `getAccessTokenSilently()` and appends it to all requests.
-* **Backend Verification**:
-  - The `JWTAuthMiddleware` checks incoming requests to protected routes.
-  - The server downloads and caches (in-memory for 24 hours) the Auth0 JWKS public keys.
-  - The JWT signature, expiration, issuer, and audience are verified.
-  - The user's email is checked against `OWNER_EMAIL` using the owner verification module.
-  - If successful, an `AuthenticatedUser` is resolved and attached to the request context.
-
-### 4. Rollback and Migration Instructions
-If you need to roll back to static token authentication:
-1. Change `AUTH_MODE=legacy` in the environment.
-2. Ensure `AUTH_TOKEN` is configured with your shared secret.
-3. Restart the server. The middleware will immediately fall back to validating the shared static token.
-
-### 5. Production Hardening Notes
-* **Fail-Fast Startup Validation**: If `AUTH_MODE=jwt`, BakaTracker performs strict format and presence validation on all parameters (`AUTH0_DOMAIN`, `AUTH0_AUDIENCE`, `AUTH0_ISSUER`, and `OWNER_EMAIL`) during boot time. If any parameters are missing or invalid (e.g., malformed domains or non-HTTPS issuers), the server logs a critical startup error, raises a `ValueError`, and halts startup.
-* **PII Protection**: BakaTracker enforces zero PII logging inside console and server logs. Successful authentications log the unique Auth0 Subject (`sub`) ID instead of user email addresses. Access tokens, Authorization headers, and private email claims are never logged.
+### 5. Why am I getting 401 Unauthorized errors on MCP?
+Check that your MCP client includes the header `Authorization: Bearer <AUTH_TOKEN>`. If you are using JWT mode, ensure the token is valid, unexpired, and its email matches the configured `OWNER_EMAIL`.
 
 ---
 
-## 📖 User Workflows
+## 🗺️ Roadmap & Contribution
 
-```
-   [ Morning Checklist ]                    [ Afternoon Focus ]                    [ Evening Reflections ]
-   1. Open Habits board.                    1. Navigate to Today page.             1. Log completed habits.
-   2. Read quote of the day.                2. Pick 1-3 tasks from backlog.        2. Mark finished tasks as Done.
-   3. Star tasks for today.                 3. Drag quests to "Doing".             3. Write 1-sentence Highlight.
-```
+BakaTracker is licensed under the **MIT License**. Contributions are welcome! For instructions, read [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md).
 
-Review the [USER_GUIDE.md](docs/USER_GUIDE.md) manual for a detailed walk-through on habits, tasks, journaling, and tracking progression.
-
----
-
-## 🛠️ Developer Guide
-
-Developers should refer to [DEVELOPMENT.md](docs/DEVELOPMENT.md) for local setups.
-
-### Key Architectural Guidelines
-1. **Zustand Actions:** Do not trigger REST API operations directly from React files. Wrap all operations inside Zustand store actions (`src/store/useStore.ts`).
-2. **Explicit Awaits:** List and call operations in FastMCP are asynchronous. Always use the `await` keyword.
-3. **Resilience Policy:** The sheets client enforces a strict **10s request timeout** and **3x retry backoff** (0.5s, 1s, 2s). Keep timeouts aligned across the frontend and backend.
-
----
-
-## 🤝 Contributing
-
-BakaTracker is open-source. For instructions on branching, commit guidelines, and pull requests, please read the [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) manual.
-
----
-
-## 🗺️ Roadmap
-
-### Version 1.1 (Near-Term)
-* **Conflict Resolution:** Compare local and remote edit timestamps to prompt merge warnings instead of overwriting sheets.
-* **Habit Archiving:** Hides habits from the active Habits board while preserving historical Journey streaks.
-
-### Version 2.0 (Mid-Term)
-* **SQLite Database Fallback:** Standalone IndexedDB/SQLite support to run BakaTracker locally without requiring Google Sheets.
-* **Achievement Badges:** Progression titles and achievement badges.
-
----
-
-## 💬 Frequently Asked Questions (FAQ)
-
-Answering 30 common questions about database hosting, offline support, security, and MCP integrations:
-
-<details>
-<summary><b>1. Can I self-host BakaTracker?</b> (Click to expand)</summary>
-Yes. The PWA can be hosted on any static hosting provider (Cloudflare Pages, Vercel, Netlify) and the backend MCP server can run on Cloud Run, Render, or a VPS.
-</details>
-
-<details>
-<summary><b>2. Do I need to pay any server or hosting fees?</b></summary>
-No. The frontend, backend, and Google Sheets database fit entirely within the free tiers of Cloudflare, Google Cloud, and Google Workspace.
-</details>
-
-<details>
-<summary><b>3. Can I replace Google Sheets with a SQL database like PostgreSQL?</b></summary>
-Not in Version 1.0. Support for alternate backends is planned for future releases.
-</details>
-
-<details>
-<summary><b>4. What happens if I go offline? Will I lose my data?</b></summary>
-No. BakaTracker is offline-first. All writes are saved locally to `localStorage` immediately and queued for background syncing when connection returns.
-</details>
-
-<details>
-<summary><b>5. Can I connect BakaTracker to Notion?</b></summary>
-No. Notion's API is too slow for real-time background syncs and does not support BakaTracker's JSON sync payloads.
-</details>
-
-<details>
-<summary><b>6. Can I connect BakaTracker to Airtable?</b></summary>
-Not natively. You would need to write a custom sync client replacing `sheetsService.ts` to map Airtable tables to BakaTracker's collections.
-</details>
-
-<details>
-<summary><b>7. Is my data secure inside Google Sheets?</b></summary>
-Yes. Your spreadsheet resides in your private Google Drive and is only accessible to you and the Apps Script proxy Web App.
-</details>
-
-<details>
-<summary><b>8. What permissions does Google Apps Script require?</b></summary>
-It requires access to modify the specific spreadsheet it is attached to. It does not access your other Google Drive files.
-</details>
-
-<details>
-<summary><b>9. How does the Bearer token protect my Cloud Run backend?</b></summary>
-The FastAPI middleware blocks all unauthorized requests to `/mcp`, `/ready`, `/info`, and `/metrics`. Only clients supplying the matching token can access your tools.
-</details>
-
-<details>
-<summary><b>10. Can ChatGPT read and modify my BakaTracker database?</b></summary>
-Yes, if you configure the backend gateway as a remote MCP server and link it to your ChatGPT client.
-</details>
-
-<details>
-<summary><b>11. How do I connect Claude Desktop?</b></summary>
-Add the SSE connection blocks (defining the URL and Authorization Bearer header) into your `claude_desktop_config.json`.
-</details>
-
-<details>
-<summary><b>12. How do I configure Cursor?</b></summary>
-Add a new MCP server in Cursor settings: Set `Transport: sse`, enter your deployed Cloud Run URL, and supply your Bearer Auth header.
-</details>
-
-<details>
-<summary><b>13. Can I use BakaTracker with VS Code?</b></summary>
-Yes, using MCP-compatible extensions (like Cline or Roo Code) that support remote Server-Sent Events (SSE).
-</details>
-
-<details>
-<summary><b>14. What is the MCP Inspector and how do I run it?</b></summary>
-The MCP Inspector is a developer utility to test MCP tools locally. Run `uv run mcp dev server.py` from the `backend/` directory to launch it.
-</details>
-
-<details>
-<summary><b>15. Can I disable the RPG/gamification elements?</b></summary>
-There is no direct toggle to disable XP. However, because the design is highly minimalist, you can simply ignore the character tier text and level indicators on the Habits and Journey pages.
-</details>
-
-<details>
-<summary><b>16. How does BakaTracker resolve conflicts if I modify data on multiple devices?</b></summary>
-Currently, BakaTracker uses a "last-write-wins" policy where the last device to sync overwrites the sheet. Implementing `last_modified` conflict checks is the primary objective of Version 1.1.
-</details>
-
-<details>
-<summary><b>17. What are the limits of using Google Sheets as a database?</b></summary>
-Google Sheets can store up to 10 million cells. For typical daily tracking, BakaTracker will take decades of continuous use to approach this limit.
-</details>
-
-<details>
-<summary><b>18. How fast is the background synchronization?</b></summary>
-POST requests to Google Apps Script typically take **1.5 to 3.5 seconds**. The sync runs asynchronously in the background so you never experience interface lag.
-</details>
-
-<details>
-<summary><b>19. How do I configure custom light/dark theme accent colors?</b></summary>
-Open the Settings panel (gear icon) on the frontend. Use the color picker to select your custom accents.
-</details>
-
-<details>
-<summary><b>20. How do I add my own quotes to the quote engine?</b></summary>
-Add quote rows directly to the **Quotes** sheet in your Google Spreadsheet. The engine will pick from your list.
-</details>
-
-<details>
-<summary><b>21. Can I use Excel instead of Google Sheets?</b></summary>
-No. BakaTracker is built around Google Apps Script Web App endpoints which are unique to the Google Workspace ecosystem.
-</details>
-
-<details>
-<summary><b>22. Can I use Supabase instead of Google Sheets?</b></summary>
-No. While Supabase is excellent, BakaTracker is designed around the free, zero-config availability of Google Drive. Support for alternate backends is planned for Version 2.0.
-</details>
-
-<details>
-<summary><b>23. Can I connect BakaTracker to Notion?</b></summary>
-No. Notion's API is too slow for real-time background syncs and does not support BakaTracker's JSON sync payloads.
-</details>
-
-<details>
-<summary><b>24. Where are my secret keys stored?</b></summary>
-Local keys are stored in `backend/.env`. In production, they are configured as secure environment variables in Google Cloud Run.
-</details>
-
-<details>
-<summary><b>25. Why did my Cloud Run container crash on startup?</b></summary>
-The startup verification checklist will fail-fast if required environment variables (`GOOGLE_APPS_SCRIPT_URL`, `AUTH_TOKEN`) are missing, or if the URL format is invalid. Check Cloud Run logs.
-</details>
-
-<details>
-<summary><b>26. Why am I getting 401 Unauthorized errors?</b></summary>
-Ensure your MCP client or curl request includes the header `Authorization: Bearer <AUTH_TOKEN>`.
-</details>
-
-<details>
-<summary><b>27. How do I back up my BakaTracker database?</b></summary>
-Since your database is stored inside a Google Sheet, you can back it up at any time by selecting **File** > **Download** > **Microsoft Excel (.xlsx)** or **PDF** from the Google Sheets menu.
-</details>
-
-<details>
-<summary><b>28. How can I contribute to the BakaTracker project?</b></summary>
-Submit an issue, fork the repository, and make a Pull Request. Read the contributing guide for branch naming and commit rules.
-</details>
-
-<details>
-<summary><b>29. What happens if I rename my sheets tabs?</b></summary>
-Do not rename the tabs. The Apps Script backend expects specific collection names. Renaming them will cause synchronization errors.
-</details>
-
-<details>
-<summary><b>30. Is there an export option in the UI?</b></summary>
-Yes. In the Settings modal, click **Export Life Data** to export all your logs, habits, and tasks into a clean Markdown file.
-</details>
-
----
-
-## 🔍 Troubleshooting
-
-* **Apps Script 503 Gateway Timeout:** Confirm that the deployed web app is configured with **Execute as:** `Me` and **Who has access:** `Anyone`.
-* **CORS Errors on Frontend:** Check that you are utilizing the direct `/exec` endpoint URL and that the Google sheet permissions allow edit access.
-* **401 Unauthorized in MCP Client:** Confirm that Cursor or Claude Desktop is configured with the correct Bearer token header.
-
----
-
-## 📜 Changelog
-
-* **v1.0.0 (2026-06-30):** Consolidate `bakatracker-mcp` to `backend/`. Introduce FastAPI health endpoints, Bearer authentication, and uvicorn startup validation checks.
-
----
-
-## 📄 License & Credits
-
-BakaTracker is open-source software licensed under the **MIT License**.
-
-### Inspirations
-* **Bullet Journal:** For the clean backlog separation.
-* **Todoist:** For the Kanban task boards.
-* **Physical Planners:** Minimalist paper grids.
-
----
-
-## 🔮 Future Vision
-
-BakaTracker aims to evolve into a complete **Life OS**. By keeping the frontend human-focused and the backend AI-accessible via the Model Context Protocol (MCP), BakaTracker creates a private, local-first ecosystem where you own your database, planning, and metrics completely.
+### Upcoming Goals
+* **Conflict Resolution**: Merge dashboards to resolve offline conflicts.
+* **Habit Archiving**: Hide completed habits without losing their historical records.
+* **SQL Database Fallback**: Standalone IndexedDB/SQLite support to run BakaTracker without Google Sheets.
+* **Progress Badges**: Unlockable accomplishments and progression badges.

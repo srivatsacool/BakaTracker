@@ -25,6 +25,8 @@ export interface HabitLog {
 
 export type TaskStatus = 'backlog' | 'todo' | 'doing' | 'done';
 
+export type EisenhowerQuadrant = 'do' | 'schedule' | 'delegate' | 'delete' | null;
+
 export type TaskArea = 'health' | 'career' | 'learning' | 'personal' | 'creativity';
 
 export interface Task {
@@ -36,6 +38,7 @@ export interface Task {
   today: boolean;
   due_date: string; // YYYY-MM-DD or empty
   xp: number;
+  quadrant: EisenhowerQuadrant; // null = unassigned
   created_at: string; // ISO date
   updated_at: string; // ISO date
   completed_at: string; // ISO date or empty

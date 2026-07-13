@@ -244,3 +244,67 @@ html.dark .bg-bg-primary {
   background-color: var(--color-bg-primary) !important;
 }
 
+/* Custom Intro.js styles for BakaTracker (Neo-brutalist theme) */
+.baka-intro-tooltip .introjs-tooltip {
+  border: 3px solid black !important;
+  border-radius: 12px !important;
+  font-family: monospace !important;
+  box-shadow: 4px 4px 0px black !important;
+  background: white !important;
+  color: black !important;
+  max-width: 320px !important;
+  padding: 18px !important;
+}
+
+.baka-intro-tooltip .introjs-tooltiptext {
+  font-size: 13px !important;
+  line-height: 1.5 !important;
+}
+
+.baka-intro-tooltip .introjs-tooltip-title {
+  font-size: 16px !important;
+  font-weight: 900 !important;
+  font-family: inherit !important;
+  border-bottom: 2px solid black !important;
+  padding-bottom: 6px !important;
+  margin-bottom: 8px !important;
+}
+
+.baka-intro-tooltip .introjs-button {
+  border: 2px solid black !important;
+  border-radius: 6px !important;
+  font-weight: 900 !important;
+  font-family: monospace !important;
+  box-shadow: 2px 2px 0px black !important;
+  background: white !important;
+  color: black !important;
+  text-shadow: none !important;
+  transition: all 0.1s ease-in-out !important;
+}
+
+.baka-intro-tooltip .introjs-button:hover {
+  transform: translate(-1px, -1px) !important;
+  box-shadow: 3px 3px 0px black !important;
+}
+
+.baka-intro-tooltip .introjs-button.introjs-nextbutton {
+  background: var(--accent-pink) !important;
+}
+
+.baka-intro-tooltip .introjs-progressbar {
+  background: var(--accent-pink) !important;
+  height: 6px !important;
+  border-radius: 3px !important;
+}
+
+.introjs-helperLayer {
+  border: 3px solid var(--accent-pink) !important;
+  box-shadow: 0 0 0 3px var(--accent-pink), 0 0 0 10000px rgba(0,0,0,0.65) !important;
+  border-radius: 8px !important;
+}
+
+.introjs-skipbutton {
+  color: #888 !important;
+}
+
+

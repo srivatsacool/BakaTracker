@@ -12,10 +12,10 @@ export const OnboardingBanner: React.FC = () => {
   const steps = [
     {
       id: 1,
-      title: 'Create 3 Habits',
-      completed: habits.length >= 3,
+      title: 'Create a Habit',
+      completed: habits.length >= 1,
       link: '/habits',
-      label: `${Math.min(habits.length, 3)}/3 created`
+      label: habits.length >= 1 ? 'Created!' : '0/1 created'
     },
     {
       id: 2,
