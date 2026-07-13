@@ -166,8 +166,17 @@ class AuthAndLoggingMiddleware:
 
                     metrics_tracker.increment_request_count()
 
+                    # RFC 9728: Include resource_metadata URL in WWW-Authenticate header
+                    from auth.responses import _get_resource_metadata_url
+                    resource_metadata_url = _get_resource_metadata_url()
+                    if resource_metadata_url:
+                        www_auth = f'Bearer resource_metadata="{resource_metadata_url}"'
+                    else:
+                        www_auth = "Bearer"
+
                     response = JSONResponse(
                         status_code=401,
+                        headers={"WWW-Authenticate": www_auth},
                         content={"detail": "Unauthorized"},
                     )
                     await response(scope, receive, send)
@@ -285,9 +294,29 @@ logger.info("Mounted FastMCP SSE transport app directly on /mcp, /mcp/sse, and /
 transport_name = "SSE + Streamable HTTP"
 
 # ----------------------------------------------------
-# OIDC / OAUTH DISCOVERY ENDPOINTS (ChatGPT / Auth0)
+# OIDC / OAUTH DISCOVERY ENDPOINTS
 # ----------------------------------------------------
 
+# RFC 9728: OAuth 2.0 Protected Resource Metadata
+# This endpoint tells MCP clients (like Claude) where to authenticate.
+@app.get("/.well-known/oauth-protected-resource")
+def protected_resource_metadata():
+    """RFC 9728 - OAuth 2.0 Protected Resource Metadata.
+    
+    Tells MCP clients: 'I am a protected resource. 
+    Go to this authorization server to get a token.'
+    """
+    return {
+        "resource": config.AUTH0_AUDIENCE,
+        "authorization_servers": [
+            f"https://{config.AUTH0_DOMAIN}"
+        ],
+        "bearer_methods_supported": ["header"],
+        "scopes_supported": [],
+    }
+
+# RFC 8414: OAuth 2.0 Authorization Server Metadata (compatibility layer)
+# Kept for backward compatibility with clients that query this directly.
 @app.get("/.well-known/oauth-authorization-server")
 @app.get("/.well-known/openid-configuration")
 def oauth_discovery(request: Request):
