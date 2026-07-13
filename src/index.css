@@ -256,6 +256,13 @@ html.dark .bg-bg-primary {
   padding: 18px !important;
 }
 
+html.dark .baka-intro-tooltip .introjs-tooltip {
+  background: #2C2B28 !important;
+  color: #F8F5F0 !important;
+  border-color: #5A5955 !important;
+  box-shadow: 4px 4px 0px #5A5955 !important;
+}
+
 .baka-intro-tooltip .introjs-tooltiptext {
   font-size: 13px !important;
   line-height: 1.5 !important;
@@ -270,6 +277,10 @@ html.dark .bg-bg-primary {
   margin-bottom: 8px !important;
 }
 
+html.dark .baka-intro-tooltip .introjs-tooltip-title {
+  border-bottom-color: #5A5955 !important;
+}
+
 .baka-intro-tooltip .introjs-button {
   border: 2px solid black !important;
   border-radius: 6px !important;
@@ -282,13 +293,32 @@ html.dark .bg-bg-primary {
   transition: all 0.1s ease-in-out !important;
 }
 
+html.dark .baka-intro-tooltip .introjs-button {
+  background: #2C2B28 !important;
+  color: #F8F5F0 !important;
+  border-color: #5A5955 !important;
+  box-shadow: 2px 2px 0px #5A5955 !important;
+}
+
 .baka-intro-tooltip .introjs-button:hover {
   transform: translate(-1px, -1px) !important;
   box-shadow: 3px 3px 0px black !important;
 }
 
+html.dark .baka-intro-tooltip .introjs-button:hover {
+  box-shadow: 3px 3px 0px #5A5955 !important;
+}
+
 .baka-intro-tooltip .introjs-button.introjs-nextbutton {
   background: var(--accent-pink) !important;
+}
+
+html.dark .baka-intro-tooltip .introjs-button.introjs-nextbutton {
+  color: black !important;
+}
+
+.baka-intro-tooltip .introjs-button.introjs-skipbutton {
+  color: #888 !important;
 }
 
 .baka-intro-tooltip .introjs-progressbar {
@@ -303,8 +333,25 @@ html.dark .bg-bg-primary {
   border-radius: 8px !important;
 }
 
-.introjs-skipbutton {
-  color: #888 !important;
+html.dark .introjs-helperLayer {
+  box-shadow: 0 0 0 3px var(--accent-pink), 0 0 0 10000px rgba(0,0,0,0.8) !important;
+}
+
+/* Global dark mode overrides for hardcoded bg-white (covers cards, panels, surfaces) */
+html.dark .bg-white {
+  background-color: var(--surface);
+}
+
+html.dark .border-gray-200 {
+  border-color: rgba(255,255,255,0.15) !important;
+}
+
+html.dark .border-gray-300 {
+  border-color: rgba(255,255,255,0.25) !important;
+}
+
+html.dark .bg-gray-50 {
+  background-color: rgba(255,255,255,0.05) !important;
 }
 
 

@@ -14,7 +14,7 @@ import { useApiClient } from './api/authFetch';
 
 function App() {
   const init = useStore(state => state.init);
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
   const apiClient = useApiClient();
 
   useEffect(() => {
@@ -23,11 +23,11 @@ function App() {
   }, [init]);
 
   useEffect(() => {
-    // Trigger remote fetch once authenticated
-    if (!isLoading && isAuthenticated) {
+    // Trigger remote fetch once authenticated (skip for guest/demo mode)
+    if (!isLoading && isAuthenticated && user?.provider !== 'guest') {
       init(apiClient);
     }
-  }, [isAuthenticated, isLoading, apiClient, init]);
+  }, [isAuthenticated, isLoading, apiClient, init, user]);
 
   return (
     <BrowserRouter>

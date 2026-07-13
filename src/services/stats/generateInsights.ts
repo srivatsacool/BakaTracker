@@ -23,7 +23,7 @@ export function generateInsights(habitLogs: HabitLog[], tasks: Task[]): string[]
   const gymLogs = habitLogs.filter(l => l.habit_id === 'h1');
   const gymDaysCount = gymLogs.filter(l => l.value === 1 || l.value === '1' || (l.value as any) === true).length;
   if (gymDaysCount > 0) {
-    insights.push(`You worked out 💪 ${gymDaysCount} times in total. Consistent physical activity boosts focus and reduces ADHD restlessness.`);
+    insights.push(`You worked out 💪 ${gymDaysCount} times in total. Consistent physical activity boosts focus and reduces restlessness.`);
   }
 
   // Task completions

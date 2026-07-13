@@ -106,7 +106,7 @@ export const Today: React.FC = () => {
         </div>
       ))}
 
-      {/* Spotlight Backdrop Dimmer (ADHD focus helper) */}
+      {/* Spotlight Backdrop Dimmer (focus helper) */}
       {doingTasks.length > 0 && <div className="spotlight-overlay" />}
 
       {/* Page Title */}

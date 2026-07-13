@@ -10,7 +10,7 @@
 [![PWA Ready](https://img.shields.io/badge/PWA-Ready-purple.svg)](https://developer.mozilla.org/en-US/docs/Web/Progressive_web_apps)
 [![Open Source](https://img.shields.io/badge/Open%20Source-%E2%9D%A4-red.svg)](#)
 
-> **BakaTracker** is a minimalist, ADHD-friendly personal life operating system and RPG planner powered by Google Sheets and the Model Context Protocol (MCP). Built on a local-first philosophy, BakaTracker lets you own your metrics completely while maintaining a private, zero-cost cloud replication layer.
+> **BakaTracker** is a minimalist, gamified personal life operating system and RPG planner powered by Google Sheets and the Model Context Protocol (MCP). Built on a local-first philosophy, BakaTracker lets you own your metrics completely while maintaining a private, zero-cost cloud replication layer.
 
 ---
 
@@ -35,7 +35,7 @@
 
 Traditional productivity applications often feel like additional jobs. They induce "productivity guilt" by demanding endless nested organization, classification tags, and complex setups. BakaTracker is the antidote.
 
-* **ADHD-First UI Design**: Decreases executive dysfunction and friction. Daily check-ins are quick, drag-and-drop is limited to high-priority areas, and positive 8-bit aesthetic feedback keeps users engaged without overwhelming them.
+* **Low-Friction UI Design**: Decreases friction and cognitive load. Daily check-ins are quick, drag-and-drop is limited to high-priority areas, and positive 8-bit aesthetic feedback keeps users engaged without overwhelming them.
 * **Consistency over Intensity**: Streaks are calculated supportively, and daily scores reward showing up over achieving perfection.
 * **Local-First & Offline-Capable**: The React client stores data directly inside LocalStorage. Changes are instant, and state updates sync in the background when an internet connection is available.
 * **Zero-Cost Personal Cloud**: No external database hosting costs or subscriptions. A personal Google Sheet serves as the serverless relational database backend, proxied by a Google Apps Script Web App.

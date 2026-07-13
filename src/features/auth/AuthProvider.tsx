@@ -7,6 +7,27 @@ import { LoadingScreen } from './components/LoadingScreen';
 
 export const AuthContext = createContext<IdentityProvider | undefined>(undefined);
 
+/** Guest/demo provider used when Auth0 is not configured or user skips login */
+const guestProvider: IdentityProvider = {
+  user: {
+    id: 'guest',
+    email: 'guest@demo.local',
+    name: 'Guest Explorer',
+    picture: undefined,
+    provider: 'guest',
+  },
+  isAuthenticated: true,
+  isLoading: false,
+  error: null,
+  login: async () => {
+    // No-op in guest mode (handled by UI)
+  },
+  logout: async () => {
+    // No-op in guest mode
+  },
+  getAccessToken: async () => '',
+};
+
 const AuthProviderInner: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const {
     user: auth0User,
@@ -23,6 +44,38 @@ const AuthProviderInner: React.FC<{ children: React.ReactNode }> = ({ children }
 
   // Clear state on logout
   const resetStore = useStore(state => state.resetStore);
+
+  // Demo mode: when Auth0 IS configured but user chose "Explore Demo"
+  const [isDemoMode, _setDemoMode] = useState(() =>
+    localStorage.getItem('bt_demo_mode') === 'true'
+  );
+
+  if (isDemoMode) {
+    const demoOverrides: IdentityProvider = {
+      ...guestProvider,
+      login: async (options) => {
+        // Sign in: clear demo mode, redirect to Auth0
+        localStorage.removeItem('bt_demo_mode');
+        localStorage.removeItem('bt_first_run');
+        setIsRedirecting(true);
+        try {
+          await loginWithRedirect(options);
+        } finally {
+          setIsRedirecting(false);
+        }
+      },
+      logout: async () => {
+        localStorage.removeItem('bt_demo_mode');
+        localStorage.removeItem('bt_first_run');
+        resetStore();
+      },
+    };
+    return (
+      <AuthContext.Provider value={demoOverrides}>
+        {children}
+      </AuthContext.Provider>
+    );
+  }
 
   const mappedUser = useMemo<User | null>(() => {
     if (!auth0User || !auth0User.sub || !auth0User.email) {
@@ -96,24 +149,11 @@ const AuthProviderInner: React.FC<{ children: React.ReactNode }> = ({ children }
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   if (!authConfig.domain || !authConfig.clientId) {
+    // No Auth0 configured — run in guest/demo mode so the app is fully accessible
     return (
-      <div className="min-h-screen bg-[#F8F5F0] text-black flex flex-col items-center justify-center p-6 font-sans">
-        <div className="max-w-md w-full border-4 border-black bg-white p-8 rounded-lg shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] flex flex-col gap-4">
-          <h2 className="text-2xl font-black uppercase tracking-tight">Auth0 Config Missing</h2>
-          <p className="font-mono text-sm leading-relaxed text-gray-700">
-            It looks like your Auth0 environment variables are not set. Please create a <code className="bg-gray-100 border border-gray-300 px-1 py-0.5 rounded font-bold text-xs">.env</code> file in the project root with the following details:
-          </p>
-          <pre className="bg-[#FFF0F0] border-2 border-black p-4 font-mono text-xs overflow-x-auto text-danger font-bold">
-{`VITE_AUTH0_DOMAIN=your-domain.auth0.com
-VITE_AUTH0_CLIENT_ID=your-client-id
-VITE_AUTH0_AUDIENCE=your-api-audience
-VITE_AUTH0_REDIRECT_URI=http://localhost:5173`}
-          </pre>
-          <div className="text-xs text-gray-500 font-mono">
-            For details, refer to the Authentication section in the README.md.
-          </div>
-        </div>
-      </div>
+      <AuthContext.Provider value={guestProvider}>
+        {children}
+      </AuthContext.Provider>
     );
   }
 

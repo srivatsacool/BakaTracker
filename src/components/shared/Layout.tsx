@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { Flame, ListTodo, Target, BookOpen, Compass, Cloud, CloudOff, Settings as SettingsIcon, X, Sun, Moon, ChevronLeft, ChevronRight, Download, WifiOff, LayoutGrid, Zap, Play } from 'lucide-react';
+import { Flame, ListTodo, Target, BookOpen, Compass, Cloud, CloudOff, Settings as SettingsIcon, X, Sun, Moon, ChevronLeft, ChevronRight, Download, WifiOff, LayoutGrid, Zap, Play, Shield } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import { calculateDailyScore, getTodayDateString } from '../../lib/utils';
 import { OnboardingBanner } from './OnboardingBanner';
 import { UserMenu } from '../user/UserMenu';
+import { useAuth } from '../../features/auth';
+import { authConfig } from '../../features/auth/config';
 import { FirstRunWizard } from './FirstRunWizard';
 import { useAppTour } from '../../lib/useAppTour';
 
@@ -14,6 +16,9 @@ export const Layout: React.FC = () => {
   const navigate = useNavigate();
   const { startTour } = useAppTour(navigate);
   const { stats, settings, syncStatus, syncError, habits, habitLogs, tasks, journal, syncWithSheets, setSheetsUrl, setApiKey, theme, toggleTheme, setAccentColors, loadDemoData, clearDataByDays } = useStore();
+  const { user, login } = useAuth();
+  const isGuest = user?.provider === 'guest';
+  const isAuthConfigured = Boolean(authConfig.domain && authConfig.clientId);
   
   const todayStr = getTodayDateString();
   const dailyScore = calculateDailyScore(todayStr, habits, habitLogs, tasks, journal);
@@ -53,6 +58,13 @@ export const Layout: React.FC = () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     };
   }, []);
+
+  // Auto-load demo data for guest users exploring the app
+  useEffect(() => {
+    if (isGuest && habits.length === 0) {
+      loadDemoData();
+    }
+  }, [isGuest, habits.length, loadDemoData]);
 
   const handleInstallPWA = async () => {
     if (!deferredPrompt) return;
@@ -101,7 +113,7 @@ export const Layout: React.FC = () => {
           className="absolute top-4 -right-3.5 bg-accent-pink border-2 border-black rounded-full p-1 shadow-gumroad-sm hover:translate-x-[1px] hover:translate-y-[1px] transition hidden md:block z-10 cursor-pointer"
           title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
         >
-          {isCollapsed ? <ChevronRight className="w-4 h-4 text-black" /> : <ChevronLeft className="w-4 h-4 text-black" />}
+          {isCollapsed ? <ChevronRight className="w-4 h-4 text-black dark:text-text-primary" /> : <ChevronLeft className="w-4 h-4 text-black dark:text-text-primary" />}
         </button>
 
         <div className="flex flex-col gap-6">
@@ -145,7 +157,7 @@ export const Layout: React.FC = () => {
                   className="p-1.5 rounded border-2 border-black bg-white hover:bg-gray-100 transition shadow-gumroad-sm"
                   title={`Switch to ${theme === 'light' ? 'Dark' : 'Light'} Mode`}
                 >
-                  {theme === 'light' ? <Moon className="w-3.5 h-3.5 text-black" /> : <Sun className="w-3.5 h-3.5 text-black" />}
+                  {theme === 'light' ? <Moon className="w-3.5 h-3.5 text-black dark:text-text-primary" /> : <Sun className="w-3.5 h-3.5 text-black dark:text-text-primary" />}
                 </button>
                 
                 {/* Settings Toggle */}
@@ -161,11 +173,21 @@ export const Layout: React.FC = () => {
                   className="p-1.5 rounded border-2 border-black bg-white hover:bg-gray-100 transition shadow-gumroad-sm"
                   title="Settings"
                 >
-                  <SettingsIcon className="w-3.5 h-3.5 text-black" />
+                  <SettingsIcon className="w-3.5 h-3.5 text-black dark:text-text-primary" />
                 </button>
 
-                {/* User Menu */}
-                <UserMenu />
+                {/* User Menu / Sign In */}
+                {isGuest ? (
+                  <button
+                    onClick={() => login()}
+                    className="p-1.5 rounded border-2 border-black bg-accent-pink hover:bg-accent-pink/90 transition shadow-gumroad-sm cursor-pointer"
+                    title="Sign In to save your data"
+                  >
+                    <Shield className="w-3.5 h-3.5 text-black dark:text-text-primary" />
+                  </button>
+                ) : (
+                  <UserMenu />
+                )}
               </div>
 
             ) : (
@@ -182,7 +204,7 @@ export const Layout: React.FC = () => {
                       className="p-1.5 rounded border-2 border-black bg-white hover:bg-gray-100 transition shadow-gumroad-sm"
                       title={`Switch to ${theme === 'light' ? 'Dark' : 'Light'} Mode`}
                     >
-                      {theme === 'light' ? <Moon className="w-3.5 h-3.5 text-black" /> : <Sun className="w-3.5 h-3.5 text-black" />}
+                      {theme === 'light' ? <Moon className="w-3.5 h-3.5 text-black dark:text-text-primary" /> : <Sun className="w-3.5 h-3.5 text-black dark:text-text-primary" />}
                     </button>
 
                     {settings.sheets_url ? (
@@ -212,11 +234,21 @@ export const Layout: React.FC = () => {
                       className="p-1.5 rounded border-2 border-black bg-white hover:bg-gray-100 transition shadow-gumroad-sm"
                       title="Settings"
                     >
-                      <SettingsIcon className="w-3.5 h-3.5 text-black" />
+                      <SettingsIcon className="w-3.5 h-3.5 text-black dark:text-text-primary" />
                     </button>
 
-                    {/* User Menu */}
-                    <UserMenu />
+                    {/* User Menu / Sign In */}
+                    {isGuest ? (
+                      <button
+                        onClick={() => login()}
+                        className="p-1.5 rounded border-2 border-black bg-accent-pink hover:bg-accent-pink/90 transition shadow-gumroad-sm cursor-pointer"
+                        title="Sign In to save your data"
+                        >
+                        <Shield className="w-3.5 h-3.5 text-black dark:text-text-primary" />
+                      </button>
+                    ) : (
+                      <UserMenu />
+                    )}
                   </div>
 
                 </div>
@@ -247,6 +279,28 @@ export const Layout: React.FC = () => {
               </>
             )}
           </div>
+
+          {/* Demo Mode Banner (sidebar) */}
+          {isGuest && !isCollapsed && (
+            <div className="neo-card px-3 py-2.5 bg-warning/10 border-2 border-warning rounded-lg flex items-center gap-2.5">
+              <div className="p-1 bg-warning rounded border border-black">
+                <Zap className="w-3 h-3 text-black" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-black text-[10px] leading-tight text-black uppercase">Demo Mode</p>
+                <p className="font-mono text-[9px] text-gray-600 leading-tight mt-0.5">
+                  Exploring with sample data.
+                  {isAuthConfigured ? (
+                    <button onClick={() => login()} className="ml-1 underline font-bold hover:text-accent-pink cursor-pointer">
+                      Sign in to sync
+                    </button>
+                  ) : (
+                    ' Data stays local.'
+                  )}
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* Navigation Links */}
           <nav className="flex flex-col gap-2">
@@ -333,7 +387,7 @@ export const Layout: React.FC = () => {
               className="p-1 rounded border border-black bg-white hover:bg-gray-100 transition shadow-sm"
               title={`Switch to ${theme === 'light' ? 'Dark' : 'Light'} Mode`}
             >
-              {theme === 'light' ? <Moon className="w-3.5 h-3.5 text-black" /> : <Sun className="w-3.5 h-3.5 text-black" />}
+              {theme === 'light' ? <Moon className="w-3.5 h-3.5 text-black dark:text-text-primary" /> : <Sun className="w-3.5 h-3.5 text-black dark:text-text-primary" />}
             </button>
 
             <button
@@ -347,11 +401,21 @@ export const Layout: React.FC = () => {
               className="p-1 rounded border border-black bg-white"
               title="Settings"
             >
-              <SettingsIcon className="w-3.5 h-3.5 text-black" />
+              <SettingsIcon className="w-3.5 h-3.5 text-black dark:text-text-primary" />
             </button>
 
-            {/* User Menu */}
-            <UserMenu />
+            {/* User Menu / Sign In */}
+            {isGuest ? (
+              <button
+                onClick={() => login()}
+                className="p-1 rounded border-2 border-black bg-accent-pink hover:bg-accent-pink/90 transition shadow-sm cursor-pointer"
+                title="Sign In to save your data"
+                >
+                <Shield className="w-3.5 h-3.5 text-black dark:text-text-primary" />
+              </button>
+            ) : (
+              <UserMenu />
+            )}
           </div>
         </header>
 
@@ -405,21 +469,21 @@ export const Layout: React.FC = () => {
       {/* Settings Modal (Bottom Sheet on Mobile) */}
       {showSettingsModal && (
         <div className="fixed inset-0 z-[999] flex items-center justify-center max-sm:items-end bg-black/60 p-0 sm:p-4 animate-fade-in">
-          <div className="neo-card p-6 bg-white w-full max-w-md flex flex-col gap-4 text-black max-sm:rounded-b-none max-sm:rounded-t-2xl max-sm:max-h-[85vh] max-sm:overflow-y-auto">
-            <div className="flex justify-between items-center border-b-2 border-black pb-2">
+          <div className="neo-card p-6 bg-white dark:bg-surface w-full max-w-md flex flex-col gap-4 text-black dark:text-white max-sm:rounded-b-none max-sm:rounded-t-2xl max-h-[90vh] overflow-y-auto shadow-gumroad-lg">
+            <div className="flex justify-between items-center border-b-2 border-black dark:border-white pb-2">
               <h3 className="text-lg font-black flex items-center gap-2">
                 <SettingsIcon className="w-5 h-5 text-accent-pink" />
-                <span>BakaTracker Settings</span>
+                <span className="dark:text-white">BakaTracker Settings</span>
               </h3>
               <button
                 onClick={() => setShowSettingsModal(false)}
-                className="p-1 rounded hover:bg-gray-100 transition border border-transparent hover:border-black cursor-pointer"
+                className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800 transition border border-transparent hover:border-black cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <p className="text-xs text-gray-500 leading-relaxed font-mono">
+            <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed font-mono">
               BakaTracker runs in local-first mode by default. Connect your Google Sheet via Google Apps Script to back up and sync your data.
             </p>
 
@@ -541,7 +605,7 @@ export const Layout: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setShowSettingsModal(false)}
-                  className="px-4 py-2 border-2 border-black font-bold rounded-lg hover:bg-gray-50 transition text-sm"
+                  className="px-4 py-2 border-2 border-black font-bold rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition text-sm"
                 >
                   Cancel
                 </button>
@@ -584,7 +648,7 @@ export const Layout: React.FC = () => {
                     setShowSettingsModal(false);
                     setTimeout(() => startTour(), 300);
                   }}
-                  className="w-full px-4 py-2 border-2 border-black rounded-lg font-bold text-xs hover:bg-gray-50 transition flex items-center justify-center gap-2"
+                  className="w-full px-4 py-2 border-2 border-black rounded-lg font-bold text-xs hover:bg-gray-50 dark:hover:bg-gray-800 transition flex items-center justify-center gap-2"
                 >
                   <Play className="w-4 h-4 text-accent-pink" />
                   <span>Replay App Tour 🚀</span>

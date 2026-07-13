@@ -986,7 +986,10 @@ export const useStore = create<BakaState>((set, get) => ({
   },
 
   loadDemoData: async () => {
-    const { addHabit, addTask, saveJournalEntry } = get();
+    const state = get();
+    // Guard: don't re-load if already loaded (prevents Strict Mode double-fire)
+    if (state.habits.length > 0 || state.tasks.length > 0) return;
+    const { addHabit, addTask, saveJournalEntry } = state;
     const today = new Date();
     const fmt = (d: Date) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
     const dayOffset = (n: number) => { const d = new Date(today); d.setDate(d.getDate() - n); return d; };

@@ -134,7 +134,7 @@ export const Journal: React.FC = () => {
             <Award className="w-10 h-10 text-warning mb-2" />
             <h4 className="font-black text-md">Consistency Benefit</h4>
             <p className="text-xs text-gray-500 mt-1.5 leading-relaxed">
-              Writing down a daily highlight helps combat ADHD forgetfulness and Productivity Guilt. It serves as your permanent proof of growth.
+              Writing down a daily highlight helps combat forgetfulness and Productivity Guilt. It serves as your permanent proof of growth.
             </p>
           </div>
 

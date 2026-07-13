@@ -3,8 +3,11 @@ export interface User {
   email: string;
   name: string;
   picture?: string;
-  provider: 'auth0';
+  provider: 'auth0' | 'guest';
 }
+
+/** Metadata about the current session mode */
+export type AuthMode = 'authenticated' | 'guest' | 'loading' | 'unauthenticated';
 
 export interface IdentityProvider {
   user: User | null;
