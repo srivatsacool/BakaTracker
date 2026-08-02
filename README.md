@@ -66,38 +66,6 @@ BakaTracker uses a highly distributed, decoupled architecture:
 2. **FastAPI & FastMCP Web Service**: Containerized API gateway hosted on Google Cloud Run. Validates OIDC JWT tokens or Bearer tokens, registers MCP tools, and routes client requests.
 3. **Google Sheets Database Layer**: Google Sheet spreadsheets with a Google Apps Script API proxy acting as a transactional endpoint.
 
-### System Topology
-
-```mermaid
-graph TD
-    subgraph Client Layer (Cloudflare Pages)
-        React[React PWA Client]
-        Store[Zustand Store]
-        LocalDB[(LocalStorage)]
-    end
-
-    subgraph API Gateway Layer (Google Cloud Run)
-        FastAPI[FastAPI Web Server]
-        FastMCP[FastMCP Server Instance]
-        SheetsClient[SheetsClient with 3x Backoff]
-    end
-
-    subgraph Database Layer (Google Workspace)
-        GAS[Google Apps Script Bridge]
-        Sheets[(Google Sheets Spreadsheet)]
-    end
-
-    React <-->|Zustand state bindings| Store
-    Store <-->|Local Cache read/write| LocalDB
-    Store -->|Sync POST JSON| GAS
-    GAS <-->|Spreadsheet Service| Sheets
-    
-    FastAPI <-->|Route requests| FastMCP
-    FastMCP -->|fetch_db/save_db| SheetsClient
-    SheetsClient <-->|POST/GET JSON| GAS
-    
-    Cursor[Cursor / Claude Desktop / ChatGPT] <-->|Bearer Auth JSON-RPC| FastAPI
-```
 
 ### Data Flows
 
