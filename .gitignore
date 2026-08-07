@@ -61,5 +61,11 @@ share/python-wheels/
 .agents/
 .copilot/
 
+# Agent tooling & local caches (not product)
+.hermes/
+.claude/
+.repowise/
+.mcp.json
+
 # Google Cloud SDK
 google-cloud-sdk/
