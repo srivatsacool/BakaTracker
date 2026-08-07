@@ -68,5 +68,8 @@ share/python-wheels/
 .mcp.json
 .vscode/mcp.json
 
+# Private local reference implementation (never shipped)
+cloudflare-reference/
+
 # Google Cloud SDK
 google-cloud-sdk/

@@ -19,7 +19,7 @@ This is the canonical, living repository. It already has the complete applicatio
 
 **This repository does not get thrown away or rewritten.**
 
-### 1.2 The Cloudflare reference = **THE ARCHITECTURE LIBRARY**
+## 1.2 The mined Cloudflare Workbench = **THE ARCHITECTURE LIBRARY**
 
 This is **not** a product. It is a box of reusable infrastructure patterns to **mine** — never merge wholesale:
 
@@ -32,6 +32,8 @@ This is **not** a product. It is a box of reusable infrastructure patterns to **
 - AI provider abstraction
 - Sync concepts
 
+> **Note:** this reference implementation is a private, local asset — ignored by git and never shipped. The public repo contains only source that lives in-tree under `platform/`.
+
 ---
 
 ## 2. v2 is NOT "reference becomes the app"
@@ -39,7 +41,7 @@ This is **not** a product. It is a box of reusable infrastructure patterns to **
 The migration is **not**:
 
 ```
-cloudflare-reference
+mined Workbench (private reference)
         ↓
     becomes app
 ```
@@ -183,7 +185,7 @@ BakaTracker
 │
 ├── docs/
 │
-└── cloudflare-reference/     ← archived reference (never imported wholesale)
+└── (private reference kept out of git)
 ```
 
 ---
