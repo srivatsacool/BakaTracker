@@ -65,7 +65,7 @@ const techBadges = [
   { icon: CloudOff, label: 'Local-First', sub: 'Works offline. No server needed.' },
   { icon: Shield, label: 'MCP-Powered', sub: 'AI assistants can read/write your data' },
   { icon: Smartphone, label: 'PWA Ready', sub: 'Install as a desktop/mobile app' },
-  { icon: Star, label: 'Zero Cost', sub: 'Google Sheets = free database' },
+  { icon: Star, label: 'Zero Cost', sub: 'D1 database · no per-seat fees' },
   { icon: Code, label: 'Open Source', sub: 'MIT · Self-host · Contribute' },
 ];
 
@@ -123,7 +123,7 @@ export const Landing: React.FC = () => {
         <p className="max-w-lg font-mono text-sm md:text-base leading-relaxed text-gray-600 dark:text-gray-400">
           Gamify your habits, tasks, and daily journal highlights. 
           A minimalist, self-hostable personal life operating system 
-          powered by Google Sheets and the Model Context Protocol.
+          powered by a Cloudflare D1 database and the Model Context Protocol.
         </p>
 
         {/* CTAs */}
@@ -155,8 +155,8 @@ export const Landing: React.FC = () => {
 
         {!isAuthConfigured && (
           <p className="text-[10px] font-mono text-gray-400 dark:text-gray-500 max-w-sm">
-            Set <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded text-[10px]">VITE_AUTH0_DOMAIN</code> &{' '}
-            <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded text-[10px]">VITE_AUTH0_CLIENT_ID</code> in your{' '}
+            Set <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded text-[10px]">VITE_API_BASE_URL</code> &{' '}
+            <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded text-[10px]">VITE_GOOGLE_CLIENT_ID</code> in your{' '}
             <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded text-[10px]">.env</code> to enable Sign In.
           </p>
         )}
@@ -239,7 +239,7 @@ export const Landing: React.FC = () => {
               Architecture
             </p>
             <pre className="text-gray-600 dark:text-gray-400 overflow-x-auto">
-{`React PWA (Cloudflare)  ←→  FastAPI + FastMCP (Cloud Run)  ←→  Google Sheets (free)
+{`React PWA  ←→  Cloudflare Worker (OAuth + MCP + REST)  ←→  D1 (free)
          ↕                              ↕
    LocalStorage                  AI Assistants (Cursor, Claude, ChatGPT)
   (offline-first)                via JSON-RPC / MCP protocol`}
