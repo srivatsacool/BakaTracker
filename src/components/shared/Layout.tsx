@@ -7,7 +7,10 @@ import { OnboardingBanner } from './OnboardingBanner';
 import { UserMenu } from '../user/UserMenu';
 import { useAuth } from '../../features/auth';
 import { authConfig } from '../../features/auth/config';
+import { useApiClient } from '../../api/authFetch';
+import { seedDemoData } from '../../services/demoMode';
 import { FirstRunWizard } from './FirstRunWizard';
+import { FirstRunSetup } from './FirstRunSetup';
 import { useAppTour } from '../../lib/useAppTour';
 
 
@@ -17,7 +20,9 @@ export const Layout: React.FC = () => {
   const { startTour } = useAppTour(navigate);
   const { stats, settings, syncStatus, syncError, habits, habitLogs, tasks, journal, syncWithSheets, setSheetsUrl, setApiKey, theme, toggleTheme, setAccentColors, loadDemoData, clearDataByDays } = useStore();
   const { user, login } = useAuth();
-  const isGuest = user?.provider === 'guest';
+    const apiClient = useApiClient();
+    const init = useStore((s) => s.init);
+    const isGuest = user?.provider === 'guest';
   const isAuthConfigured = Boolean(authConfig.domain && authConfig.clientId);
   
   const todayStr = getTodayDateString();
@@ -33,8 +38,7 @@ export const Layout: React.FC = () => {
   });
 
   const [clearDays, setClearDays] = useState<number | 'all'>(7);
-  const [deleteConfirmText, setDeleteConfirmText] = useState('');
-  const [demoLoading, setDemoLoading] = useState(false);
+    const [deleteConfirmText, setDeleteConfirmText] = useState('');
 
   // PWA & Offline State
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
@@ -98,10 +102,54 @@ export const Layout: React.FC = () => {
     setShowSettingsModal(false);
   };
 
-  const handleResetColors = () => {
+const handleResetColors = () => {
     setInputAccentLight('#FF90E8');
     setInputAccentDark('#FF90E8');
   };
+
+  // Phase 3 — Demo Mode: seed the authenticated user's account through the
+  // Tool Registry REST transport, then re-hydrate from D1 so the UI updates.
+  const [demoBusy, setDemoBusy] = useState(false);
+  const [demoResult, setDemoResult] = useState<{ ok: boolean; skipped: boolean; message: string } | null>(null);
+
+  const handleLoadDemoData = async () => {
+    if (!apiClient || isGuest) return;
+    if (!window.confirm(
+      'Load sample demo data into your current account? This adds habits, tasks, journal entries and a note. It will not touch your existing data.',
+    )) return;
+
+    setDemoBusy(true);
+    setDemoResult(null);
+    try {
+      const res = await seedDemoData(apiClient);
+      if (res.ok && res.skipped) {
+        setDemoResult({ ok: true, skipped: true, message: 'Demo data is already loaded for this account.' });
+      } else if (res.ok) {
+        setDemoResult({ ok: true, skipped: false, message: 'Demo data loaded. Refreshing…' });
+        await init(apiClient); // re-hydrate from D1 so the UI shows the seeds
+      } else {
+        setDemoResult({ ok: false, skipped: false, message: `Could not load demo data. Failed: ${res.failed.join(', ')}` });
+      }
+    } catch (e) {
+      setDemoResult({ ok: false, skipped: false, message: `Demo data could not be loaded (${e instanceof Error ? e.message : 'unknown error'}).` });
+    } finally {
+      setDemoBusy(false);
+    }
+  };
+
+  // Phase 3: First-run gate for authenticated accounts with no data yet.
+  // A brand-new Google user lands here (empty D1) and chooses a starting
+  // persona; guest/demo mode keeps the legacy wizard/demo seeding path.
+  const isFirstRunEmpty =
+    !isGuest &&
+    habits.length === 0 &&
+    tasks.length === 0 &&
+    journal.length === 0 &&
+    localStorage.getItem('bt_first_run') !== 'done';
+
+  if (isFirstRunEmpty) {
+    return <FirstRunSetup />;
+  }
 
   return (
     <div className="min-h-screen bg-bg-primary text-text-primary flex flex-col md:flex-row">
@@ -623,37 +671,36 @@ export const Layout: React.FC = () => {
               <h4 className="text-sm font-black uppercase font-mono tracking-wider">Data Management</h4>
               
               <div className="flex flex-col gap-2">
-                <button
-                  type="button"
-                  onClick={async () => {
-                    if (habits.length >= 2) return;
-                    setDemoLoading(true);
-                    await loadDemoData();
-                    setDemoLoading(false);
-                    setShowSettingsModal(false);
-                  }}
-                  disabled={demoLoading || habits.length >= 2}
-                  className="w-full neo-button bg-black text-accent-pink flex items-center justify-center gap-2 text-xs py-2 disabled:opacity-50"
-                >
-                  <Zap className="w-4 h-4" />
-                  <span>{demoLoading ? 'Loading Demo Data...' : 'Load Demo Data'}</span>
-                </button>
-                {habits.length >= 2 && (
-                  <p className="text-[10px] text-gray-400 font-mono text-center">Demo data is only available when you have fewer than 2 habits.</p>
-                )}
-                
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowSettingsModal(false);
-                    setTimeout(() => startTour(), 300);
-                  }}
-                  className="w-full px-4 py-2 border-2 border-black rounded-lg font-bold text-xs hover:bg-gray-50 dark:hover:bg-gray-800 transition flex items-center justify-center gap-2"
-                >
-                  <Play className="w-4 h-4 text-accent-pink" />
-                  <span>Replay App Tour 🚀</span>
-                </button>
-              </div>
+                              <button
+                                type="button"
+                                onClick={handleLoadDemoData}
+                                disabled={demoBusy || isGuest}
+                                className="w-full neo-button bg-black text-accent-pink flex items-center justify-center gap-2 text-xs py-2 disabled:opacity-50"
+                              >
+                                <Zap className="w-4 h-4" />
+                                <span>{demoBusy ? 'Loading Demo Data...' : 'Load Demo Data'}</span>
+                              </button>
+                              <p className="text-[10px] text-gray-400 font-mono text-center">
+                                Adds sample habits, tasks, journal entries and a note to your current account (via the Worker). Idempotent — safe to press again.
+                              </p>
+                              {demoResult && (
+                                <p className={`text-[10px] font-mono text-center ${demoResult.ok ? 'text-success' : 'text-danger'}`}>
+                                  {demoResult.message}
+                                </p>
+                              )}
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setShowSettingsModal(false);
+                                  setTimeout(() => startTour(), 300);
+                                }}
+                                className="w-full px-4 py-2 border-2 border-black rounded-lg font-bold text-xs hover:bg-gray-50 dark:hover:bg-gray-800 transition flex items-center justify-center gap-2"
+                              >
+                                <Play className="w-4 h-4 text-accent-pink" />
+                                <span>Replay App Tour 🚀</span>
+                              </button>
+                            </div>
 
               {/* Danger Zone */}
               <div className="border-t border-black/10 pt-3 flex flex-col gap-3">

@@ -199,6 +199,22 @@ const updateStatsAndSummaries = (
   localStorage.setItem('bt_weekly_stats', JSON.stringify(weeklyStatsRecords));
 };
 
+// ---------------------------------------------------------------------------
+// REST client holder (Phase 3: Cloudflare-native persistence)
+//
+// The v1 store is local-first: every mutation (addHabit/addTask/saveJournal…)
+// calls syncWithSheets() with NO argument, and syncWithSheets early-returns
+// when no ApiClient is passed. That made the D1 sync seam dead for
+// authenticated users — data stayed in localStorage only.
+//
+// Fix: init(apiClient) stashes the client here (module-scoped so it survives
+// React StrictMode remounts of the store consumer), and syncWithSheets falls
+// back to it. Every existing mutation then pushes its change to the Worker
+// (POST /api/v1/sync/push) under the authenticated user's sub, exactly as the
+// v2 sync ledger expects. Guest/demo mode never passes a client -> no-op.
+// ---------------------------------------------------------------------------
+let apiClientHolder: ApiClient | null = null;
+
 export const useStore = create<BakaState>((set, get) => ({
   habits: [],
   habitLogs: [],
@@ -244,7 +260,11 @@ export const useStore = create<BakaState>((set, get) => ({
   },
 
   init: async (apiClient?: ApiClient) => {
-    // 0. Load theme
+      // Phase 3: retain the REST client so mutations can push to D1 even when
+      // call sites forget to pass it (v1 legacy sync calls).
+      if (apiClient) apiClientHolder = apiClient;
+
+      // 0. Load theme
     const savedTheme = (localStorage.getItem('bt_theme') as 'light' | 'dark') || 'light';
     if (savedTheme === 'dark') {
       document.documentElement.classList.add('dark');
@@ -442,8 +462,12 @@ export const useStore = create<BakaState>((set, get) => ({
   },
 
   syncWithSheets: async (apiClient) => {
-    const { settings, habits, habitLogs, tasks, journal, events, character, weeklyStats } = get();
-    if (!apiClient) return;
+      const { settings, habits, habitLogs, tasks, journal, events, character, weeklyStats } = get();
+      // Phase 3: fall back to the client stashed by init(apiClient), so the v1
+      // mutation call sites (syncWithSheets() with no args) persist to D1 for
+      // authenticated users instead of silently no-op'ing.
+      const client = apiClient || apiClientHolder;
+      if (!client) return;
 
     try {
       set({ syncStatus: 'loading', syncError: null });
@@ -457,7 +481,7 @@ export const useStore = create<BakaState>((set, get) => ({
         { schema_version: '2.0', xp_formula: 'completed_tasks_if_today + habit_logs + journal_highlights', last_sync: new Date().toISOString() }
       ];
 
-      const success = await stateService.syncData(apiClient, {
+      const success = await stateService.syncData(client, {
         habits,
         habitLogs,
         tasks,
