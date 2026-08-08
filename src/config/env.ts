@@ -1,14 +1,15 @@
 export const config = {
   auth: {
-    domain: (import.meta.env.VITE_AUTH0_DOMAIN as string) || '',
-    clientId: (import.meta.env.VITE_AUTH0_CLIENT_ID as string) || '',
-    audience: (import.meta.env.VITE_AUTH0_AUDIENCE as string) || '',
-    redirectUri: (import.meta.env.VITE_AUTH0_REDIRECT_URI as string) || window.location.origin,
+    // Google OAuth is handled BY the Cloudflare Worker (workers-oauth-provider):
+    // the SPA redirects to the worker's /authorize, and the worker talks to
+    // Google. The SPA only needs the worker URL + the Google client id to show
+    // the correct marker in the UI.
+    clientId: (import.meta.env.VITE_GOOGLE_CLIENT_ID as string) || '',
+    redirectUri: window.location.origin,
   },
   api: {
-    baseUrl: (import.meta.env.VITE_API_BASE_URL as string) || 'http://localhost:8000',
-    version: 'v1',
+    // Cloudflare Worker URL (wrangler dev → http://localhost:8787).
+    baseUrl: (import.meta.env.VITE_API_BASE_URL as string) || 'http://localhost:8787',
+    version: 'v2',
   },
 };
-
-console.log(import.meta.env);

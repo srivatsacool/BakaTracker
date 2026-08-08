@@ -15,6 +15,7 @@
  * wired into the UI. Never set this in production.
  */
 import { Hono } from "hono";
+import { cors } from "hono/cors";
 import type { Env } from "../env";
 import type { OAuthHelpers } from "@cloudflare/workers-oauth-provider";
 import { ToolRegistry, ToolRegistryError } from "../registry";
@@ -35,6 +36,22 @@ type RESTBindings = Env & { OAUTH_PROVIDER: OAuthHelpers };
 
 export function buildRestApp(): Hono<{ Bindings: RESTBindings; Variables: RESTVariables }> {
   const app = new Hono<{ Bindings: RESTBindings; Variables: RESTVariables }>();
+
+  // --- CORS ----------------------------------------------------------------
+  // The OAuthProvider shell adds CORS only to /token, /register, /mcp and the
+  // metadata endpoint — the default handler (this REST API) passes through
+  // untouched. A browser UI (Vite dev :5173 → Worker :8787, or Pages → Worker)
+  // would be blocked on every call without these headers. Reflect the request
+  // origin like the provider does; auth is bearer-token, not cookies.
+  app.use(
+    "*",
+    cors({
+      origin: (origin) => origin || "*",
+      allowHeaders: ["Authorization", "Content-Type", "X-User-Sub"],
+      allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+      maxAge: 86400,
+    }),
+  );
 
   // --- auth guard ----------------------------------------------------------
   app.use("*", async (c, next) => {

@@ -3,7 +3,7 @@ export interface User {
   email: string;
   name: string;
   picture?: string;
-  provider: 'auth0' | 'guest';
+  provider: 'google' | 'guest';
 }
 
 /** Metadata about the current session mode */

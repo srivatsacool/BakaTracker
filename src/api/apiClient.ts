@@ -92,12 +92,20 @@ export class ApiClient {
     }
 
     if (!response.ok) {
+      // Surface the worker's `{ ok:false, message }` envelope when present.
+      let serverMessage = '';
+      try {
+        const body = await response.clone().json();
+        serverMessage = body?.message || body?.error_description || '';
+      } catch {
+        // non-JSON error body — fall through to defaults
+      }
       if (response.status === 401) {
-        throw new SessionExpiredError();
+        throw new SessionExpiredError(serverMessage || undefined);
       } else if (response.status === 403) {
-        throw new ForbiddenError();
+        throw new ForbiddenError(serverMessage || undefined);
       } else {
-        throw new BackendUnavailableError();
+        throw new BackendUnavailableError(serverMessage || undefined);
       }
     }
 

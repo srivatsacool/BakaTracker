@@ -90,12 +90,16 @@ schema production uses.
 
 ## Phase Map
 
-- **Phase 1 (done):** Cloudflare-native platform in `platform/` — Registry,
-  OAuth, REST, MCP, D1 schema, repositories, real-entry test suite.
-- **Phase 2 (next):** Integrate the platform into the UI — swap
-  `stateService` (and the auth feature) from FastAPI to the Worker:
-  `Current UI → stateService → Worker` instead of `Current UI → FastAPI`.
-  Nothing else changes.
+- **Phase 1 (done, shipped `8d3006e`):** Cloudflare-native platform in `platform/` —
+  Registry, RFC 7591/7636 dynamic Google OAuth (PKCE S256), REST with CORS bridge,
+  MCP (OAuth-gated DO), D1 schema, repositories (Tool→Repository→SQL→D1), real-entry
+  test suite **8/8 passing** through `cloudflare:test`.
+- **Phase 2 (done):** Integrated the platform into the frozen UI — swapped
+  `stateService` + `features/auth/*` + `api/*` from FastAPI/Auth0 to the Worker.
+  No page/store/component changes. **End-to-end verified** against `wrangler dev`:
+  register → authorize → token exchange → whoami, `create_task` / `create_habit` /
+  `log_habit` / `journal_today` → reload → **all data persisted in D1** under the
+  same user scope.
 - **Phase 3:** Notes-first product work through the new seams (events/XP/levels/
   stats/character/weekly-stats/quotes APIs).
 - **Phase 4:** Landing page, settings, UI improvements.
