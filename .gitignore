@@ -73,3 +73,7 @@ cloudflare-reference/
 
 # Google Cloud SDK
 google-cloud-sdk/
+
+# Editor local history — can contain secret .dev.vars snapshots
+platform/.history/
+.history/

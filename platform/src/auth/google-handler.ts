@@ -97,7 +97,11 @@ function redirectToGoogle(
       ...headers,
       location: getGoogleAuthorizeUrl({
         client_id: requestEnv?.GOOGLE_CLIENT_ID ?? "",
-        redirect_uri: new URL("/callback", request.url).href,
+        // Use the stable configured origin (APP_ORIGIN) for the Google redirect_uri
+        // rather than request.url, so it is identical whether the worker is reached
+        // via the wrangler dev proxy port (8787) or its direct internal port.
+        // Google requires an exact, pre-registered redirect URI match.
+        redirect_uri: `${requestEnv?.APP_ORIGIN ?? new URL(request.url).origin}/callback`,
         scope: GOOGLE_SCOPES,
         state: stateToken,
       }),
@@ -122,7 +126,9 @@ app.get("/callback", async (c) => {
     client_id: c.env.GOOGLE_CLIENT_ID!,
     client_secret: c.env.GOOGLE_CLIENT_SECRET!,
     code: c.req.query("code"),
-    redirect_uri: new URL("/callback", c.req.url).href,
+    // Must match the redirect_uri sent to Google at /authorize (stable APP_ORIGIN),
+    // never request.url's host/port which varies between proxy and direct hits.
+    redirect_uri: `${c.env.APP_ORIGIN}/callback`,
   });
   if (err) return err;
 

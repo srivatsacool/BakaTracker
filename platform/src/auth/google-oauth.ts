@@ -82,5 +82,9 @@ export async function fetchGoogleUserInfo(accessToken: string): Promise<GoogleUs
     headers: { Authorization: `Bearer ${accessToken}` },
   });
   if (!resp.ok) throw new Error(`Google userinfo failed: ${resp.status}`);
-  return (await resp.json()) as GoogleUserInfo;
+  // NOTE: the v2 userinfo endpoint returns the subject as `id`, NOT `sub`
+  // (the `sub` claim only exists in the OIDC id_token / v1 userinfo).
+  // Normalize: honor `sub` if present, else map `id` -> `sub`.
+  const body = (await resp.json()) as GoogleUserInfo & { id?: string };
+  return { sub: body.sub ?? body.id ?? "", name: body.name, email: body.email };
 }

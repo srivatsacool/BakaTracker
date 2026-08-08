@@ -24,6 +24,22 @@ const SESSION_VERIFIER = 'bt_oauth_verifier';
 const SESSION_STATE = 'bt_oauth_state';
 const SESSION_CLIENT = 'bt_oauth_client_id';
 
+// ---------------------------------------------------------------------------
+// OAuth boot idempotency guard
+//
+// React <StrictMode> (dev-only) mounts -> unmounts -> remounts components,
+// so the OAuth boot effect can run twice with the SAME single-use
+// authorization code still in sessionStorage. The authorization code is
+// single-use: a second concurrent `/token` exchange would 400
+// "Authorization code already used" and clobber the successful first one.
+//
+// This module-scoped promise lets every boot invocation share ONE exchange:
+// the first call starts it, StrictMode's second call awaits the same promise
+// (never POSTs a duplicate). Production builds (no strict double-mount) are
+// unaffected — the promise resolves and is released the same way.
+// ---------------------------------------------------------------------------
+let oauthExchangeInFlight: Promise<void> | null = null;
+
 function base64UrlEncode(bytes: Uint8Array): string {
   let bin = '';
   bytes.forEach((b) => (bin += String.fromCharCode(b)));
@@ -172,7 +188,9 @@ const AuthProviderInner: React.FC<{ children: React.ReactNode }> = ({ children }
       const verifier = sessionStorage.getItem(SESSION_VERIFIER);
 
       if (code && state && state === storedState && verifier) {
-        try {
+        // Single-use authorization code: ensure exactly ONE /token exchange
+        // even when StrictMode remounts race two boot() invocations.
+        const exchange = async (): Promise<void> => {
           const clientId = await ensureClientId();
           const res = await fetch(`${workerBaseUrl()}/token`, {
             method: 'POST',
@@ -196,6 +214,16 @@ const AuthProviderInner: React.FC<{ children: React.ReactNode }> = ({ children }
           sessionStorage.removeItem(SESSION_STATE);
           // Clean the URL so a reload doesn't re-consume the code.
           window.history.replaceState({}, document.title, window.location.pathname);
+        };
+
+        // Start the exchange if nobody has - otherwise await the one in flight.
+        if (!oauthExchangeInFlight) {
+          oauthExchangeInFlight = exchange().finally(() => {
+            oauthExchangeInFlight = null;
+          });
+        }
+        try {
+          await oauthExchangeInFlight;
         } catch (e) {
           if (!cancelled) setError(e instanceof Error ? e : new Error('Sign-in failed'));
         }
