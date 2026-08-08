@@ -6,7 +6,7 @@ import tseslint from 'typescript-eslint'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
-  globalIgnores(['dist', 'cloudflare-reference']),
+  globalIgnores(['dist', 'cloudflare-reference', 'platform']),
   {
     files: ['**/*.{ts,tsx}'],
     extends: [

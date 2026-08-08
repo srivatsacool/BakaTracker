@@ -1,0 +1,13 @@
+# Local secrets — copy to .dev.vars and fill in (this file is gitignored).
+# Set the same values in production via: npx wrangler secret put <NAME>
+
+GOOGLE_CLIENT_ID=<your-google-oauth-client-id.apps.googleusercontent.com>
+GOOGLE_CLIENT_SECRET=<your-google-oauth-client-secret>
+COOKIE_ENCRYPTION_KEY=<a-long-random-string-32+bytes>
+
+# Local dev only: lets the REST API trust an X-User-Sub header so the React app
+# can exercise it before OAuth is wired into the UI. NEVER set this in prod.
+# REST_DEV_BYPASS=1
+
+# Optional (Gemini via Google AI REST, if not using the Cloudflare `AI` binding):
+# GEMINI_API_KEY=

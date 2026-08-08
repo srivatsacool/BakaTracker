@@ -1,0 +1,48 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "bakatracker-platform",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-08-07",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "migrations": [
+    {
+      "new_sqlite_classes": ["MyMCP"],
+      "tag": "v1"
+    }
+  ],
+  "durable_objects": {
+    "bindings": [
+      {
+        "class_name": "MyMCP",
+        "name": "MCP_OBJECT"
+      }
+    ]
+  },
+  "kv_namespaces": [
+    {
+      "binding": "OAUTH_KV",
+      "id": "<Add-KV-ID>, or create local via: npx wrangler kv namespace create OAUTH_KV"
+    }
+  ],
+  "d1_databases": [
+    {
+      "binding": "BAKA_DB",
+      "database_name": "bakas_db",
+      "database_id": "<Add-D1-ID>, or create local via: npx wrangler d1 create bakas_db",
+      "migrations_dir": "./migrations"
+    }
+  ],
+  // AI binding intentionally omitted from local dev (it's a remote resource and
+  // forces an API token). Add it back for `wrangler dev --remote` / deploy:
+  //   "ai": { "binding": "AI" }
+  "vars": {
+    "APP_ORIGIN": "http://localhost:8787",
+    "SYNC_LOCK_TTL_SECONDS": 60
+  },
+  "observability": {
+    "enabled": true
+  },
+  "dev": {
+    "port": 8787
+  }
+}

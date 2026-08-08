@@ -1,0 +1,53 @@
+/**
+ * BakaTracker v2 — entry point.
+ *
+ * One Worker = OAuth Provider (to MCP clients) + OAuth Client (to Google) +
+ * Native Remote MCP server + thin REST API. Everything funnels through the
+ * Tool Registry.
+ *
+ *   UI / AI / MCP clients / REST  ──▶  Tool Registry  ──▶  Storage (D1/KV/R2)
+ */
+import OAuthProvider from "@cloudflare/workers-oauth-provider";
+import { Hono } from "hono";
+import { MyMCP } from "./mcp/server";
+import { GoogleHandler } from "./auth/google-handler";
+import { buildRestApp, REST_PREFIX } from "./http/rest";
+import { todayISO } from "./shared/util";
+
+// Wrangler needs the Durable Object class exported from the entrypoint so it
+// can route to it; the OAuthProvider further dispatches /mcp to it.
+export { MyMCP } from "./mcp/server";
+
+// Catch-all handler: Google OAuth pages + thin REST API, all in one Hono app.
+const defaultApp = new Hono();
+defaultApp.route("/", GoogleHandler);
+defaultApp.route(REST_PREFIX, buildRestApp());
+
+// Friendly landing page at `/`.
+defaultApp.get("/", (c) =>
+  c.html(`<!doctype html>
+<html><head><meta charset="utf-8"><title>BakaTracker v2</title>
+<style>body{font-family:system-ui;background:#0b0f1a;color:#e8ecf6;display:grid;place-items:center;height:100vh;margin:0}
+.card{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:16px;padding:2.5rem;max-width:560px;text-align:center}
+h1{background:linear-gradient(90deg,#a78bfa,#22d3ee,#fbbf24);-webkit-background-clip:text;background-clip:text;color:transparent}
+code{background:rgba(255,255,255,.08);padding:.15rem .4rem;border-radius:6px;font-size:.85em}</style></head>
+<body><div class="card">
+<h1>BakaTracker v2</h1>
+<p>Local-first AI productivity OS — one Tool Registry, many interfaces.</p>
+<p>
+<a href="/mcp" style="color:#22d3ee">MCP endpoint</a> ·
+<a href="/.well-known/oauth-authorization-server" style="color:#22d3ee">OAuth metadata</a> ·
+<a href="/api/v1/registry" style="color:#22d3ee">Tool registry (REST)</a>
+</p>
+<footer style="font-size:.75rem;color:#8b93a7">today: ${todayISO()}</footer>
+</div></body></html>`),
+);
+
+export default new OAuthProvider({
+  apiHandler: MyMCP.serve("/mcp"),
+  apiRoute: "/mcp",
+  authorizeEndpoint: "/authorize",
+  clientRegistrationEndpoint: "/register",
+  defaultHandler: defaultApp as any,
+  tokenEndpoint: "/token",
+});
