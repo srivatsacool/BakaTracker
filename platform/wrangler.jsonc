@@ -21,14 +21,14 @@
   "kv_namespaces": [
     {
       "binding": "OAUTH_KV",
-      "id": "<Add-KV-ID>, or create local via: npx wrangler kv namespace create OAUTH_KV"
+      "id": "5eb48db3bd274f6087eafcada74955b6"
     }
   ],
   "d1_databases": [
     {
       "binding": "BAKA_DB",
       "database_name": "bakas_db",
-      "database_id": "<Add-D1-ID>, or create local via: npx wrangler d1 create bakas_db",
+      "database_id": "bb8219f5-8c61-4403-bc2b-a7edbab889b5",
       "migrations_dir": "./migrations"
     }
   ],
