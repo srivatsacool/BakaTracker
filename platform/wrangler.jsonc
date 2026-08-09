@@ -1,4 +1,21 @@
 {
+  // ============================================================
+  // BakaTracker platform — LOCAL DEVELOPMENT configuration.
+  //
+  // This file is the repository default. It is deliberately free of
+  // any personal Cloudflare resource IDs so the repo can be forked
+  // and deployed by anyone.
+  //
+  //   * D1/KV ids below are PLACEHOLDERS — valid format, but they
+  //     exist only so `wrangler dev` can run against local state.
+  //   * Run `npm run setup` (repo root) to generate
+  //     `platform/wrangler.prod.jsonc` with YOUR account's real
+  //     D1/KV ids + origin, and to provision secrets.
+  //   * Deploy with `npm run deploy` (uses wrangler.prod.jsonc).
+  //
+  // Do NOT edit the ids here for production deploys — the setup
+  // script owns the production config.
+  // ============================================================
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "bakatracker-platform",
   "main": "src/index.ts",
@@ -21,22 +38,23 @@
   "kv_namespaces": [
     {
       "binding": "OAUTH_KV",
-      "id": "5eb48db3bd274f6087eafcada74955b6"
+      "id": "00000000000000000000000000000000"
     }
   ],
   "d1_databases": [
     {
       "binding": "BAKA_DB",
       "database_name": "bakas_db",
-      "database_id": "bb8219f5-8c61-4403-bc2b-a7edbab889b5",
+      "database_id": "00000000-0000-0000-0000-000000000000",
       "migrations_dir": "./migrations"
     }
   ],
   // AI binding intentionally omitted from local dev (it's a remote resource and
-  // forces an API token). Add it back for `wrangler dev --remote` / deploy:
+  // forces an API token). `npm run setup -- --with-ai` adds it to the
+  // production config:
   //   "ai": { "binding": "AI" }
   "vars": {
-    "APP_ORIGIN": "https://bakatracker-platform.srivatsagorti.workers.dev",
+    "APP_ORIGIN": "http://localhost:8787",
     "SYNC_LOCK_TTL_SECONDS": 60
   },
   "observability": {

@@ -3,6 +3,9 @@ node_modules
 .wrangler
 .dev.vars
 
+# generated per-instance production config (created by `npm run setup`)
+wrangler.prod.jsonc
+
 # prod
 dist
 build

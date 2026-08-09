@@ -1,5 +1,5 @@
 {
-  "name": "bakatracker-temp",
+  "name": "bakatracker",
   "private": true,
   "version": "1.0.1",
   "type": "module",
@@ -7,7 +7,10 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "setup": "node scripts/setup.mjs",
+    "setup:dry-run": "node scripts/setup.mjs --dry-run",
+    "deploy": "node scripts/deploy.mjs"
   },
   "dependencies": {
     "@auth0/auth0-react": "^2.20.0",

@@ -5,7 +5,7 @@
   "description": "BakaTracker v2 platform — one Tool Registry, many interfaces (REST + MCP). Cloudflare Workers native.",
   "type": "module",
   "scripts": {
-    "deploy": "wrangler deploy",
+    "deploy": "wrangler deploy --config wrangler.prod.jsonc",
     "dev": "wrangler dev",
     "start": "wrangler dev",
     "test": "vitest run",
@@ -13,7 +13,8 @@
     "cf-typegen": "wrangler types",
     "type-check": "tsc --noEmit",
     "db:init": "wrangler d1 execute bakas_db --local --file=./schema.sql",
-    "db:migrate": "wrangler d1 migrations apply bakas_db --local"
+    "db:migrate": "wrangler d1 migrations apply bakas_db --local",
+    "db:migrate:remote": "wrangler d1 migrations apply bakas_db --remote --config wrangler.prod.jsonc"
   },
   "dependencies": {
     "@cfworker/json-schema": "^4.1.1",

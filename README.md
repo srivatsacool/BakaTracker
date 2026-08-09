@@ -3,14 +3,46 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](docs/LICENSE.md)
 [![TypeScript](https://img.shields.io/badge/Language-TypeScript-blue.svg)](https://www.typescriptlang.org/)
 [![React 19](https://img.shields.io/badge/Frontend-React%2019-blue.svg)](https://react.dev/)
-[![FastMCP](https://img.shields.io/badge/MCP-FastMCP-green.svg)](https://github.com/modelcontextprotocol/)
-[![Google Sheets](https://img.shields.io/badge/Database-Google%20Sheets-green.svg)](https://www.google.com/sheets/about/)
-[![Cloudflare Pages](https://img.shields.io/badge/Hosting-Cloudflare%20Pages-orange.svg)](https://pages.cloudflare.com/)
-[![Google Cloud Run](https://img.shields.io/badge/Hosting-Google%20Cloud%20Run-blue.svg)](https://cloud.google.com/run)
+[![Cloudflare Workers](https://img.shields.io/badge/Hosting-Cloudflare%20Workers-orange.svg)](https://workers.cloudflare.com/)
+[![Cloudflare D1](https://img.shields.io/badge/Database-Cloudflare%20D1-orange.svg)](https://developers.cloudflare.com/d1/)
+[![Google OAuth](https://img.shields.io/badge/Auth-Google%20OAuth-green.svg)](https://console.cloud.google.com/)
 [![PWA Ready](https://img.shields.io/badge/PWA-Ready-purple.svg)](https://developer.mozilla.org/en-US/docs/Web/Progressive_web_apps)
 [![Open Source](https://img.shields.io/badge/Open%20Source-%E2%9D%A4-red.svg)](#)
 
-> **BakaTracker** is a minimalist, gamified personal life operating system and RPG planner powered by Google Sheets and the Model Context Protocol (MCP). Built on a local-first philosophy, BakaTracker lets you own your metrics completely while maintaining a private, zero-cost cloud replication layer.
+> **BakaTracker** is a minimalist, gamified personal life operating system and RPG
+> planner — **self-hostable** on Cloudflare (Workers + D1 + KV + Pages), with Google
+> OAuth login, a REST API, and a Model Context Protocol (MCP) server so AI coding
+> assistants can talk to your lifecycle ledger directly. Single-user by design:
+> deploy your own instance, own your data, zero subscriptions.
+
+---
+
+## ⚡ Deploy your own instance
+
+BakaTracker is built to be **forked and self-hosted** — each instance is fully
+independent (own Worker, own D1, own KV, own OAuth client). No shared backend,
+no SaaS.
+
+```bash
+git clone https://github.com/<you>/BakaTracker.git
+cd BakaTracker
+npm install && (cd platform && npm install)
+
+npm run setup      # 1. Cloudflare resources + secrets + config (interactive)
+#    → register the printed Google redirect URI in Google Cloud Console
+npm run deploy     # 2. deploy the Worker (API + OAuth + MCP)
+
+# 3. publish the frontend on Cloudflare Pages with
+#    VITE_API_BASE_URL=<your worker origin> (see docs/DEPLOYMENT.md)
+```
+
+Full step-by-step for absolute beginners: **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)**.
+Every configuration value explained: **[docs/CONFIGURATION.md](docs/CONFIGURATION.md)**.
+
+| Deployment mode | When |
+|---|---|
+| `npm run setup` → `npm run deploy` | recommended (automatic D1/KV/secrets/config) |
+| manual `wrangler` commands | you know Wrangler and want full control |
 
 ---
 
@@ -269,83 +301,53 @@ FastMCP's streamable HTTP endpoint supports Custom GPT actions:
 
 ## ⚙️ Installation Guide
 
-Follow these steps to set up BakaTracker:
+> Full walkthrough for first-time self-hosters: **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)**.
 
-### Step 1: Clone the Repository
+### Prerequisites
+
+* Node.js ≥ 20
+* A Cloudflare account (free tier works)
+* A Google account (to create the OAuth client)
+
+### Quick setup (Mode A — recommended)
+
 ```bash
-git clone https://github.com/srivatsacool/BakaTracker.git
+# 1. Install
+git clone https://github.com/<you>/BakaTracker.git
 cd BakaTracker
+npm install && (cd platform && npm install)
+
+# 2. Cloudflare auth
+export CLOUDFLARE_API_TOKEN=<your-api-token>   # or: cd platform && npx wrangler login
+
+# 3. One-command setup: creates D1 + KV (and optionally R2), writes the
+#    generated platform/wrangler.prod.jsonc, stores secrets, applies migrations,
+#    and prints your exact Google redirect URI.
+npm run setup
+
+# 4. Deploy the Worker (REST API + OAuth + MCP)
+npm run deploy
+
+# 5. Frontend — Cloudflare Pages: connect this repo, build command `npm run build`,
+#    output `dist`, and set VITE_API_BASE_URL=<worker origin> +
+#    VITE_GOOGLE_CLIENT_ID=<client id> as production environment variables.
 ```
 
-### Step 2: Set Up the Google Sheets Database
-1. Create a blank spreadsheet in Google Sheets.
-2. Go to **Extensions** > **Apps Script**.
-3. Delete the default boilerplate code, copy the contents of [google-apps-script.js](google-apps-script.js), and paste it in.
-4. Click **Deploy** > **New deployment**.
-5. Select **Type: Web app**, set **Execute as** to `Me` and **Who has access** to `Anyone`.
-6. Click Deploy, authorize the script permissions, and copy the **Web App URL**.
-7. In the newly created **Settings** tab in your Google Sheet, find the row with `api_key` and add a secure password.
+### Local development
 
-### Step 3: Run the React PWA locally
-1. Install dependencies:
-   ```bash
-   npm install
-   ```
-2. Start the development server:
-   ```bash
-   npm run dev
-   ```
-3. Open `http://localhost:5173`. Open the Settings panel (gear icon) and configure your Apps Script URL and API key.
-
-### Step 4: Run the Backend Gateway locally
-1. Install [uv](https://github.com/astral-sh/uv). Navigate to the `backend/` directory:
-   ```bash
-   cd backend
-   uv sync
-   ```
-2. Copy the environment template:
-   ```bash
-   cp .env.example .env
-   ```
-3. Set your environment variables:
-   ```bash
-   # Windows PowerShell
-   $env:GOOGLE_APPS_SCRIPT_URL="https://script.google.com/macros/s/your_deployed_script/exec"
-   $env:AUTH_TOKEN="test_token"
-   uv run uvicorn main:app --port 8080
-   ```
-
----
-
-## 🚢 Deployment Guide
-
-### Frontend Deployment (Cloudflare Pages)
-1. Log in to the Cloudflare Dashboard and go to **Workers & Pages** > **Pages** > **Connect to Git**.
-2. Select your repository and configure the build settings:
-   * **Framework Preset**: `Vite`
-   * **Build Command**: `npm run build`
-   * **Build Output Directory**: `dist`
-3. Add these environment variables:
-   * `VITE_GOOGLE_APPS_SCRIPT_URL`: Your Apps Script deployment URL.
-   * `VITE_GOOGLE_APPS_SCRIPT_API_KEY`: (Optional) Your Apps Script security passcode.
-
-### Backend Deployment (Google Cloud Run)
-Build and deploy the backend container using the Google Cloud SDK:
 ```bash
-cd backend
-gcloud run deploy bakatracker-mcp \
-  --source . \
-  --region us-central1 \
-  --platform managed \
-  --cpu 0.25 \
-  --memory 512Mi \
-  --concurrency 80 \
-  --timeout 300 \
-  --min-instances 0 \
-  --max-instances 5 \
-  --allow-unauthenticated \
-  --set-env-vars GOOGLE_APPS_SCRIPT_URL=YOUR_URL,AUTH_TOKEN=YOUR_TOKEN,LOG_LEVEL=INFO
+cd platform && npx wrangler dev    # Worker API on http://localhost:8787
+# in another terminal:
+npm run dev                        # React PWA on http://localhost:5173
 ```
+
+Copy `platform/.dev.vars.example` → `platform/.dev.vars` and fill in local
+secrets. Wrangler simulates D1/KV locally — no Cloudflare resources required.
+
+### Manual deployment (Mode B)
+
+Advanced users can skip `npm run setup` and configure Wrangler by hand — see
+**Mode B — Manual deployment** in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
 ---
 
