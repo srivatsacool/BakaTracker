@@ -7,7 +7,14 @@ COOKIE_ENCRYPTION_KEY=<a-long-random-string-32+bytes>
 
 # Local dev only: lets the REST API trust an X-User-Sub header so the React app
 # can exercise it before OAuth is wired into the UI. NEVER set this in prod.
+# Even when set, the worker only honors it while APP_ORIGIN is a localhost
+# origin — it is inert on any deployed worker.
 # REST_DEV_BYPASS=1
+
+# Optional: comma-separated extra browser origins allowed by CORS beyond
+# APP_ORIGIN (wrangler.jsonc already sets http://localhost:5173 for the Vite dev
+# server). In prod, set this to your Pages/UI origin, e.g.:
+# CORS_ALLOWED_ORIGINS=https://bakatracker.pages.dev
 
 # Optional (Gemini via Google AI REST, if not using the Cloudflare `AI` binding):
 # GEMINI_API_KEY=

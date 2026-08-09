@@ -225,7 +225,7 @@ resources needed.
 | OAuth redirect error `redirect_uri_mismatch` | The URI registered in Google must equal `APP_ORIGIN + /callback` exactly (no trailing slash). Re-run setup and re-check. |
 | App refuses to start in production | `VITE_API_BASE_URL` missing in Pages env — add it (never `localhost`). |
 | `wrangler secret put` hangs | It waits on stdin — pipe the value: `echo "$VAL" \| npx wrangler secret put NAME`. |
-| CORS errors in browser | `APP_ORIGIN` must be the exact origin of the Pages site you open. |
+| CORS errors in browser | Add the exact UI origin to `CORS_ALLOWED_ORIGINS` (comma-separated; the Worker origin is always allowed). It must match the origin in the address bar exactly — scheme, host, and port. |
 
 ---
 

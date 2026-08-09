@@ -6,6 +6,13 @@
  *   2. redirects to Google's consent screen
  *   3. on callback, exchanges the code, reads the user's profile, and hands the
  *      identity to workers-oauth-provider via completeAuthorization().
+ *
+ * SECURITY (production pass):
+ *   - redirect_uri is ALWAYS `canonicalAppOrigin(APP_ORIGIN) + "/callback"` —
+ *     never derived from the incoming request URL/host, so the value Google
+ *     validated at /authorize is byte-identical at /callback.
+ *   - APP_ORIGIN is required; a missing/invalid value fails closed (500),
+ *     there is no silent fallback to the request origin.
  */
 import type { AuthRequest, OAuthHelpers } from "@cloudflare/workers-oauth-provider";
 import { Hono } from "hono";
@@ -23,6 +30,7 @@ import {
 } from "../workers-oauth-utils";
 import type { Props } from "./props";
 import { getGoogleAuthorizeUrl, fetchGoogleToken, fetchGoogleUserInfo } from "./google-oauth";
+import { oauthCallbackUri } from "./app-origin";
 
 export const GOOGLE_SCOPES = "openid email profile";
 
@@ -91,17 +99,21 @@ function redirectToGoogle(
   headers: Record<string, string> = {},
   requestEnv?: Env,
 ) {
+  // Strict redirect_uri: ALWAYS the configured origin's callback. Never
+  // derived from request.url — the Worker may be reached via the dev proxy
+  // port or a custom domain, and a request-derived origin would both break
+  // Google's exact-match registration and enable redirect malleability.
+  const redirectUri = oauthCallbackUri(requestEnv?.APP_ORIGIN);
+  if (!redirectUri) {
+    return new Response("Server misconfigured: APP_ORIGIN is invalid or missing", { status: 500 });
+  }
   return new Response(null, {
     status: 302,
     headers: {
       ...headers,
       location: getGoogleAuthorizeUrl({
         client_id: requestEnv?.GOOGLE_CLIENT_ID ?? "",
-        // Use the stable configured origin (APP_ORIGIN) for the Google redirect_uri
-        // rather than request.url, so it is identical whether the worker is reached
-        // via the wrangler dev proxy port (8787) or its direct internal port.
-        // Google requires an exact, pre-registered redirect URI match.
-        redirect_uri: `${requestEnv?.APP_ORIGIN ?? new URL(request.url).origin}/callback`,
+        redirect_uri: redirectUri,
         scope: GOOGLE_SCOPES,
         state: stateToken,
       }),
@@ -121,14 +133,18 @@ app.get("/callback", async (c) => {
   }
   if (!oauthReqInfo.clientId) return c.text("Invalid OAuth request data", 400);
 
+  // Strict: token exchange must use the SAME canonical callback URI that was
+  // sent to Google at /authorize (down to the exact origin) — a mismatch here
+  // makes Google reject the exchange outright. Never the request host.
+  const redirect_uri = oauthCallbackUri(c.env.APP_ORIGIN);
+  if (!redirect_uri) return c.text("Server misconfigured: APP_ORIGIN is invalid or missing", 500);
+
   // Exchange code for tokens.
   const [token, err] = await fetchGoogleToken({
     client_id: c.env.GOOGLE_CLIENT_ID!,
     client_secret: c.env.GOOGLE_CLIENT_SECRET!,
     code: c.req.query("code"),
-    // Must match the redirect_uri sent to Google at /authorize (stable APP_ORIGIN),
-    // never request.url's host/port which varies between proxy and direct hits.
-    redirect_uri: `${c.env.APP_ORIGIN}/callback`,
+    redirect_uri,
   });
   if (err) return err;
 

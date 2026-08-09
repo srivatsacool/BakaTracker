@@ -26,6 +26,7 @@ import { applySyncPush, pullOps } from "../storage/sync";
 import { SyncPush } from "../domain/schemas";
 import { MAX_FILE_SIZE } from "../domain/schemas";
 import type { Props } from "../auth/props";
+import { isAllowedCorsOrigin, isLocalDevOrigin } from "../auth/app-origin";
 
 export const REST_PREFIX = "/api/v1";
 
@@ -42,12 +43,20 @@ export function buildRestApp(): Hono<{ Bindings: RESTBindings; Variables: RESTVa
   // The OAuthProvider shell adds CORS only to /token, /register, /mcp and the
   // metadata endpoint — the default handler (this REST API) passes through
   // untouched. A browser UI (Vite dev :5173 → Worker :8787, or Pages → Worker)
-  // would be blocked on every call without these headers. Reflect the request
-  // origin like the provider does; auth is bearer-token, not cookies.
+  // would be blocked on every call without these headers.
+  //
+  // Security: the allowlist is EXPLICIT — the configured APP_ORIGIN plus any
+  // extra origins in CORS_ALLOWED_ORIGINS (comma-separated). No wildcard, no
+  // reflection of arbitrary origins (a reflected origin would let any site
+  // issue bearer-authenticated reads against the API). Auth is bearer-token,
+  // not cookies, so `credentials` stays false — nothing to send cross-origin.
+  // Requests with no Origin header (curl, MCP, same-origin fetches) pass
+  // through CORS untouched.
   app.use(
     "*",
     cors({
-      origin: (origin) => origin || "*",
+      origin: (origin, c) =>
+        isAllowedCorsOrigin(origin, c.env.APP_ORIGIN, c.env.CORS_ALLOWED_ORIGINS) ? origin : undefined,
       allowHeaders: ["Authorization", "Content-Type", "X-User-Sub"],
       allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
       maxAge: 86400,
@@ -71,7 +80,11 @@ export function buildRestApp(): Hono<{ Bindings: RESTBindings; Variables: RESTVa
     }
 
     // 2) Local-dev bridge (explicit opt-in, never on in production).
-    if (c.env.REST_DEV_BYPASS === "1") {
+    // Defense in depth: even if REST_DEV_BYPASS is accidentally set on a
+    // deployed Worker, the bridge only honors the header when APP_ORIGIN is a
+    // loopback origin — local `wrangler dev` is the only environment where
+    // that is true. No legacy auth path exists in production.
+    if (c.env.REST_DEV_BYPASS === "1" && isLocalDevOrigin(c.env.APP_ORIGIN)) {
       const sub = c.req.header("X-User-Sub");
       if (sub) {
         c.set("user", { sub, name: null, email: null });

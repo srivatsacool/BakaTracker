@@ -194,6 +194,28 @@ export function sanitizeUrl(url: string): string {
 }
 
 /**
+ * Constant-time string comparison for equal-length secrets. Prevents timing
+ * side-channels when validating attacker-influenced values (CSRF form token,
+ * OAuth state hash) against values that must stay secret: every byte of the
+ * expected value is XOR-combined, so the response time reveals nothing about
+ * where the first mismatch occurred.
+ *
+ * Lengths are compared first (early return) — the inputs here are UUIDs and
+ * SHA-256 hex digests, whose lengths are public format knowledge; only the
+ * BYTES are secret, and those are always fully compared.
+ */
+export function timingSafeEqual(a: string, b: string): boolean {
+  const aBytes = new TextEncoder().encode(a);
+  const bBytes = new TextEncoder().encode(b);
+  if (aBytes.byteLength !== bBytes.byteLength) return false;
+  let diff = 0;
+  for (let i = 0; i < aBytes.byteLength; i++) {
+    diff |= aBytes[i] ^ bBytes[i];
+  }
+  return diff === 0;
+}
+
+/**
  * Generates a new CSRF token and corresponding cookie for form protection
  * @returns Object containing the token and Set-Cookie header value
  */
@@ -232,7 +254,7 @@ export function validateCSRFToken(formData: FormData, request: Request): Validat
 		throw new OAuthError("invalid_request", "Missing CSRF token cookie", 400);
 	}
 
-	if (tokenFromForm !== tokenFromCookie) {
+	if (!timingSafeEqual(tokenFromForm, tokenFromCookie)) {
 		throw new OAuthError("invalid_request", "CSRF token mismatch", 400);
 	}
 
@@ -350,7 +372,7 @@ export async function validateOAuthState(
 	const hashArray = Array.from(new Uint8Array(hashBuffer));
 	const stateHash = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
 
-	if (stateHash !== consentedStateHash) {
+	if (!timingSafeEqual(stateHash, consentedStateHash)) {
 		throw new OAuthError(
 			"invalid_request",
 			"State token does not match session - possible CSRF attack detected",

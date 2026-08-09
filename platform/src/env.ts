@@ -20,6 +20,8 @@ export interface Env {
 
   // --- App config ----------------------------------------------------------
   APP_ORIGIN: string;
+  /** Comma-separated extra CORS origins beyond APP_ORIGIN (e.g. the Pages/UI origin). */
+  CORS_ALLOWED_ORIGINS?: string;
   SYNC_LOCK_TTL_SECONDS?: number;
   /** Google OAuth — as a secret in prod. Injected at runtime, not typed here. */
   GOOGLE_CLIENT_ID?: string;
