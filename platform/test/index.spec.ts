@@ -125,6 +125,65 @@ describe("REST API (integration via SELF)", () => {
     expect(listed.result.some((t) => t.title === "Alice's private task")).toBe(false);
   });
 
+  it("reset_account refuses without explicit DELETE confirm", async () => {
+    const noConfirm = await authedFetch("/api/v1/tools/reset_account", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    expect(noConfirm.status).toBe(400);
+
+    const wrongConfirm = await authedFetch("/api/v1/tools/reset_account", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ confirm: "yes" }),
+    });
+    expect(wrongConfirm.status).toBe(400);
+  });
+
+  it("reset_account deletes only the calling user's data (scoped reset)", async () => {
+    // Seed data for two users.
+    await authedFetch("/api/v1/tools/create_task", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: "alice-to-keep", priority: 1 }),
+    });
+    await SELF.fetch("http://localhost/api/v1/tools/create_task", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-User-Sub": "bob-retains-789" },
+      body: JSON.stringify({ title: "bob-must-survive", priority: 1 }),
+    });
+
+    // Alice resets her account.
+    const reset = await authedFetch("/api/v1/tools/reset_account", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ confirm: "DELETE" }),
+    });
+    expect(reset.status).toBe(200);
+    const resetBody = await reset.json<{ result: { deleted: Record<string, number>; note: string } }>();
+    expect(resetBody.result.deleted.tasks).toBeGreaterThanOrEqual(1);
+    expect(resetBody.result.note).toContain("preserved");
+
+    // Alice's data is gone...
+    const aliceList = await authedFetch("/api/v1/tools/list_tasks", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    const aliceTasks = await aliceList.json<{ result: Array<{ title: string }> }>();
+    expect(aliceTasks.result.some((t) => t.title === "alice-to-keep")).toBe(false);
+
+    // ...but Bob's data is untouched (isolation preserved by the reset).
+    const bobList = await SELF.fetch("http://localhost/api/v1/tools/list_tasks", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-User-Sub": "bob-retains-789" },
+      body: JSON.stringify({}),
+    });
+    const bobTasks = await bobList.json<{ result: Array<{ title: string }> }>();
+    expect(bobTasks.result.some((t) => t.title === "bob-must-survive")).toBe(true);
+  });
+
   it("rejects requests without an identity (401)", async () => {
     const res = await SELF.fetch("http://localhost/api/v1/registry");
     expect(res.status).toBe(401);

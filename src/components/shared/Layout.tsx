@@ -102,7 +102,7 @@ export const Layout: React.FC = () => {
     setShowSettingsModal(false);
   };
 
-const handleResetColors = () => {
+  const handleResetColors = () => {
     setInputAccentLight('#FF90E8');
     setInputAccentDark('#FF90E8');
   };
@@ -134,6 +134,29 @@ const handleResetColors = () => {
       setDemoResult({ ok: false, skipped: false, message: `Demo data could not be loaded (${e instanceof Error ? e.message : 'unknown error'}).` });
     } finally {
       setDemoBusy(false);
+    }
+  };
+
+  // Phase 3 — Clear Data: full per-user reset through the Tool Registry's
+  // `reset_account` tool (scoped to THIS user; auth/session untouched).
+  const [resetBusy, setResetBusy] = useState(false);
+  const [resetResult, setResetResult] = useState<string | null>(null);
+
+  const handleFullReset = async () => {
+    if (!apiClient || isGuest) return;
+    setResetBusy(true);
+    setResetResult(null);
+    try {
+      const res = await apiClient.post<{ ok: boolean; result?: { deleted?: Record<string, number> } }>(
+        '/api/v1/tools/reset_account', { confirm: 'DELETE' },
+      );
+      setResetResult(`Cleared ${JSON.stringify(res.result?.deleted ?? {})} — reloading…`);
+      await init(apiClient);
+      setDeleteConfirmText('');
+    } catch (e) {
+      setResetResult(`Reset failed (${e instanceof Error ? e.message : 'unknown error'}).`);
+    } finally {
+      setResetBusy(false);
     }
   };
 
@@ -735,18 +758,25 @@ const handleResetColors = () => {
 
                 <button
                   type="button"
-                  disabled={deleteConfirmText !== 'delete my data'}
+                  disabled={deleteConfirmText !== 'delete my data' || resetBusy}
                   onClick={async () => {
                     if (deleteConfirmText !== 'delete my data') return;
-                    if (!window.confirm(`Are you absolutely sure you want to delete ${clearDays === 'all' ? 'all your data and reset the app' : `data from the last ${clearDays} days`}? This cannot be undone.`)) return;
-                    await clearDataByDays(clearDays);
-                    setDeleteConfirmText('');
-                    setShowSettingsModal(false);
+                    if (!window.confirm('Are you absolutely sure you want to delete ALL of your data in this account? This cannot be undone. Your login session stays active.')) return;
+                    if (clearDays === 'all') {
+                      await handleFullReset();
+                    } else {
+                      await clearDataByDays(clearDays);
+                      setDeleteConfirmText('');
+                      setShowSettingsModal(false);
+                    }
                   }}
                   className="w-full neo-button bg-danger text-white text-xs py-2 disabled:opacity-40 disabled:cursor-not-allowed"
                 >
-                  Clear Selected Data
+                  <span>{resetBusy ? 'Clearing…' : 'Clear Selected Data'}</span>
                 </button>
+                {resetResult && (
+                  <p className="text-[10px] font-mono text-center text-danger">{resetResult}</p>
+                )}
               </div>
             </div>
           </div>

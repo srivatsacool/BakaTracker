@@ -6,7 +6,7 @@
  */
 import type { Task } from "../../domain/schemas";
 import {
-  taskUpsert, taskDelete, taskGet, taskList,
+  taskUpsert, taskDelete, taskGet, taskList, taskDeleteAllForUser,
 } from "../db";
 
 export class TaskRepository {
@@ -26,5 +26,10 @@ export class TaskRepository {
 
   async list(userId: string, status?: string, limit = 200): Promise<Task[]> {
     return taskList(this.db, userId, status, limit);
+  }
+
+  /** Remove every task row for one user (reset_account; scoped, never global). */
+  async deleteAll(userId: string): Promise<number> {
+    return taskDeleteAllForUser(this.db, userId);
   }
 }

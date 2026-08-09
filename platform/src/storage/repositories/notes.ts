@@ -2,7 +2,7 @@
  * Notes repository (notes + cross-entity search) — Tool → Repository → SQL → D1.
  */
 import type { Note } from "../../domain/schemas";
-import { noteUpsert, noteDelete, noteGet, noteList, searchNotes } from "../db";
+import { noteUpsert, noteDelete, noteGet, noteList, searchNotes, noteDeleteAllForUser } from "../db";
 
 export class NoteRepository {
   constructor(private readonly db: D1Database) {}
@@ -17,6 +17,11 @@ export class NoteRepository {
 
   async get(userId: string, id: string): Promise<Note | null> {
     return noteGet(this.db, userId, id);
+  }
+
+  /** Remove every note row for one user (reset_account; scoped, never global). */
+  async deleteAll(userId: string): Promise<number> {
+    return noteDeleteAllForUser(this.db, userId);
   }
 
   async list(userId: string): Promise<Note[]> {

@@ -17,6 +17,7 @@ import { journalTodayTool, getJournalTool, listJournalTool } from "./journal";
 import { analyticsTool } from "./analytics";
 import { planDayTool, weeklyReviewTool } from "./planning";
 import { rememberTool, recallTool } from "./memory";
+import { resetAccountTool } from "./reset-account";
 
 export function registerAll(registry: import("../registry").Registry): void {
   registry.registerMany([
@@ -27,5 +28,7 @@ export function registerAll(registry: import("../registry").Registry): void {
     journalTodayTool, getJournalTool, listJournalTool,
     // Knowledge / AI / system
     analyticsTool, planDayTool, weeklyReviewTool, rememberTool, recallTool,
+    // Data management
+    resetAccountTool,
   ]);
 }

@@ -176,3 +176,28 @@ export async function journalList(db: D1Database, userId: string, from?: string,
   const res = await db.prepare(sql).bind(...binds).all();
   return (res.results ?? []) as Journal[];
 }
+
+// --- Reset (per-user, never global) ---------------------------------------
+// Deletes ALL data rows for ONE user across every entity. Used by the
+// `reset_account` tool (and only ever scoped by user_id — auth/session/owner
+// state lives outside these tables and is never touched).
+
+export async function taskDeleteAllForUser(db: D1Database, userId: string): Promise<number> {
+  const r = await db.prepare("DELETE FROM tasks WHERE user_id=?1").bind(userId).run();
+  return r.meta?.changes ?? 0;
+}
+
+export async function habitDeleteAllForUser(db: D1Database, userId: string): Promise<number> {
+  const r = await db.prepare("DELETE FROM habits WHERE user_id=?1").bind(userId).run();
+  return r.meta?.changes ?? 0;
+}
+
+export async function noteDeleteAllForUser(db: D1Database, userId: string): Promise<number> {
+  const r = await db.prepare("DELETE FROM notes WHERE user_id=?1").bind(userId).run();
+  return r.meta?.changes ?? 0;
+}
+
+export async function journalDeleteAllForUser(db: D1Database, userId: string): Promise<number> {
+  const r = await db.prepare("DELETE FROM journal WHERE user_id=?1").bind(userId).run();
+  return r.meta?.changes ?? 0;
+}
