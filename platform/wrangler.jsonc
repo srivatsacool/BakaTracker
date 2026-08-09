@@ -36,7 +36,7 @@
   // forces an API token). Add it back for `wrangler dev --remote` / deploy:
   //   "ai": { "binding": "AI" }
   "vars": {
-    "APP_ORIGIN": "http://localhost:8787",
+    "APP_ORIGIN": "https://bakatracker-platform.srivatsagorti.workers.dev",
     "SYNC_LOCK_TTL_SECONDS": 60
   },
   "observability": {
