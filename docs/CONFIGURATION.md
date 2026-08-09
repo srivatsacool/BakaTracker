@@ -122,26 +122,26 @@ Rules:
 Never committed; never printed; stored via `wrangler secret put`. Local dev uses
 `platform/.dev.vars` instead.
 
-## R2 — v2.0 file storage plan (not yet implemented)
+## R2 — v2.0 file storage (implemented)
 
-R2 is the intended binary store for v2.0 (attachments, PDFs, images, exports).
-It is **prepared but not implemented**: `platform/src/env.ts` already types an
-optional `R2_BUCKET?: R2Bucket` binding, and `npm run setup --with-r2` provisions
-the bucket (`<worker-name>-files`) and writes the binding to
-`wrangler.prod.jsonc`.
+R2 is the binary store for v2.0 (attachments, PDFs, images, voice, exports).
+`npm run setup --with-r2` provisions the bucket (`<worker-name>-files`) and
+writes the binding to `wrangler.prod.jsonc`; local dev and the vitest pool
+simulate the bucket automatically (`platform/wrangler.jsonc`).
 
-**Design decisions for the implementation checkpoint (do NOT build yet):**
-
-| Concern | Decision |
+| Concern | Implementation |
 |---------|----------|
-| Binary payloads | Live only in R2, keyed `users/{user_id}/files/{file_id}` |
-| Metadata (file_id, user_id, R2 key, filename, MIME, size, timestamps) | Lives in D1 — never binaries in D1 |
-| Authz | Every `get_object`/`put_object`/`delete_object` enforces the authenticated user's `user_id` from the bearer token; no cross-user key access |
-| Exports | Portable CSV/JSON exports (Sheets integration was removed) can be written to R2 as `users/{user_id}/exports/{name}.{ts}` |
-| Not in scope yet | No image processing, thumbnails, streaming, or presigned URLs |
+| Binary payloads | Live only in R2, keyed `users/{user_id}/files/{file_id}` — the key is **server-derived from the authenticated OAuth `sub`**, never client-supplied, so no user can address another user's prefix |
+| Metadata (file_id, user_id, R2 key, filename, MIME, size, timestamps) | D1 `files` table (`0002_files.sql`) — `r2_key` is internal-only, stripped from every API response |
+| Rest API | `POST /api/v1/files` (multipart), `GET /api/v1/files`, `GET /api/v1/files/:id` (raw bytes download), `DELETE /api/v1/files/:id` |
+| Tool Registry / MCP | `file_upload`, `file_list`, `file_get` (metadata or `include_data` base64), `file_delete` — same `FileRepository` as REST |
+| Authz | Every D1 query is `WHERE id = ? AND user_id = ?`; every R2 op uses the derived key; cross-user access returns 404 (no existence oracle). `reset_account` purges the user's files (R2 objects + rows) |
+| Validation | MIME allowlist (`ALLOWED_MIME_TYPES`) → 400; size cap 25 MiB (`MAX_FILE_SIZE`) → 413 before anything touches R2 |
+| Out of scope (v2.1+) | Image processing, thumbnails, streaming, presigned/public URLs, sharing, versioning |
 
 The binding is deliberately optional (`?`) so the app still runs on instances
-created without `--with-r2`.
+created without `--with-r2` — file endpoints answer **501 Not Implemented**
+("R2 not configured — deploy with --with-r2").
 
 ## Cross-instance isolation
 

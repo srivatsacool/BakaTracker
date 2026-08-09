@@ -92,6 +92,48 @@ export const Journal = JournalInput.extend({
 export type Journal = z.infer<typeof Journal>;
 export type JournalInput = z.infer<typeof JournalInput>;
 
+// --- Files (R2 attachments) -------------------------------------------------
+// Binaries live in R2, keyed `users/{user_id}/files/{file_id}`. This schema is
+// the D1 metadata mirror ONLY. `r2_key` is intentionally NOT exposed to
+// clients — it is server-derived from the authenticated identity.
+export const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25 MiB (v2.0 cap)
+
+/** MIME allowlist for uploads (v2.0: images, PDFs, text/docs, audio, video, archives). */
+export const ALLOWED_MIME_TYPES = new Set([
+  // images
+  "image/jpeg", "image/png", "image/gif", "image/webp", "image/avif", "image/svg+xml",
+  // documents
+  "application/pdf",
+  "text/plain", "text/markdown", "text/csv", "text/html",
+  "application/json",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document", // .docx
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",       // .xlsx
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation", // .pptx
+  // audio / video
+  "audio/mpeg", "audio/wav", "audio/ogg", "audio/webm", "audio/mp4",
+  "video/mp4", "video/webm", "video/ogg", "video/quicktime",
+  // archives
+  "application/zip", "application/gzip",
+]);
+
+export const FileMeta = z.object({
+  id: z.string(),
+  user_id: z.string(),
+  filename: z.string().min(1).max(255),
+  mime_type: z.string(),
+  size: z.number().int().nonnegative(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+export type FileMeta = z.infer<typeof FileMeta>;
+
+export const FileUploadInput = z.object({
+  filename: z.string().min(1).max(255),
+  mime_type: z.string().min(1),
+  /** Base64-encoded binary payload (JSON-friendly transport for tools/MCP). */
+  data_base64: z.string().min(1),
+});
+
 // --- Search / analytics ---------------------------------------------------
 export const SearchQuery = z.object({
   query: z.string().min(1).max(500),

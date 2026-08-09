@@ -1,5 +1,6 @@
 import { env, SELF, applyD1Migrations } from "cloudflare:test";
 import migrationSql from "../migrations/0001_init.sql?raw";
+import migrationFilesSql from "../migrations/0002_files.sql?raw";
 import { describe, it, expect, beforeAll } from "vitest";
 import { ToolRegistry } from "../src/registry";
 import { registerAll } from "../src/tools";
@@ -7,18 +8,24 @@ import { repositories } from "../src/storage/repositories";
 
 const TEST_USER = "test-sub-123";
 
-beforeAll(async () => {
-  // D1 in the test pool starts empty — apply the real schema once. (Pool
-  // v0.20 dropped the `./config` subpath, so we split the raw SQL ourselves —
-  // same statements the production migrations run.)
-  const queries = migrationSql
+/** Split raw migration SQL the same way `wrangler d1 migrations apply` does. */
+function splitSql(raw: string): string[] {
+  return raw
     // strip full-line AND trailing comments (e.g. `-- Google \`sub\``)
     .replace(/^\s*--.*$/gm, "")
     .split(";")
     .map((s) => s.trim())
     .filter((s) => s.length > 0);
+}
 
-  await applyD1Migrations(env.BAKA_DB, [{ name: "0001_init", queries }]);
+beforeAll(async () => {
+  // D1 in the test pool starts empty — apply the real schema once. (Pool
+  // v0.20 dropped the `./config` subpath, so we split the raw SQL ourselves —
+  // same statements the production migrations run.)
+  await applyD1Migrations(env.BAKA_DB, [
+    { name: "0001_init", queries: splitSql(migrationSql) },
+    { name: "0002_files", queries: splitSql(migrationFilesSql) },
+  ]);
 
   // Pre-seed the isolation test's private task.
   const repos = repositories(env.BAKA_DB);
@@ -194,6 +201,141 @@ describe("REST API (integration via SELF)", () => {
     expect(res.status).toBe(200);
     const body = await res.json<{ sub: string }>();
     expect(body.sub).toBe(TEST_USER);
+  });
+});
+
+describe("Files (R2 attachments)", () => {
+  const PAYLOAD = new TextEncoder().encode("BakaTracker v2 file payload — hello R2!");
+
+  it("uploads a file via multipart and returns metadata (201)", async () => {
+    const form = new FormData();
+    form.append("file", new File([PAYLOAD], "readme.txt", { type: "text/plain" }));
+    const res = await authedFetch("/api/v1/files", { method: "POST", body: form });
+    expect(res.status).toBe(201);
+    const body = await res.json<{ ok: boolean; file: { id: string; user_id: string; filename: string; mime_type: string; size: number } }>();
+    expect(body.ok).toBe(true);
+    expect(body.file.id).toMatch(/^file_/);
+    expect(body.file.user_id).toBe(TEST_USER);
+    expect(body.file.filename).toBe("readme.txt");
+    expect(body.file.mime_type).toBe("text/plain");
+    expect(body.file.size).toBe(PAYLOAD.byteLength);
+  });
+
+  it("lists, downloads, and deletes a file (full roundtrip)", async () => {
+    const form = new FormData();
+    form.append("file", new File([PAYLOAD], "photo.png", { type: "image/png" }));
+    const up = await authedFetch("/api/v1/files", { method: "POST", body: form });
+    const { file } = await up.json<{ file: { id: string } }>();
+
+    // list
+    const list = await authedFetch("/api/v1/files");
+    expect(list.status).toBe(200);
+    const listed = await list.json<{ files: Array<{ id: string }> }>();
+    expect(listed.files.some((f) => f.id === file.id)).toBe(true);
+
+    // download — exact bytes roundtrip
+    const dl = await authedFetch(`/api/v1/files/${file.id}`);
+    expect(dl.status).toBe(200);
+    expect(dl.headers.get("Content-Type")).toBe("image/png");
+    expect(dl.headers.get("Content-Disposition")).toContain('attachment; filename="photo.png"');
+    expect(dl.headers.get("X-Content-Type-Options")).toBe("nosniff");
+    expect(new Uint8Array(await dl.arrayBuffer())).toEqual(PAYLOAD);
+
+    // delete
+    const del = await authedFetch(`/api/v1/files/${file.id}`, { method: "DELETE" });
+    expect(del.status).toBe(200);
+    expect((await del.json<{ removed: boolean }>()).removed).toBe(true);
+
+    // gone → 404
+    const after = await authedFetch(`/api/v1/files/${file.id}`);
+    expect(after.status).toBe(404);
+  });
+
+  it("enforces user isolation on file access (B cannot read A's file)", async () => {
+    const form = new FormData();
+    form.append("file", new File([PAYLOAD], "alice-secret.png", { type: "image/png" }));
+    const up = await authedFetch("/api/v1/files", { method: "POST", body: form });
+    const { file: aliceFile } = await up.json<{ file: { id: string } }>();
+
+    // Bob's list must not contain Alice's file…
+    const bobList = await SELF.fetch("http://localhost/api/v1/files", {
+      headers: { "X-User-Sub": "bob-files-999" },
+    });
+    const listed = await bobList.json<{ files: Array<{ id: string }> }>();
+    expect(listed.files.some((f) => f.id === aliceFile.id)).toBe(false);
+
+    // …and Bob's direct GET / DELETE must 404 (no existence oracle).
+    const bobGet = await SELF.fetch(`http://localhost/api/v1/files/${aliceFile.id}`, {
+      headers: { "X-User-Sub": "bob-files-999" },
+    });
+    expect(bobGet.status).toBe(404);
+    const bobDel = await SELF.fetch(`http://localhost/api/v1/files/${aliceFile.id}`, {
+      method: "DELETE",
+      headers: { "X-User-Sub": "bob-files-999" },
+    });
+    expect(bobDel.status).toBe(404);
+
+    // Alice can still read her own file (isolation was not destructive).
+    const aliceGet = await authedFetch(`/api/v1/files/${aliceFile.id}`);
+    expect(aliceGet.status).toBe(200);
+  });
+
+  it("rejects disallowed MIME types (400) and oversized uploads (413)", async () => {
+    // Executable/unknown MIME → 400
+    const badForm = new FormData();
+    badForm.append("file", new File([PAYLOAD], "virus.exe", { type: "application/x-msdownload" }));
+    const bad = await authedFetch("/api/v1/files", { method: "POST", body: badForm });
+    expect(bad.status).toBe(400);
+
+    // > 25 MiB → 413 (payload rejected before touching R2)
+    const big = new Uint8Array(26 * 1024 * 1024);
+    big.fill(7);
+    const bigForm = new FormData();
+    bigForm.append("file", new File([big], "huge.zip", { type: "application/zip" }));
+    const exceeded = await authedFetch("/api/v1/files", { method: "POST", body: bigForm });
+    expect(exceeded.status).toBe(413);
+  });
+
+  it("exposes files through the Tool Registry (MCP path) with base64 content", async () => {
+    // Upload through the registry (same business logic as REST).
+    const b64 = btoa(String.fromCharCode(...PAYLOAD));
+    const up = await authedFetch("/api/v1/tools/file_upload", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ filename: "note.md", mime_type: "text/markdown", data_base64: b64 }),
+    });
+    expect(up.status).toBe(200);
+    const uploaded = await up.json<{ result: { id: string } }>();
+    expect(uploaded.result.id).toMatch(/^file_/);
+
+    // Get with content (agent use case).
+    const got = await authedFetch("/api/v1/tools/file_get", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: uploaded.result.id, include_data: true }),
+    });
+    expect(got.status).toBe(200);
+    const withData = await got.json<{ result: { data_base64: string } }>();
+    expect(withData.result.data_base64).toBe(b64);
+  });
+
+  it("reset_account purges the user's files too (R2 + metadata)", async () => {
+    const form = new FormData();
+    form.append("file", new File([PAYLOAD], "to-wipe.txt", { type: "text/plain" }));
+    const up = await authedFetch("/api/v1/files", { method: "POST", body: form });
+    const { file } = await up.json<{ file: { id: string } }>();
+
+    const reset = await authedFetch("/api/v1/tools/reset_account", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ confirm: "DELETE" }),
+    });
+    expect(reset.status).toBe(200);
+    const body = await reset.json<{ result: { deleted: Record<string, number> } }>();
+    expect(body.result.deleted.files).toBeGreaterThanOrEqual(1);
+
+    const after = await authedFetch(`/api/v1/files/${file.id}`);
+    expect(after.status).toBe(404);
   });
 });
 

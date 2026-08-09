@@ -42,7 +42,7 @@ export class MyMCP extends McpAgent<Env, Record<string, never>, Props> {
             user: propsToUser(this.props),
             ai: makeAIProvider(this.env),
             cache: this.env.OAUTH_KV,
-            repos: repositories(this.env.BAKA_DB),
+            repos: repositories(this.env.BAKA_DB, this.env.R2_BUCKET),
           });
           return {
             content: [{ type: "text" as const, text: JSON.stringify(out) }],

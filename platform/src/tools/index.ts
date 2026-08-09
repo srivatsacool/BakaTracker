@@ -18,6 +18,7 @@ import { analyticsTool } from "./analytics";
 import { planDayTool, weeklyReviewTool } from "./planning";
 import { rememberTool, recallTool } from "./memory";
 import { resetAccountTool } from "./reset-account";
+import { fileUploadTool, fileListTool, fileGetTool, fileDeleteTool } from "./files";
 
 export function registerAll(registry: import("../registry").Registry): void {
   registry.registerMany([
@@ -26,6 +27,8 @@ export function registerAll(registry: import("../registry").Registry): void {
     createHabitTool, logHabitTool, listHabitsTool,
     createNoteTool, getNoteTool, updateNoteTool, deleteNoteTool, listNotesTool, searchNotesTool,
     journalTodayTool, getJournalTool, listJournalTool,
+    // Files (R2 attachments)
+    fileUploadTool, fileListTool, fileGetTool, fileDeleteTool,
     // Knowledge / AI / system
     analyticsTool, planDayTool, weeklyReviewTool, rememberTool, recallTool,
     // Data management

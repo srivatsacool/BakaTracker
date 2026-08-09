@@ -21,9 +21,10 @@ import type { OAuthHelpers } from "@cloudflare/workers-oauth-provider";
 import { ToolRegistry, ToolRegistryError } from "../registry";
 import { registerAll } from "../tools";
 import { makeAIProvider } from "../ai";
-import { repositories } from "../storage/repositories";
+import { repositories, FileError } from "../storage/repositories";
 import { applySyncPush, pullOps } from "../storage/sync";
 import { SyncPush } from "../domain/schemas";
+import { MAX_FILE_SIZE } from "../domain/schemas";
 import type { Props } from "../auth/props";
 
 export const REST_PREFIX = "/api/v1";
@@ -103,13 +104,17 @@ export function buildRestApp(): Hono<{ Bindings: RESTBindings; Variables: RESTVa
         user,
         ai: makeAIProvider(c.env),
         cache: c.env.OAUTH_KV,
-        repos: repositories(c.env.BAKA_DB),
+        repos: repositories(c.env.BAKA_DB, c.env.R2_BUCKET),
       });
       return c.json({ ok: true, result });
     } catch (e) {
       // Validation/user errors are 4xx; unexpected failures are 500.
       if (e instanceof ToolRegistryError) {
-        const status = e.code === "invalid_input" || e.code === "unknown_tool" ? 400 : 500;
+        const status =
+          e.code === "invalid_input" || e.code === "unknown_tool" ? 400
+          : e.code === "not_found" ? 404
+          : e.code === "not_configured" ? 501
+          : 500;
         return c.json({ ok: false, error: e.code, message: e.message }, status);
       }
       return c.json({ ok: false, error: "internal", message: (e as Error).message }, 500);
@@ -131,6 +136,80 @@ export function buildRestApp(): Hono<{ Bindings: RESTBindings; Variables: RESTVa
     const cursor = c.req.query("cursor");
     const result = await pullOps(c.env.BAKA_DB, user.sub, cursor ?? undefined);
     return c.json(result);
+  });
+
+  // --- files (R2 attachments) ------------------------------------------------
+  // Dedicated routes: uploads are multipart and downloads are raw bytes, which
+  // a JSON tool call cannot carry. Both paths hit the SAME FileRepository as
+  // the registry tools (file_upload / file_list / file_get / file_delete) —
+  // one business logic, two thin transports.
+  //
+  // SECURITY: the user is whatever the bearer token says (c.get("user").sub).
+  // No user_id is ever read from the request body/query — R2 keys and D1 rows
+  // are scoped by the authenticated identity only.
+
+  app.post("/files", async (c) => {
+    const user = c.get("user") as { sub: string };
+    try {
+      const form = await c.req.formData();
+      const file = form.get("file");
+      if (!file || typeof file === "string") {
+        return c.json({ ok: false, error: "invalid_input", message: "Missing multipart field `file`." }, 400);
+      }
+      const body = await file.arrayBuffer();
+      if (body.byteLength > MAX_FILE_SIZE) {
+        return c.json(
+          { ok: false, error: "too_large", message: `File exceeds the ${MAX_FILE_SIZE / (1024 * 1024)} MiB upload limit.` },
+          413,
+        );
+      }
+      const repos = repositories(c.env.BAKA_DB, c.env.R2_BUCKET);
+      const meta = await repos.files.upload(user.sub, {
+        filename: file.name,
+        mime_type: file.type || "application/octet-stream",
+        body,
+      });
+      return c.json({ ok: true, file: meta }, 201);
+    } catch (e) {
+      if (e instanceof FileError) {
+        const status = e.code === "too_large" ? 413 : e.code === "not_configured" ? 501 : 400;
+        return c.json({ ok: false, error: e.code, message: e.message }, status);
+      }
+      return c.json({ ok: false, error: "internal", message: (e as Error).message }, 500);
+    }
+  });
+
+  app.get("/files", async (c) => {
+    const user = c.get("user") as { sub: string };
+    const limit = Number(c.req.query("limit") ?? 100);
+    const repos = repositories(c.env.BAKA_DB, c.env.R2_BUCKET);
+    const files = await repos.files.list(user.sub, Number.isFinite(limit) ? limit : 100);
+    return c.json({ ok: true, files });
+  });
+
+  // GET /files/:id — raw binary download (Content-Type + attachment filename).
+  app.get("/files/:id", async (c) => {
+    const user = c.get("user") as { sub: string };
+    const repos = repositories(c.env.BAKA_DB, c.env.R2_BUCKET);
+    const file = await repos.files.get(user.sub, c.req.param("id"));
+    if (!file) return c.json({ ok: false, error: "not_found", message: "File not found." }, 404);
+    const disposition = `attachment; filename="${file.meta.filename.replace(/["\\]/g, "")}"`;
+    return new Response(file.body, {
+      headers: {
+        "Content-Type": file.meta.mime_type,
+        "Content-Disposition": disposition,
+        "Cache-Control": "private, no-store",
+        "X-Content-Type-Options": "nosniff",
+      },
+    });
+  });
+
+  app.delete("/files/:id", async (c) => {
+    const user = c.get("user") as { sub: string };
+    const repos = repositories(c.env.BAKA_DB, c.env.R2_BUCKET);
+    const removed = await repos.files.delete(user.sub, c.req.param("id"));
+    if (!removed) return c.json({ ok: false, error: "not_found", message: "File not found." }, 404);
+    return c.json({ ok: true, removed: true });
   });
 
   app.get("/whoami", async (c) => c.json(c.get("user")));

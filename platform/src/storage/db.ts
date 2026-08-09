@@ -177,6 +177,52 @@ export async function journalList(db: D1Database, userId: string, from?: string,
   return (res.results ?? []) as Journal[];
 }
 
+// --- FILES (metadata mirror; binaries live in R2) --------------------------
+import type { FileMeta } from "../domain/schemas";
+
+type FileRow = FileMeta & { r2_key: string };
+
+export async function fileInsert(db: D1Database, row: FileRow): Promise<void> {
+  await db
+    .prepare(
+      `INSERT INTO files (id, user_id, r2_key, filename, mime_type, size, created_at, updated_at)
+       VALUES (?1,?2,?3,?4,?5,?6,?7,?8)`,
+    )
+    .bind(row.id, row.user_id, row.r2_key, row.filename, row.mime_type, row.size, row.created_at, row.updated_at)
+    .run();
+}
+
+/** Fetch one file row — ALWAYS scoped by user_id (never by id alone). */
+export async function fileGet(db: D1Database, userId: string, id: string): Promise<FileRow | null> {
+  const r = await db.prepare("SELECT * FROM files WHERE id=?1 AND user_id=?2").bind(id, userId).first();
+  return (r as FileRow) ?? null;
+}
+
+export async function fileList(db: D1Database, userId: string, limit = 100): Promise<FileRow[]> {
+  const r = await db
+    .prepare("SELECT * FROM files WHERE user_id=?1 ORDER BY created_at DESC LIMIT ?2")
+    .bind(userId, limit)
+    .all();
+  return (r.results ?? []) as FileRow[];
+}
+
+/** Delete one file row — scoped by user. Returns true if a row was removed. */
+export async function fileDelete(db: D1Database, userId: string, id: string): Promise<boolean> {
+  const r = await db.prepare("DELETE FROM files WHERE id=?1 AND user_id=?2").bind(id, userId).run();
+  return (r.meta?.changes ?? 0) > 0;
+}
+
+/** All of a user's file rows (for reset: keys must be purged from R2 too). */
+export async function fileListAllForUser(db: D1Database, userId: string): Promise<FileRow[]> {
+  const r = await db.prepare("SELECT * FROM files WHERE user_id=?1").bind(userId).all();
+  return (r.results ?? []) as FileRow[];
+}
+
+export async function fileDeleteAllForUser(db: D1Database, userId: string): Promise<number> {
+  const r = await db.prepare("DELETE FROM files WHERE user_id=?1").bind(userId).run();
+  return r.meta?.changes ?? 0;
+}
+
 // --- Reset (per-user, never global) ---------------------------------------
 // Deletes ALL data rows for ONE user across every entity. Used by the
 // `reset_account` tool (and only ever scoped by user_id — auth/session/owner

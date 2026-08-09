@@ -11,20 +11,23 @@ const ResetAccountInput = z.object({
 export const resetAccountTool: Tool<typeof ResetAccountInput> = {
   name: "reset_account",
   description:
-    "Delete ALL of the calling user's data (tasks, habits, notes, journal) from the account. " +
+    "Delete ALL of the calling user's data (tasks, habits, notes, journal, files) from the account. " +
     "Requires { confirm: \"DELETE\" }. Never affects other users; auth/session state is untouched.",
   schema: ResetAccountInput,
   async handler(ctx, input) {
     // The schema already guarantees input.confirm === "DELETE".
     void input;
-    const { tasks, habits, notes, journal } = ctx.repos;
+    const { tasks, habits, notes, journal, files } = ctx.repos;
     const userId = ctx.user.sub;
 
-    const [tasksDeleted, habitsDeleted, notesDeleted, journalDeleted] = await Promise.all([
+    // Reset also purges R2 objects for the user (their file store), so a
+    // reset truly empties the account — but it is always scoped to this user.
+    const [tasksDeleted, habitsDeleted, notesDeleted, journalDeleted, filesDeleted] = await Promise.all([
       tasks.deleteAll(userId),
       habits.deleteAll(userId),
       notes.deleteAll(userId),
       journal.deleteAll(userId),
+      files.deleteAll(userId).catch(() => 0), // R2 may not be configured on this instance
     ]);
 
     return {
@@ -35,6 +38,7 @@ export const resetAccountTool: Tool<typeof ResetAccountInput> = {
         habits: habitsDeleted,
         notes: notesDeleted,
         journal: journalDeleted,
+        files: filesDeleted,
       },
       // Owner/auth state intentionally NOT deleted: sessions, OAuth grants
       // and the account itself remain intact.

@@ -49,6 +49,16 @@
       "migrations_dir": "./migrations"
     }
   ],
+  // R2: local dev + the vitest pool simulate the bucket (no real resource
+  // needed). Production configs only include this binding when the instance
+  // was set up with `--with-r2`:
+  //   "r2_buckets": [{ "binding": "R2_BUCKET", "bucket_name": "<name>-files" }]
+  "r2_buckets": [
+    {
+      "binding": "R2_BUCKET",
+      "bucket_name": "bakatracker-files-local"
+    }
+  ],
   // AI binding intentionally omitted from local dev (it's a remote resource and
   // forces an API token). `npm run setup -- --with-ai` adds it to the
   // production config:
