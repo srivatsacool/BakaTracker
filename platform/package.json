@@ -8,13 +8,16 @@
     "deploy": "wrangler deploy --config wrangler.prod.jsonc",
     "dev": "wrangler dev",
     "start": "wrangler dev",
-    "test": "vitest run",
+    "test": "vitest run && npm run test:verify",
     "test:watch": "vitest",
+    "test:verify": "node --test scripts/db-verify.test.mjs",
     "cf-typegen": "wrangler types",
     "type-check": "tsc --noEmit",
-    "db:init": "wrangler d1 execute bakas_db --local --file=./schema.sql",
+    "db:init": "npm run db:migrate",
     "db:migrate": "wrangler d1 migrations apply bakas_db --local",
-    "db:migrate:remote": "wrangler d1 migrations apply bakas_db --remote --config wrangler.prod.jsonc"
+    "db:migrate:remote": "wrangler d1 migrations apply bakas_db --remote --config wrangler.prod.jsonc",
+    "db:verify": "node scripts/db-verify.mjs",
+    "db:verify:remote": "node scripts/db-verify.mjs --remote"
   },
   "dependencies": {
     "@cfworker/json-schema": "^4.1.1",

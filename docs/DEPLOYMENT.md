@@ -200,7 +200,9 @@ Worker (`platform/`):
 
 ```bash
 cd platform
-npx wrangler dev            # http://localhost:8787
+npm run db:migrate       # apply pending D1 migrations to the local DB (idempotent)
+npm run db:verify        # non-mutating check: is the local DB schema up to date?
+npx wrangler dev         # http://localhost:8787
 npx wrangler dev --remote   # use real D1/KV remotely (needs secrets in .dev.vars)
 ```
 
@@ -213,6 +215,27 @@ npm run dev                 # http://localhost:5173, talks to localhost:8787
 Local secrets go in `platform/.dev.vars` (gitignored) — copy
 `platform/.dev.vars.example`. Local D1/KV are simulated by Wrangler, no real
 resources needed.
+
+### Database migrations
+
+- **One authoritative source:** `platform/migrations/NNNN_name.sql` (already
+  tracked by Wrangler; `migrations_dir` is set in both `wrangler.jsonc` and
+  `wrangler.prod.jsonc`).
+- **Idempotent:** `wrangler d1 migrations apply` applies only migrations not
+  yet recorded in the D1 `d1_migrations` table — never re-runs applied ones,
+  never touches existing data.
+- **Never runs at Worker startup** — schema changes happen only when you run
+  the migration command, so deploys cannot race schema changes.
+- To add a migration: create `platform/migrations/0003_*.sql`, then run
+  `npm run db:migrate` (local) → `npm run db:verify` → when ready,
+  `npm run db:migrate:remote`.
+
+| Command | Target | Mutates? |
+|---|---|---|
+| `npm run db:migrate` | local D1 (`.wrangler` state) | applies pending |
+| `npm run db:migrate:remote` | remote production D1 (`wrangler.prod.jsonc`) | applies pending — explicit on purpose |
+| `npm run db:verify` | local D1 | read-only |
+| `npm run db:verify:remote` | remote D1 | read-only |
 
 ---
 

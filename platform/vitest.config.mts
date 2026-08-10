@@ -8,5 +8,9 @@ export default defineConfig({
       wrangler: { configPath: "./wrangler.jsonc" },
     }),
   ],
-  test: {},
+  test: {
+    // scripts/*.test.mjs are node:test suites (db-verify CLI tests) run via
+    // `npm run test:verify` — not vitest pool tests.
+    exclude: ["scripts/**", "node_modules/**", "dist/**", "**/node_modules/**"],
+  },
 });

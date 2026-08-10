@@ -18,6 +18,7 @@
 import { createServer } from "node:http";
 import { readFileSync, readdirSync, writeFileSync, mkdtempSync } from "node:fs";
 import { join } from "node:path";
+import { splitSqlStatements } from "./sql-split.mjs";
 import { tmpdir } from "node:os";
 import { Miniflare } from "miniflare";
 import { unstable_getMiniflareWorkerOptions } from "wrangler";
@@ -121,20 +122,16 @@ const mf = new Miniflare({
 });
 
 // --- Apply D1 migrations (wrangler dev does this; Miniflare does not) -------
+// The authoritative migration source is platform/migrations/*.sql. Miniflare's
+// D1 `exec()` rejects comment-leading multi-statement SQL, so statements are
+// split by the shared adapter (scripts/sql-split.mjs) — a transport/runtime
+// compatibility detail, never a second schema source (see db-verify.mjs).
 const db = await mf.getD1Database("BAKA_DB");
 const migrationsDir = join(process.cwd(), "migrations");
 for (const file of readdirSync(migrationsDir).sort()) {
   if (!file.endsWith(".sql")) continue;
   const sql = readFileSync(join(migrationsDir, file), "utf8");
-  // Split into statements (D1 has no native multi-statement exec in this Miniflare build).
-  // wrangler dev uses applyD1Migrations → db.prepare + db.batch internally.
-  const statements = sql
-    .split("\n")
-    .filter((l) => !l.trim().startsWith("--") && l.trim() !== "")
-    .join("\n")
-    .split(";")
-    .map((s) => s.trim())
-    .filter((s) => s.length > 0);
+  const statements = splitSqlStatements(sql);
   await db.batch(statements.map((s) => db.prepare(s)));
   console.log(`[e2e-worker] applied migration ${file} (${statements.length} statements)`);
 }
