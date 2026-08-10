@@ -13,6 +13,13 @@
  *     validated at /authorize is byte-identical at /callback.
  *   - APP_ORIGIN is required; a missing/invalid value fails closed (500),
  *     there is no silent fallback to the request origin.
+ *
+ * LOCAL-ONLY COOKIE RELAXATION (TEST_LOCAL):
+ *   Test/local environments run the OAuth flow over plain-HTTP loopback
+ *   (wrangler dev, the E2E harness), where `__Host-` + Secure cookies cannot
+ *   be set. testLocalEnabledForRequest() relaxes cookie names/flags ONLY when
+ *   TEST_LOCAL is set AND the request origin is a loopback host — a
+ *   production origin always keeps `__Host-` + Secure, even with the env var.
  */
 import type { AuthRequest, OAuthHelpers } from "@cloudflare/workers-oauth-provider";
 import { Hono } from "hono";
@@ -25,6 +32,7 @@ import {
   isClientApproved,
   OAuthError,
   renderApprovalDialog,
+  testLocalEnabledForRequest,
   validateCSRFToken,
   validateOAuthState,
 } from "../workers-oauth-utils";
@@ -41,14 +49,16 @@ app.get("/authorize", async (c) => {
   const { clientId } = oauthReqInfo;
   if (!clientId) return c.text("Invalid request", 400);
 
-  // Already approved → skip the dialog but still create + bind state.
-  if (await isClientApproved(c.req.raw, clientId, c.env.COOKIE_ENCRYPTION_KEY!)) {
+  const testLocal = testLocalEnabledForRequest(c.env.TEST_LOCAL, c.req.url);
+
+  // Already approved -> skip the dialog but still create + bind state.
+  if (await isClientApproved(c.req.raw, clientId, c.env.COOKIE_ENCRYPTION_KEY!, testLocal)) {
     const { stateToken } = await createOAuthState(oauthReqInfo, c.env.OAUTH_KV);
-    const { setCookie: sessionCookie } = await bindStateToSession(stateToken);
+    const { setCookie: sessionCookie } = await bindStateToSession(stateToken, testLocal);
     return redirectToGoogle(c.req.raw, stateToken, { "Set-Cookie": sessionCookie }, c.env);
   }
 
-  const { token: csrfToken, setCookie } = generateCSRFProtection();
+  const { token: csrfToken, setCookie } = generateCSRFProtection(testLocal);
   return renderApprovalDialog(c.req.raw, {
     client: await c.env.OAUTH_PROVIDER.lookupClient(clientId),
     csrfToken,
@@ -64,8 +74,9 @@ app.get("/authorize", async (c) => {
 
 app.post("/authorize", async (c) => {
   try {
+    const testLocal = testLocalEnabledForRequest(c.env.TEST_LOCAL, c.req.url);
     const formData = await c.req.raw.formData();
-    validateCSRFToken(formData, c.req.raw);
+    validateCSRFToken(formData, c.req.raw, testLocal);
 
     const encodedState = formData.get("state");
     if (!encodedState || typeof encodedState !== "string") return c.text("Missing state", 400);
@@ -78,10 +89,10 @@ app.post("/authorize", async (c) => {
     if (!state.oauthReqInfo?.clientId) return c.text("Invalid request", 400);
 
     const approvedCookie = await addApprovedClient(
-      c.req.raw, state.oauthReqInfo.clientId, c.env.COOKIE_ENCRYPTION_KEY!,
+      c.req.raw, state.oauthReqInfo.clientId, c.env.COOKIE_ENCRYPTION_KEY!, testLocal,
     );
     const { stateToken } = await createOAuthState(state.oauthReqInfo, c.env.OAUTH_KV);
-    const { setCookie: sessionCookie } = await bindStateToSession(stateToken);
+    const { setCookie: sessionCookie } = await bindStateToSession(stateToken, testLocal);
 
     const headers = new Headers();
     headers.append("Set-Cookie", approvedCookie);
@@ -125,7 +136,11 @@ app.get("/callback", async (c) => {
   let oauthReqInfo: AuthRequest;
   let clearSessionCookie: string;
   try {
-    const result = await validateOAuthState(c.req.raw, c.env.OAUTH_KV);
+    const result = await validateOAuthState(
+      c.req.raw,
+      c.env.OAUTH_KV,
+      testLocalEnabledForRequest(c.env.TEST_LOCAL, c.req.url),
+    );
     oauthReqInfo = result.oauthReqInfo;
     clearSessionCookie = result.clearCookie;
   } catch (error: any) {

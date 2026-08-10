@@ -2,6 +2,7 @@
 // OAuth utility functions with CSRF and state validation security fixes
 
 import type { AuthRequest, ClientInfo } from "@cloudflare/workers-oauth-provider";
+import { isLocalDevOrigin } from "./auth/app-origin";
 
 /**
  * OAuth 2.1 compliant error class.
@@ -216,14 +217,65 @@ export function timingSafeEqual(a: string, b: string): boolean {
 }
 
 /**
+ * Cookie naming + flags.
+ *
+ * Production: `__Host-*` names + `Secure` (RFC 6265bis — a cookie named
+ * `__Host-*` MUST carry `Secure` or the browser rejects it entirely).
+ *
+ * Local dev/test (TEST_LOCAL=1 AND loopback origin — see
+ * testLocalEnabledForRequest): plain names without `Secure`, so the OAuth
+ * flow works over plain-HTTP `wrangler dev` / E2E harness. The `__Host-`
+ * prefix and Secure flag are a security property of the transport; HTTP
+ * loopback is the one place they cannot apply — and the loopback gate means
+ * a production origin can never receive the relaxed form, even if TEST_LOCAL
+ * is set. Same pattern as REST_DEV_BYPASS.
+ */
+export function cookieNames(testLocal: boolean): {
+  csrf: string;
+  state: string;
+  approved: string;
+  secureFlag: string;
+} {
+  const prefix = testLocal ? "" : "__Host-";
+  const secureFlag = testLocal ? "" : "Secure; ";
+  return {
+    csrf: prefix + "CSRF_TOKEN",
+    state: prefix + "CONSENTED_STATE",
+    approved: prefix + "APPROVED_CLIENTS",
+    secureFlag,
+  };
+}
+
+/** Convenience: parse TEST_LOCAL env values ("1" | "true") → boolean. */
+export function isTestLocal(v: string | undefined): boolean {
+  return v === "1" || v === "true";
+}
+
+/**
+ * Decide whether the CURRENT REQUEST gets relaxed (loopback) cookie semantics.
+ *
+ * Relaxation requires BOTH:
+ *   - TEST_LOCAL env opt-in ("1" | "true"), AND
+ *   - the request origin must be a loopback host (localhost/127.0.0.1/[::1]).
+ *
+ * The loopback leg is what makes this safe: setting TEST_LOCAL=1 on a
+ * production deployment has NO effect, because production origins
+ * (workers.dev, custom domains) are never loopback — `__Host-` names and the
+ * Secure flag always apply there. Same gate as REST_DEV_BYPASS (isLocalDevOrigin).
+ */
+export function testLocalEnabledForRequest(envValue: string | undefined, requestUrl: string): boolean {
+  return isTestLocal(envValue) && isLocalDevOrigin(requestUrl);
+}
+
+/**
  * Generates a new CSRF token and corresponding cookie for form protection
  * @returns Object containing the token and Set-Cookie header value
  */
-export function generateCSRFProtection(): CSRFProtectionResult {
-	const csrfCookieName = "__Host-CSRF_TOKEN";
+export function generateCSRFProtection(testLocal = false): CSRFProtectionResult {
+	const { csrf: csrfCookieName, secureFlag } = cookieNames(testLocal);
 
 	const token = crypto.randomUUID();
-	const setCookie = `${csrfCookieName}=${token}; HttpOnly; Secure; Path=/; SameSite=Lax; Max-Age=600`;
+	const setCookie = `${csrfCookieName}=${token}; HttpOnly; ${secureFlag}Path=/; SameSite=Lax; Max-Age=600`;
 	return { token, setCookie };
 }
 
@@ -236,8 +288,8 @@ export function generateCSRFProtection(): CSRFProtectionResult {
  * @returns Object containing clearCookie header to invalidate the token
  * @throws {OAuthError} If CSRF token is missing or mismatched
  */
-export function validateCSRFToken(formData: FormData, request: Request): ValidateCSRFResult {
-	const csrfCookieName = "__Host-CSRF_TOKEN";
+export function validateCSRFToken(formData: FormData, request: Request, testLocal = false): ValidateCSRFResult {
+	const { csrf: csrfCookieName, secureFlag } = cookieNames(testLocal);
 
 	const tokenFromForm = formData.get("csrf_token");
 
@@ -260,7 +312,7 @@ export function validateCSRFToken(formData: FormData, request: Request): Validat
 
 	// RFC 9700: CSRF tokens must be one-time use
 	// Clear the cookie to prevent reuse
-	const clearCookie = `${csrfCookieName}=; HttpOnly; Secure; Path=/; SameSite=Lax; Max-Age=0`;
+	const clearCookie = `${csrfCookieName}=; HttpOnly; ${secureFlag}Path=/; SameSite=Lax; Max-Age=0`;
 
 	return { clearCookie };
 }
@@ -302,8 +354,8 @@ export async function createOAuthState(
  * @param stateToken - The state token to bind to the session
  * @returns Object containing the Set-Cookie header to send to the client
  */
-export async function bindStateToSession(stateToken: string): Promise<BindStateResult> {
-	const consentedStateCookieName = "__Host-CONSENTED_STATE";
+export async function bindStateToSession(stateToken: string, testLocal = false): Promise<BindStateResult> {
+	const { state: consentedStateCookieName, secureFlag } = cookieNames(testLocal);
 
 	// Hash the state token to provide defense-in-depth
 	const encoder = new TextEncoder();
@@ -312,7 +364,7 @@ export async function bindStateToSession(stateToken: string): Promise<BindStateR
 	const hashArray = Array.from(new Uint8Array(hashBuffer));
 	const hashHex = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
 
-	const setCookie = `${consentedStateCookieName}=${hashHex}; HttpOnly; Secure; Path=/; SameSite=Lax; Max-Age=600`;
+	const setCookie = `${consentedStateCookieName}=${hashHex}; HttpOnly; ${secureFlag}Path=/; SameSite=Lax; Max-Age=600`;
 
 	return { setCookie };
 }
@@ -333,8 +385,9 @@ export async function bindStateToSession(stateToken: string): Promise<BindStateR
 export async function validateOAuthState(
 	request: Request,
 	kv: KVNamespace,
+	testLocal = false,
 ): Promise<ValidateStateResult> {
-	const consentedStateCookieName = "__Host-CONSENTED_STATE";
+	const { state: consentedStateCookieName, secureFlag } = cookieNames(testLocal);
 	const url = new URL(request.url);
 	const stateFromQuery = url.searchParams.get("state");
 
@@ -391,7 +444,7 @@ export async function validateOAuthState(
 	await kv.delete(`oauth:state:${stateFromQuery}`);
 
 	// Clear the session binding cookie (one-time use per OAuth flow)
-	const clearCookie = `${consentedStateCookieName}=; HttpOnly; Secure; Path=/; SameSite=Lax; Max-Age=0`;
+	const clearCookie = `${consentedStateCookieName}=; HttpOnly; ${secureFlag}Path=/; SameSite=Lax; Max-Age=0`;
 
 	return { oauthReqInfo, clearCookie };
 }
@@ -407,8 +460,9 @@ export async function isClientApproved(
 	request: Request,
 	clientId: string,
 	cookieSecret: string,
+	testLocal = false,
 ): Promise<boolean> {
-	const approvedClients = await getApprovedClientsFromCookie(request, cookieSecret);
+	const approvedClients = await getApprovedClientsFromCookie(request, cookieSecret, testLocal);
 	return approvedClients?.includes(clientId) ?? false;
 }
 
@@ -423,19 +477,20 @@ export async function addApprovedClient(
 	request: Request,
 	clientId: string,
 	cookieSecret: string,
+	testLocal = false,
 ): Promise<string> {
-	const approvedClientsCookieName = "__Host-APPROVED_CLIENTS";
+	const { approved: approvedClientsCookieName, secureFlag } = cookieNames(testLocal);
 	const THIRTY_DAYS_IN_SECONDS = 2592000;
 
 	const existingApprovedClients =
-		(await getApprovedClientsFromCookie(request, cookieSecret)) || [];
+		(await getApprovedClientsFromCookie(request, cookieSecret, testLocal)) || [];
 	const updatedApprovedClients = Array.from(new Set([...existingApprovedClients, clientId]));
 
 	const payload = JSON.stringify(updatedApprovedClients);
 	const signature = await signData(payload, cookieSecret);
 	const cookieValue = `${signature}.${btoa(payload)}`;
 
-	return `${approvedClientsCookieName}=${cookieValue}; HttpOnly; Secure; Path=/; SameSite=Lax; Max-Age=${THIRTY_DAYS_IN_SECONDS}`;
+	return `${approvedClientsCookieName}=${cookieValue}; HttpOnly; ${secureFlag}Path=/; SameSite=Lax; Max-Age=${THIRTY_DAYS_IN_SECONDS}`;
 }
 
 /**
@@ -812,8 +867,9 @@ export function renderApprovalDialog(request: Request, options: ApprovalDialogOp
 async function getApprovedClientsFromCookie(
 	request: Request,
 	cookieSecret: string,
+	testLocal = false,
 ): Promise<string[] | null> {
-	const approvedClientsCookieName = "__Host-APPROVED_CLIENTS";
+	const { approved: approvedClientsCookieName } = cookieNames(testLocal);
 
 	const cookieHeader = request.headers.get("Cookie");
 	if (!cookieHeader) return null;

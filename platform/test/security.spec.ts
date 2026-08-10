@@ -7,9 +7,11 @@ import {
   oauthCallbackUri,
 } from "../src/auth/app-origin";
 import {
-  timingSafeEqual,
-  createOAuthState,
   bindStateToSession,
+  cookieNames,
+  createOAuthState,
+  testLocalEnabledForRequest,
+  timingSafeEqual,
   validateOAuthState,
 } from "../src/workers-oauth-utils";
 
@@ -265,5 +267,74 @@ describe("OAuth cookie attributes", () => {
     expect(setCookie).toContain("SameSite=Lax");
     expect(setCookie).toContain("Path=/");
     expect(setCookie).toMatch(/Max-Age=600/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 8. TEST_LOCAL loopback gate — relaxation is env AND loopback origin.
+//    Production cookie semantics (__Host- + Secure) must survive even if
+//    TEST_LOCAL=1 is set on a production deployment.
+// ---------------------------------------------------------------------------
+describe("TEST_LOCAL cookie relaxation loopback gate", () => {
+  it("cookieNames: production = __Host- + Secure; relaxed = plain + no Secure", () => {
+    const prod = cookieNames(false);
+    expect(prod.csrf).toBe("__Host-CSRF_TOKEN");
+    expect(prod.state).toBe("__Host-CONSENTED_STATE");
+    expect(prod.approved).toBe("__Host-APPROVED_CLIENTS");
+    expect(prod.secureFlag).toContain("Secure");
+
+    const relaxed = cookieNames(true);
+    expect(relaxed.csrf).toBe("CSRF_TOKEN");
+    expect(relaxed.state).toBe("CONSENTED_STATE");
+    expect(relaxed.approved).toBe("APPROVED_CLIENTS");
+    expect(relaxed.secureFlag).toBe("");
+  });
+
+  it("relaxes ONLY for loopback HTTP origins when TEST_LOCAL=1", () => {
+    expect(testLocalEnabledForRequest("1", "http://localhost:8787/authorize")).toBe(true);
+    expect(testLocalEnabledForRequest("1", "http://127.0.0.1:8787/authorize")).toBe(true);
+    expect(testLocalEnabledForRequest("1", "https://localhost:8787/callback")).toBe(true);
+  });
+
+  it("NEVER relaxes on a non-loopback origin, even with TEST_LOCAL=1 (prod invariant)", () => {
+    expect(testLocalEnabledForRequest("1", "https://baka.example.com/authorize")).toBe(false);
+    expect(testLocalEnabledForRequest("1", "http://baka.example.com/authorize")).toBe(false);
+    expect(
+      testLocalEnabledForRequest("1", "https://bakatracker-platform.srivatsagorti.workers.dev/callback"),
+    ).toBe(false);
+    expect(testLocalEnabledForRequest("1", "https://baka.example.com.evil.com/authorize")).toBe(false);
+  });
+
+  it("never relaxes without the env opt-in, regardless of origin", () => {
+    expect(testLocalEnabledForRequest(undefined, "http://localhost:8787/authorize")).toBe(false);
+    expect(testLocalEnabledForRequest("0", "http://localhost:8787/authorize")).toBe(false);
+    expect(testLocalEnabledForRequest("", "http://localhost:8787/authorize")).toBe(false);
+    expect(testLocalEnabledForRequest("false", "http://localhost:8787/authorize")).toBe(false);
+  });
+
+  it("live: pool has no TEST_LOCAL → /authorize keeps __Host- + Secure on a loopback URL", async () => {
+    // The vitest pool loads .dev.vars WITHOUT TEST_LOCAL, so even the loopback
+    // URL must yield full production cookie semantics. (The E2E harness is the
+    // only place TEST_LOCAL=1 is injected, and it is loopback — its cookie
+    // relaxation is verified by the browser E2E, not here.)
+    const reg = await SELF.fetch("http://localhost/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        client_name: "testlocal-gate-client",
+        redirect_uris: ["http://localhost/callback"],
+        scopes: ["mcp__test"],
+      }),
+    });
+    expect(reg.status).toBe(201);
+    const client = (await reg.json()) as { client_id: string };
+
+    const res = await SELF.fetch(
+      `http://localhost/authorize?client_id=${client.client_id}&redirect_uri=${encodeURIComponent("http://localhost/callback")}&response_type=code&scope=mcp__test&state=abc`,
+    );
+    expect(res.status).toBe(200);
+    const setCookie = res.headers.get("set-cookie") ?? "";
+    expect(setCookie).toMatch(/__Host-CSRF_TOKEN=/);
+    expect(setCookie).toContain("Secure");
   });
 });

@@ -31,6 +31,12 @@ export interface Env {
   GEMINI_API_KEY?: string;
   /** Local dev only: "1" lets REST trust an `X-User-Sub` header. Never set in prod. */
   REST_DEV_BYPASS?: string;
+  /** Local dev/test only: "1" relaxes `__Host-`/Secure cookie requirements so
+   * the OAuth flow works over plain-HTTP loopback (wrangler dev, E2E harness).
+   * Only effective when the REQUEST origin is a loopback host — production
+   * origins always keep `__Host-` + Secure even if this is set. Never set in
+   * production. Mirrors REST_DEV_BYPASS. */
+  TEST_LOCAL?: string;
 }
 
 export type { Env as WorkerEnv };

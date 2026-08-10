@@ -77,3 +77,15 @@ google-cloud-sdk/
 # Editor local history — can contain secret .dev.vars snapshots
 platform/.history/
 .history/
+
+# Playwright / browser E2E artifacts (screenshots, traces, videos, reports)
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+
+# wrangler files
+.wrangler
+.dev.vars*
+!.dev.vars.example
+!.env.example
