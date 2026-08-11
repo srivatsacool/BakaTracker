@@ -1,44 +1,50 @@
 # 🗺️ Roadmap and Version Releases
 
-This document maps out BakaTracker's version roadmap, feature timelines, and known limitations.
+Version-level view. The authoritative development plan is `Plan.md` (root); per-phase detail lives in `docs/phases/`.
 
 ---
 
-## 🚀 Released: Version 1.0 (Current)
-* **Core PWA:** Offline-first React 19 web app with local storage caching and service workers.
-* **Database Bridge:** Google Apps Script REST interface mapping Sheets as a serverless database.
-* **FastMCP Server:** Deployed FastAPI/FastMCP backend running on Google Cloud Run.
-* **Security & Reliability:** Bearer token authentication middleware and 3x exponential backoff request retries.
-* **Gamification:** Five attributes, XP ledger, and consistency heatmaps.
+## ✅ Released: Version 2.0 — Production Foundation (2026-08)
+Cloudflare-native replatform, live in production.
+
+- **Frontend (PWA):** React 19 SPA on Cloudflare Pages — `https://bakatracker.buildsrivatsa.qzz.io`
+- **Platform (Worker):** REST + MCP + Tool Registry on `https://bakatracker-platform.srivatsagorti.workers.dev`
+- **Auth:** real Google OAuth (DCR + PKCE) via `@cloudflare/workers-oauth-provider`; bearer-token REST guard; loopback-gated dev bridge
+- **Data:** D1 (tasks, habits, journal, notes, files metadata) · R2 (user-scoped attachments) · KV (OAuth + notification state) · Durable Object (MCP)
+- **Sync:** per-entity REST + `/sync` push/pull with lock TTL
+- **Workers AI foundation (Phase 7, `8026266`):** `AiService` (bounded input/output, zod-validated structured results, deterministic error taxonomy, secret-safe logs), `env.AI` provider with `AI_MODEL`/`AI_EMBED_MODEL` overrides + `AI_ENABLED` kill switch, Gemini REST fallback, BakaSur read-first tool allowlist, notes `summarize` endpoint, `scheduled()` handler + 15-min cron running the deterministic proactive engine (candidates → policy → AI message → log-stub delivery), notification settings REST (GET/PUT)
+- **Verification:** 81/81 vitest · 7/7 db-verify · 10/10 Pages · tsc clean · wrangler dry-run green · browser E2E green (known cold-start retry)
+- **Deferred from 2.0:** production AI deployment (approval gate), real notification delivery (log stub), Notes UI
 
 ---
 
-## 🟨 Next: Version 1.1 (Near-Term)
-* **Conflict Resolution:** Implement a `last_modified` timestamp parameter in all collections to compare local and remote states, prompting merge conflicts rather than blindly overwriting sheets.
-* **Tracker Archiving:** Add an `archived` boolean to the `Habit` model. This hides habits from the active Today board while preserving streaks and XP stats in historical Journey charts.
-* **Overlay Portals:** Refactor focus-mode dimmer screens on the Today board into clean React portals to resolve z-index bugs in mobile viewports.
+## 🟨 Next: Version 2.1 — BakaSur + Visual Notes
+
+Four implementation tracks (detail: `docs/phases/phase8-notes-excalidraw.md`, `docs/phases/phase9-proactive-notifications.md`):
+
+1. **Excalidraw Notes** — Notebook → Pages, each page an Excalidraw workspace (`@excalidraw/excalidraw` v0.18, MIT, lazy-loaded ~151 KiB gz); create/rename/reorder/duplicate/delete/restore pages; draw/write/diagram; libraries; images via R2; debounced autosave with offline queue, versioned conflicts, retry.
+2. **Notes data model** — `notes` extended (`kind`, `scene`, `notebook_id`, `position`, `archived_at`) + `notebooks` table; existing text notes become pages; scene images extracted to R2; migration `0003_notes_pages.sql`; backward-compatible.
+3. **BakaSur + Notes** — worker-side page interpretation layer (bounded `PageRepresentation`, never raw scene JSON); read-only actions: summarize / explain / ask / extract_tasks / extract_concepts / generate_questions; AI never mutates a page without an explicit user action.
+4. **Proactive BakaSur → real delivery** — production pipeline (rules decide WHETHER, AI phrases HOW); **Web Push** (VAPID + injectManifest SW + per-device KV subscriptions + `@block65/webcrypto-web-push` on the worker; no external providers); personalities (`gentle | motivational | funny | tsundere | savage | celebratory`, wording only); minimal functional settings surface (opt-out, quiet hours, tone).
 
 ---
 
-## 🎯 Target: Version 2.0 (Mid-Term)
-* **SQLite Fallback Database:** Integrate a local database (SQLite/IndexedDB) allowing BakaTracker to run fully standalone without requiring any Google Sheets setup.
-* **Achievements & Badges:** Unlocking achievements (e.g. *discipline level 10*, *100 days streak*) that grant customizable title headers on your profile.
-* **Data Exporters:** Exporting complete databases to raw JSON or CSV files directly from the browser Settings.
+## 🟦 Planned: Version 2.2 — BakaSur Memory
+
+Vectorize semantic memory over pages: pages → chunking → Workers AI embeddings (`AI_EMBED_MODEL`) → Vectorize (user-scoped) → bounded retrieval → BakaSur. Design in `docs/phases/phase10-bakasur-memory.md`. No implementation until v2.2.
 
 ---
 
-## 🦄 Future: Version 3.0 (Long-Term)
-* **Gamified Companions:** Minimalist retro tamagotchi-like widgets on the Journey tab that grow based on daily consistency scores.
-* **Physical Planner Exporter:** Generate printable PDF sheets formatted as weekly planners summarizing your BakaTracker habits, highlight reviews, and Weekly Wins.
+## 🟦 Planned: Version 2.3 — Complete UI/UX Rehaul
+
+Landing page, design system, glassmorphism, typography, surfaces, navigation, dashboard, tasks, habits, journal, Notes (notebook sidebar + Excalidraw workspace + BakaSur contextual actions), notification center, animations, responsive mobile, PWA, accessibility, empty/loading/error states, onboarding. Consumes stable v2.1/v2.2 capabilities. Design in `docs/phases/phase11-ui-rehaul.md`.
 
 ---
 
-## ⚠️ Known Limitations & Constraints
+## ⚠️ Known Limitations & Accepted Debt
 
-### Google Sheets Request Latency
-Because synchronization requires routing payloads to the Google Apps Script compiler and modifying spreadsheet rows, sync POST requests take **1.5 to 3.5 seconds** to complete.
-* *Mitigation:* The React client performs all changes locally in Zustand instantly and runs the sync asynchronously in the background.
-
-### API Quota Throttling
-Google enforces execution limits on Apps Script Web Apps (e.g. maximum of 5,000 requests per day for standard accounts).
-* *Mitigation:* The React PWA implements debounced sync calls, delaying background updates until the user finishes editing.
+- **Root eslint baseline** (~55 errors, frontend `src/`) — accepted, documented state; not reopened unless it becomes a deployment blocker.
+- **>500 KiB chunk warning** in the frontend build — accepted for now; v2.1 adds code-splitting for the Excalidraw route.
+- **iOS Web Push** requires the PWA installed to the home screen (iOS 16.4+); permission prompts are per-browser.
+- **AI latency/cost** — the 15-min cron engine calls the model only for policy-approved candidates; `AI_ENABLED=0` is the global kill switch.
+- **KV eventual consistency** — notification state is KV-backed; concurrent ticks are de-duplicated by cooldown keys (single-user scale).

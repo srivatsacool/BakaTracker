@@ -1,224 +1,126 @@
-# BakaTracker — v2.0 Development Plan
+# BakaTracker — Development Plan (v2.x)
 
-> **Status as of this document:** V1 is **complete and frozen**. Work begins on **v2.0 — the Cloudflare-native replatform**.
-> This plan consolidates the migration strategy: the GitHub `BakaTracker` repo stays the single source of truth, the UI/Zustand store/gamification is preserved, and the application platform is replaced underneath it using the Cloudflare Workers reference.
-
----
-
-## 1. Mental model — where each piece lives
-
-### 1.1 `BakaTracker` (GitHub) = **THE PRODUCT**
-
-This is the canonical, living repository. It already has the complete application:
-
-- Full React UI (`src/pages`, `src/components`)
-- Zustand state store (`src/store/useStore.ts`)
-- Landing page, Tasks, Habits, Journal, Journey (XP/gamification)
-- Demo mode, first-run wizard, app tour
-- Auth (Auth0 + guest/demo), services, types
-
-**This repository does not get thrown away or rewritten.**
-
-## 1.2 The mined Cloudflare Workbench = **THE ARCHITECTURE LIBRARY**
-
-This is **not** a product. It is a box of reusable infrastructure patterns to **mine** — never merge wholesale:
-
-- Worker bootstrap
-- Tool Registry
-- MCP server
-- OAuth (provider-to-MCP + client-to-Google)
-- Thin REST transport over the registry
-- D1 schema + access layer
-- AI provider abstraction
-- Sync concepts
-
-> **Note:** this reference implementation is a private, local asset — ignored by git and never shipped. The public repo contains only source that lives in-tree under `platform/`.
+> **Status:** v2.0 **RELEASED** (production) · v2.1 **NEXT** (BakaSur + Visual Notes) · v2.2 **PLANNED** (BakaSur Memory) · v2.3 **PLANNED** (UI/UX Rehaul)
+>
+> This document is the authoritative plan. Phase docs under `docs/phases/` carry the per-phase detail; `docs/ROADMAP.md` is the version-level view; `docs/ai/` carries the AI architecture.
+>
+> Roadmap reset: **2026-08-11** — the old assumption (v2.1 = generic AI, v2.2 = Notes, v2.3 = UI) is superseded by the product roadmap below. Revisions never rewrite history: 8026266 (Phase 7) stays as-is.
 
 ---
 
-## 2. v2 is NOT "reference becomes the app"
+## 1. Product & platform mental model
 
-The migration is **not**:
+- **BakaTracker (this repo) = THE PRODUCT.** React 19 PWA (`src/`) + Cloudflare-native platform (`platform/`), one repo, one source of truth.
+- **One business-logic layer, many thin transports.** A single Tool Registry powers REST + MCP + scheduled cron; every transport passes through the same auth → registry → repository → D1/R2 path. The AI layer adds no parallel data path.
+- **Storage rules (locked):**
+  - **D1** = structured data: entities, metadata, tags, searchable text, embeddings (future), and serialized scene documents.
+  - **R2** = binaries only: images, PDFs, voice, drawings, exports, attachments.
+  - **KV** = user-scoped session/notification state (`baka:notif:*:{sub}`), OAuth state.
+- **Gamification (Journey/XP) stays in the product** — the platform exposes the APIs the product needs; platform adapts to product, not the reverse.
+- **Freeze zones:** `src/pages/`, `src/components/`, `src/store/`, `src/lib/`, `src/assets/`, `src/types/` are touched only when a backend contract changes or a version explicitly calls for UI work (v2.3). The seam is `src/api/`, `src/services/`, `src/features/auth/`, `config/env.ts`.
 
-```
-mined Workbench (private reference)
-        ↓
-    becomes app
-```
+## 2. Release roadmap
 
-It **is**:
-
-```
-BakaTracker
-      │
-      ├──────────────┐
-      │              │
-Current UI    Current Features
-      │              │
-      └──────────────┘
-             │
-             ▼
-      Replace Platform
-             │
-    using the Cloudflare reference
-```
-
-That's a completely different (and lower-risk) migration: **infrastructure-first**. Replace the platform beneath the app while keeping the product behavior stable.
-
----
-
-## 3. Freeze the UI
-
-These folders are **touched only when a backend contract changes**. Do not rewrite them:
-
-```
-src/pages/
-src/components/
-src/store/
-src/lib/
-src/assets/
-src/types/
-```
-
-> Especially **do not** rewrite `src/store/useStore.ts` (1153 lines). It already holds business logic, XP/level, settings, local cache, events, character, and sync. Rewriting it reintroduces bugs for no benefit. Keep it and swap only the seam below it.
-
----
-
-## 4. The migration seam — these are the folders that change
-
-```
-src/api/
-src/services/
-src/features/auth/
-config/env.ts
-```
-
-Today:
-
-```
-React → stateService → FastAPI → Google Sheets
-```
-
-Becomes:
-
-```
-React → stateService → REST → Cloudflare Worker → Registry → D1
-```
-
-The pages don't care. `Tasks.tsx` should not know whether data came from Sheets or D1. Only the seam changes.
-
-| Seam | Current | Target |
+| Version | Scope | Status |
 |---|---|---|
-| `src/services/stateService.ts` | `GET/POST /state` (full-blob) | Worker REST (per-entity + `/state` compat) |
-| `src/api/apiClient.ts` | Auth0 Bearer → FastAPI | OAuth session → Worker REST |
-| `src/features/auth/` | Auth0 (`@auth0/auth0-react`) | Google OAuth via Worker (`workers-oauth-provider`) |
-| `config/env.ts` | `VITE_AUTH0_*`, `VITE_API_BASE_URL` | Cloudflare origin + OAuth client |
+| **v2.0** | Cloudflare-native production foundation (OAuth, D1, R2, KV, DO, MCP, REST, Tool Registry, Workers AI foundation, proactive engine) | ✅ **RELEASED** — `bakatracker.buildsrivatsa.qzz.io` + `bakatracker-platform.srivatsagorti.workers.dev` |
+| **v2.1** | **BakaSur + Visual Notes** — Excalidraw notebook pages, notes data model, BakaSur page interpretation, proactive BakaSur production pipeline + real Web Push delivery, personalities | 🟨 **NEXT** (defined in §3, `docs/phases/phase8-notes-excalidraw.md`, `docs/phases/phase9-proactive-notifications.md`) |
+| **v2.2** | **BakaSur Memory** — Vectorize semantic memory over pages (design in `docs/phases/phase10-bakasur-memory.md`) | 🟦 PLANNED |
+| **v2.3** | **Complete UI/UX rehaul** — landing, design system, glassmorphism, Notes notebook UI, notification center, onboarding, PWA polish (design in `docs/phases/phase11-ui-rehaul.md`) | 🟦 PLANNED |
 
-```diff
-- Current:   useStore() → stateService() → Google
-+ Target:    useStore() → stateService() → Worker REST → Registry → D1
-```
+Releases are not mixed: v2.1 ships functional backend + minimal functional surfaces; v2.3 owns the final visual design and consumes stable v2.1/v2.2 capabilities.
 
-**Minimal UI changes. Maximum backend replacement.**
+## 3. v2.1 — BakaSur + Visual Notes (NEXT)
 
----
+### 3A. Excalidraw Notes
+The Notes feature is an Excalidraw workspace, not a conventional text editor. Product shape: **Notebook → Pages**, each page an Excalidraw scene. Users can create/rename/reorder/duplicate/delete/restore pages, draw/write/diagram, use libraries, add images, autosave.
 
-## 5. New features (the only new product work)
+- Package: `@excalidraw/excalidraw` v0.18.x (**MIT**, React 19 peer-compatible, client-only). Lazy-loaded route (`React.lazy`) — ~151 KiB gzip, kept out of the main bundle.
+- Serialization: `serializeAsJSON(elements, appState, files, type)`; load with `restore()` (schema-migrates old scenes). Scene = `{ type:"excalidraw", version, elements[], appState, files{} }`.
+- Libraries: `mergeLibraryItems` / `serializeLibraryAsJSON` / `parseLibraryTokensFromUrl` / `useHandleLibrary`.
+- Import/export: `loadSceneOrLibraryFromBlob` (`.excalidraw` files), `exportToBlob`/`exportToSvg` (PNG/SVG).
+- Mobile: touch-first canvas by default; `useDevice` for responsive chrome.
+- Autosave: debounced/coalesced (no per-mouse-event persistence), offline queue in localStorage, flush on blur/unload, versioned conflict strategy (409 → reload/overwrite), exponential-backoff retry. See `docs/phases/phase8-notes-excalidraw.md` §Autosave.
+- v2.3 owns the final visual design. v2.1 builds the functional foundation only.
 
-### Notes — the one genuinely new module
+### 3B. Notes data model
+- **Decision: existing text notes become pages, with a migration-friendly extension — not a replacement table.** Existing REST/tools/MCP keep working.
+- `notes` gains: `kind` (`'text'` default | `'excalidraw'`), `scene` (TEXT, serialized Excalidraw JSON; NULL for text notes), `notebook_id`, `position` (ordering), `archived_at` (soft delete / restore). `title`/`body` stay: for excalidraw pages, `body` holds a bounded plain-text projection of the scene (powers LIKE search + the AI window + backward compat).
+- New `notebooks` table: `id, user_id, name, position, created_at, updated_at`; default "Personal" notebook.
+- Scene images (dataURLs) are extracted to **R2** on save and referenced by file id; fetched back on page open (parallel, cached). D1 never stores binary.
+- Migration `0003_notes_pages.sql` (v2.1). Soft-delete retention/trash purge is a scheduled-handler concern (documented, not built).
+- Detail: `docs/phases/phase8-notes-excalidraw.md` §Data model.
 
-```
-src/pages/Notes.tsx
-src/services/notes/…
-src/components/notes/…
-src/types/Note.ts
-```
-
-**Storage rule (locked):**
-- **D1** stores note **text + metadata + tags + FTS index + embedding id** (searchable, co-located).
-- **R2** stores **binary assets only** (images, PDFs, voice, drawings, videos, exports, attachments).
-
-### Later expansion (builds on D1+R2, no architecture change)
-Notes, R2 attachments, Voice, AI search, RAG.
-
----
-
-## 6. Journey / gamification — the product wins
-
-The Platform initially has no XP/level/character layer — but **the product does**, and the product wins. Therefore the Worker eventually exposes APIs for:
+### 3C. BakaSur + Notes
+AI never sees raw Excalidraw JSON. A worker-side **page interpretation layer** builds a bounded `PageRepresentation`:
 
 ```
-events, xp, levels, stats, character, weekly stats, quotes
+scene → getTextFromElements (text/labels) + element-type counts + frames as
+        sections + arrow connections (binding graph) + image METADATA (mime,
+        size — never dataURL) + link URLs + counts + version
+        → truncate to bounds (text ≤ 8K chars, element caps)
+        → BakaSur (AiService.generateStructured, fixed app-authored prompts)
 ```
 
-Not because Workers "need" them — because **BakaTracker needs them**. Platform adapts to the product, not the other way around.
+- v1 actions (read-only, minimal safe subset): `summarize` (exists), `explain`, `ask` (Q&A over representation), `extract_tasks`, `extract_concepts`, `generate_questions`.
+- Every action: same guard → ownership → bounded retrieve → interpretation → zod-validated output. **AI never mutates a page without an explicit user action.**
+- Existing summarize infrastructure (`src/http/notes-ai.ts`, `AiService`) is reused; per-action schemas + prompts added to `src/ai/`.
+- Detail: `docs/phases/phase8-notes-excalidraw.md` §BakaSur page interpretation.
 
----
+### 3D. Proactive BakaSur — production pipeline
+Current pipeline is already production-shaped: **scheduler → candidates → policy → AI message → delivery**. Rules decide WHETHER; AI phrases HOW; AI never decides frequency, policy bypass, quiet hours, daily cap, or authorization. v2.1 keeps the existing high-value candidates (overdue, deadline, streak-at-risk, streak-milestone) — **no rule-engine explosion**. Candidate sources (notes/journal/activity) are future work, documented only.
 
-## 7. Migration phases
+### 3E. Real notification delivery (Web Push)
+Feasibility: **clean, no new infrastructure, no external providers.**
+- VAPID keypair (worker secrets), `PushManager.subscribe` in a custom service worker (`vite-plugin-pwa` **injectManifest** — the current `generateSW` config cannot host a `push` handler), subscriptions per device stored in KV (`baka:push:subs:{sub}`), worker-side send via **`@block65/webcrypto-web-push`** (MIT, pure WebCrypto, verified Cloudflare-Workers-compatible; RFC 8291 VAPID + AES-128-GCM).
+- `WebPushDelivery implements NotificationDelivery` sits beside `LogDelivery`; no subscription → falls back to log.
+- Mobile: iOS 16.4+ requires the PWA installed to home screen; permission prompts are per-browser.
+- The four interfaces stay separated: `NotificationCandidate` · `NotificationPolicy` · `AIMessageGenerator` · `NotificationDelivery`.
+- Detail: `docs/phases/phase9-proactive-notifications.md` §Web Push.
 
-| Phase | Scope | Definition of done |
-|---|---|---|
-| **1. Platform** | Workers · Registry · REST · OAuth · D1 · MCP | No UI changes; backend exists and is exercised |
-| **2. Reconnect UI** | Replace only `stateService` implementation | Pages render identically against Worker REST / D1 |
-| **3. Decommission** | Remove **FastAPI**, **Auth0**, **Google Sheets**, Apps Script behind, Cloud Run | No v1 runtime or Google-Sheets dependency remains |
-| **4. New features** | Notes (D1+R2), attachments, AI search | New product capability ships |
-| **5. UI polish** | Landing redesign, Settings redesign, better onboarding | e.g., improvements |
----
+### 3F. Personality & notification controls
+- Personality enum → `gentle | motivational | funny | tsundere | savage | celebratory` (replaces the Phase-7 4-tone set; stored legacy values are normalized on load). Personality affects **wording only** — never authorization, policy, business logic, or data access (architecturally enforced: the record always carries the configured tone).
+- Controls (already implemented in Phase 7): opt-in/out, per-category toggles, quiet hours, timezone, daily cap, cooldown, dedup, history ring buffer. v2.1 adds a **minimal functional settings surface** (opt-out + quiet hours + tone) — a requirement, not final design.
+- AI is never called when deterministic policy suppresses (cost + spam protection) — covered by tests.
 
-## 8. Target repository layout
+### 3G. v2.1 definition of done
+- Excalidraw page CRUD + autosave + ordering + duplicate + soft-delete/restore, images via R2, user isolation.
+- Page interpretation + 6 AI actions, read-only, prompt-injection-as-data, deterministic errors.
+- Web Push delivery live (subscription lifecycle + send), personalities selectable, settings surface functional.
+- Gates: existing suite preserved + new specs (serialization, ownership, autosave, CRUD, ordering, duplication, deletion, interpretation, AI actions, injection, policy, personality, delivery abstraction) — no live inference in unit tests.
+- Production AI deploy still behind the explicit approval gate (§6).
 
-Instead of splitting v2 into `UI` + `Backend` branches, keep it in one tree that communicates intent:
+## 4. v2.2 — BakaSur Memory (PLANNED)
 
-```
-BakaTracker
-│
-├── src/                      ← KEEP (product UI)
-│
-├── platform/                 ← NEW: Cloudflare Workers reposit
-│     ├── workers/
-│     ├── registry/
-│     ├── auth/
-│     ├── storage/
-│     ├── ai/
-│     └── mcp/
-│
-├── docs/
-│
-└── (private reference kept out of git)
-```
+Vectorize semantic memory over pages: **pages → chunking → Workers AI embeddings (`AI_EMBED_MODEL`, bge-base 768-d) → Vectorize (user-scoped) → bounded retrieval → BakaSur**. Documented in `docs/phases/phase10-bakasur-memory.md` (embedding lifecycle, page-update reindexing, deletion, stale-embedding versioning, user isolation, retrieval limits, privacy). **No Vectorize implementation before v2.2.**
 
----
+## 5. v2.3 — Complete UI/UX Rehaul (PLANNED)
 
-## 9. Final architecture
+Landing, design system, glassmorphism, typography, surfaces, navigation, dashboard, tasks, habits, journal, Notes (notebook sidebar + Excalidraw workspace + BakaSur contextual actions), notification center, animations, responsive mobile, PWA, accessibility, empty/loading/error states, onboarding. Consumes stable v2.1/v2.2 capabilities; does not drive architecture. See `docs/phases/phase11-ui-rehaul.md`.
 
-```
-BakaTracker (Canonical Repository)
-│
-├── UI (Preserve)
-│   ├── Pages · Components · Zustand Store · Gamification
-│   ├── Landing · Journal · Habits · Tasks · Journey
-│
-├── Platform (Replace)
-│   ├── Cloudflare Workers · REST API · MCP · Registry
-│   ├── Google OAuth · D1 · KV · AI · R2 (future)
-│
-└── Features (Expand)
-    ├── Notes (new) · Attachments · Voice · AI Search · RAG
-```
+## 6. Production gate (AI + scheduled)
 
----
+**No production AI deployment without explicit approval.** Sequence:
+1. local tests → 2. staging/local AI validation → 3. production config generation (`npm run setup -- --with-ai`) → 4. dry-run → 5. **explicit approval** → 6. production deploy → 7. scheduled-trigger test → 8. authenticated AI smoke test → 9. notification delivery test.
 
-## 10. Constraints & guardrails
+External notification providers and any new infra require explicit approval too.
 
-- **Single source of truth:** the GitHub `BakaTracker` repo.
-- **Preserve** UI, Zustand store, gamification, user experience.
-- **Mine, don't merge:** imported only reusable infra patterns from the Cloudflare reference.
-- **Seams over rewrite:** swap `stateService`/auth/env only; pages & store untouched.
-- **No Google Sheets** as a runtime dependency (portable exports instead).
-- **No multi-tenancy, no scope creep** — personal, single-user.
+## 7. Constraints & guardrails
 
-## 11. How this was recorded
+- Single source of truth: this repo. No multi-tenancy; personal single-user app.
+- No Google Sheets / Apps Script runtime dependency (portable exports instead).
+- D1/R2 remain the source of truth; AI performs inference only; BakaSur never receives direct DB access; no model-generated SQL; no model-generated arbitrary Worker execution; all tool args zod-validated; AI failures degrade gracefully.
+- Do NOT modify: OAuth architecture, APP_ORIGIN, CORS, Pages deployment, DNS, D1/R2 architecture, MCP architecture, custom API domain (future decision only).
+- Accepted known debt (do not reopen): root eslint baseline (~55 errors, frontend `src/`), >500 KiB chunk warning. See `docs/ROADMAP.md` §Known limitations.
+- Git: focused commits; never rewrite 8026266; no force push; no squash unless requested.
 
-- This file is committed to `BakaTracker`, the canonical repo.
-- Git tag **`v1.0-final`** marks V1 finished and the start of V2 development.
+## 8. Phase docs index
+
+| Doc | Contents |
+|---|---|
+| `docs/phases/phase7-bakasur.md` | Phase 7 (8026266) audit — strengths, debt, hardening, provider strategy, prod gate |
+| `docs/phases/phase8-notes-excalidraw.md` | v2.1 — Excalidraw integration, data model, autosave, page interpretation, AI actions |
+| `docs/phases/phase9-proactive-notifications.md` | v2.1 — pipeline, Web Push, personality, controls |
+| `docs/phases/phase10-bakasur-memory.md` | v2.2 — Vectorize design (no implementation) |
+| `docs/phases/phase11-ui-rehaul.md` | v2.3 — UI/UX rehaul design (no implementation) |
+| `docs/ai/*` | AI architecture (service, security, actions, memory design, notifications) |
