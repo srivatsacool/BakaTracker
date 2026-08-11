@@ -11,7 +11,8 @@
     "preview": "npm run build && wrangler dev",
     "setup": "node scripts/setup.mjs",
     "setup:dry-run": "node scripts/setup.mjs --dry-run",
-    "deploy": "npm run build && wrangler deploy"
+    "deploy": "npm run build && wrangler deploy",
+    "sync:pages-env": "node scripts/sync-pages-env.mjs"
   },
   "dependencies": {
     "@auth0/auth0-react": "^2.20.0",

@@ -160,6 +160,16 @@ served two ways — pick one:
    ```
    and redeploy the Worker. (CORS stays an explicit allowlist; `APP_ORIGIN`
    is always allowed, never a wildcard.)
+7. **Keep the Pages env in sync** — the build env lives in the dashboard,
+   not the repo, so it can silently drift (it once did, and every build
+   shipped a broken bundle). `scripts/pages-env.json` is the single source
+   of truth for the production build env (public `VITE_*` values only —
+   never secrets):
+   ```bash
+   npm run sync:pages-env -- --dry-run   # show any drift, change nothing
+   npm run sync:pages-env                # converge the live project
+   ```
+   The script sets missing/changed vars and deletes vars not in the contract.
 
 > ⚠️ If `VITE_API_BASE_URL` is missing in a production build, the app **refuses
 > to start** with a clear error rather than silently talking to `localhost`.
@@ -302,6 +312,7 @@ allowlist. Full procedure + captured results in
 | `Error 10057/10063` on deploy | The worker name is taken, or the account subdomain is unavailable — pick `--name`. |
 | OAuth redirect error `redirect_uri_mismatch` | The URI registered in Google must equal `APP_ORIGIN + /callback` exactly (no trailing slash). Re-run setup and re-check. |
 | App refuses to start in production | `VITE_API_BASE_URL` missing in Pages env — add it (never `localhost`). |
+| Stale bundle after deploy (wrong API base / no login button) | Pages env drifted from `scripts/pages-env.json` — run `npm run sync:pages-env` and push a commit to rebuild. |
 | `wrangler secret put` hangs | It waits on stdin — pipe the value: `echo "$VAL" \| npx wrangler secret put NAME`. |
 | CORS errors in browser | Allow the exact UI origin with `npm run setup -- --ui-origin https://<pages-origin>` (adds it to `CORS_ALLOWED_ORIGINS`; the Worker origin is always allowed). It must match the origin in the address bar exactly — scheme, host, and port. |
 
