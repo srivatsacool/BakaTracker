@@ -18,6 +18,8 @@ export interface ChatOptions {
 
 export interface AIProvider {
   readonly name: string;
+  /** Resolved model identifier (for reporting/logging; never a secret). */
+  readonly model?: string;
   chat(messages: ChatMessage[], options?: ChatOptions): Promise<string>;
   /** Returns a dense embedding vector for semantic search (v2.1). */
   embed?(text: string): Promise<number[]>;

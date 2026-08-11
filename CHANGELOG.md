@@ -4,6 +4,21 @@ All notable changes to BakaTracker will be documented in this file.
 
 ---
 
+## [2.1.0] — 2026-08-11
+
+### Added
+* **Workers AI foundation:** application-level `AiService` (bounded input/output, zod-validated structured results, deterministic error taxonomy, secret-safe logging); Workers AI provider via `env.AI` (`AI_MODEL` / `AI_EMBED_MODEL` overrides, `AI_ENABLED` kill switch); Gemini REST fallback preserved.
+* **BakaSur tool contract:** read-first tool allowlist + assertion gate; no direct DB access for the agent; all tool calls pass through the existing registry/auth/business-logic path.
+* **Notes AI action:** `POST /api/v1/notes/:id/ai/summarize` (ownership-scoped, bounded input, graceful 502/503 on AI failure; note never mutated). UI deferred to v2.1.
+* **Proactive BakaSur foundation:** `scheduled` handler + cron `*/15 * * * *` running the deterministic candidates → policy → AI message → delivery pipeline; user-scoped settings/state in existing `OAUTH_KV` (`baka:notif:*:{sub}`); REST `GET/PUT /api/v1/notifications/settings`; delivery transport intentionally stubbed (log only).
+* **Tests:** 36 new tests (`ai-notes.spec.ts`, `notifications.spec.ts`) — zero live inference, fake providers only. Suite: 81/81.
+* **Docs:** `docs/ai/notifications.md`, `docs/ai/implementation.md`; `architecture.md` updated to shipped reality.
+
+### Notes
+* Production deployment of the AI-enabled Worker requires explicit approval (deploy gate). No Vectorize, no AI Gateway, no delivery transport, no OAuth/DNS/Pages changes in this phase.
+
+---
+
 ## [1.0.1] — 2026-07-03
 
 ### Fixed

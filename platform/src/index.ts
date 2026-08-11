@@ -13,6 +13,8 @@ import { MyMCP } from "./mcp/server";
 import { GoogleHandler } from "./auth/google-handler";
 import { buildRestApp, REST_PREFIX } from "./http/rest";
 import { todayISO } from "./shared/util";
+import { runNotificationEvaluation } from "./notifications/engine";
+import type { Env } from "./env";
 
 // Wrangler needs the Durable Object class exported from the entrypoint so it
 // can route to it; the OAuthProvider further dispatches /mcp to it.
@@ -43,7 +45,7 @@ code{background:rgba(255,255,255,.08);padding:.15rem .4rem;border-radius:6px;fon
 </div></body></html>`),
 );
 
-export default new OAuthProvider({
+const oauthProvider = new OAuthProvider({
   apiHandler: MyMCP.serve("/mcp"),
   apiRoute: "/mcp",
   authorizeEndpoint: "/authorize",
@@ -51,3 +53,18 @@ export default new OAuthProvider({
   defaultHandler: defaultApp as any,
   tokenEndpoint: "/token",
 });
+
+/**
+ * Export shape: `fetch` (the OAuth provider) + `scheduled` (proactive
+ * BakaSur evaluation + OAuth KV hygiene). Wrangler Cron Triggers invoke
+ * `scheduled`; the evaluation engine itself is fully deterministic and
+ * directly unit-tested (injected clock + fake AI/delivery).
+ */
+export default {
+  fetch: (request: Request, env: Env, ctx: ExecutionContext) => oauthProvider.fetch(request, env, ctx),
+  scheduled: async (_controller: ScheduledController, env: Env, ctx: ExecutionContext) => {
+    const summary = await runNotificationEvaluation(env, ctx);
+    console.log(`[baka:scheduled] evaluated=${summary.users_evaluated} candidates=${summary.candidates_found} delivered=${summary.delivered} suppressed=${summary.suppressed} failed=${summary.failed}`);
+    await oauthProvider.purgeExpiredData(env);
+  },
+};

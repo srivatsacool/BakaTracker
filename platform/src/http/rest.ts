@@ -20,13 +20,15 @@ import type { Env } from "../env";
 import type { OAuthHelpers } from "@cloudflare/workers-oauth-provider";
 import { ToolRegistry, ToolRegistryError } from "../registry";
 import { registerAll } from "../tools";
-import { makeAIProvider } from "../ai";
+import { makeAIProvider, type AiService } from "../ai";
 import { repositories, FileError } from "../storage/repositories";
 import { applySyncPush, pullOps } from "../storage/sync";
 import { SyncPush } from "../domain/schemas";
 import { MAX_FILE_SIZE } from "../domain/schemas";
 import type { Props } from "../auth/props";
 import { isAllowedCorsOrigin, isLocalDevOrigin } from "../auth/app-origin";
+import { handleNoteSummarize, buildAiService } from "./notes-ai";
+import { handleGetSettings, handlePutSettings } from "./notifications";
 
 export const REST_PREFIX = "/api/v1";
 
@@ -36,7 +38,13 @@ interface RESTVariables {
 
 type RESTBindings = Env & { OAUTH_PROVIDER: OAuthHelpers };
 
-export function buildRestApp(): Hono<{ Bindings: RESTBindings; Variables: RESTVariables }> {
+export interface RestAppOptions {
+  /** Test seam: inject a fake AiService so AI tests need no live inference.
+   * When omitted, the request-scoped service is built from the environment. */
+  aiService?: AiService;
+}
+
+export function buildRestApp(options: RestAppOptions = {}): Hono<{ Bindings: RESTBindings; Variables: RESTVariables }> {
   const app = new Hono<{ Bindings: RESTBindings; Variables: RESTVariables }>();
 
   // --- CORS ----------------------------------------------------------------
@@ -226,6 +234,19 @@ export function buildRestApp(): Hono<{ Bindings: RESTBindings; Variables: RESTVa
   });
 
   app.get("/whoami", async (c) => c.json(c.get("user")));
+
+  // --- Notes AI actions (v2.1 contract; only `summarize` this phase) --------
+  // Same global auth guard as everything above. The AI service is injected
+  // for tests; in production it is built per request from the environment
+  // (no binding locally → deterministic 503 ai_unavailable).
+  app.post("/notes/:id/ai/summarize", async (c) => {
+    const ai = options.aiService ?? buildAiService(c.env);
+    return handleNoteSummarize(c, ai);
+  });
+
+  // --- Notification settings (proactive BakaSur preferences) ----------------
+  app.get("/notifications/settings", handleGetSettings);
+  app.put("/notifications/settings", handlePutSettings);
 
   return app;
 }

@@ -6,7 +6,7 @@ import { AIProvider, ChatMessage, ChatOptions, AIUnavailableError } from "./prov
  */
 export class GeminiProvider implements AIProvider {
   readonly name = "gemini-rest";
-  private model = "gemini-2.0-flash";
+  readonly model = "gemini-2.0-flash";
 
   constructor(private apiKey: string) {}
 

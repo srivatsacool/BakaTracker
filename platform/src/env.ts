@@ -17,6 +17,12 @@ export interface Env {
 
   // --- AI (Workers AI binding — Gemini/llama models via Cloudflare) --------
   AI?: Ai;
+  /** Text-generation model override (default: @cf/meta/llama-3.3-70b-instruct-fp8-fast). */
+  AI_MODEL?: string;
+  /** Embedding model for the future Vectorize pipeline (default: @cf/baai/bge-base-en-v1.5). */
+  AI_EMBED_MODEL?: string;
+  /** Kill switch: "0" disables AI even when a binding/key is present. Default "1". */
+  AI_ENABLED?: string;
 
   // --- App config ----------------------------------------------------------
   APP_ORIGIN: string;

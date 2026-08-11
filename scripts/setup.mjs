@@ -343,6 +343,11 @@ async function main() {
     ai: opts.ai ? { binding: "AI" } : undefined,
     r2_buckets: r2Binding ? [r2Binding] : undefined,
     routes: opts.domain ? [{ pattern: opts.domain, custom_domain: true }] : undefined,
+    // Proactive BakaSur: the worker's `scheduled` handler evaluates
+    // notification candidates every 15 minutes. Without the Workers AI
+    // binding (`--with-ai`) the engine deterministically skips message
+    // generation, so scheduling is harmless pre-AI.
+    triggers: { crons: ["*/15 * * * *"] },
     vars: {
       APP_ORIGIN: origin,
       // Explicit CORS allowlist (security pass): the worker's own origin is
@@ -351,6 +356,16 @@ async function main() {
       // Pages UI via --ui-origin (comma-separated). Never a wildcard.
       CORS_ALLOWED_ORIGINS: uiOrigins.join(","),
       SYNC_LOCK_TTL_SECONDS: 60,
+      // AI model pins (verified on the account; see docs/ai/architecture.md).
+      // Vars are safe to ship even without the AI binding — they are inert
+      // until `--with-ai` adds the binding.
+      ...(opts.ai
+        ? {
+            AI_MODEL: "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
+            AI_EMBED_MODEL: "@cf/baai/bge-base-en-v1.5",
+            AI_ENABLED: "1",
+          }
+        : {}),
     },
     observability: { enabled: true },
   };
@@ -361,6 +376,7 @@ async function main() {
     log(`config: would write ${PROD_CONFIG} (gitignored) with:`);
     log(`  name=${opts.name}  d1=${opts.d1Name}  kv=${opts.kvName}  origin=${origin}`);
     log(`  cors allowlist: ${uiOrigins.length ? uiOrigins.join(", ") : "(none — worker origin only; pass --ui-origin <pages-url> to allow a UI origin)"}`);
+    log("  cron: */15 * * * * (proactive BakaSur scheduled handler)");
     if (prod.ai) log("  ai binding enabled");
     if (prod.r2_buckets) log(`  r2 binding: ${JSON.stringify(prod.r2_buckets[0].bucket_name)}`);
     if (prod.routes) log(`  routes: ${JSON.stringify(prod.routes)}`);

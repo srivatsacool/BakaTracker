@@ -63,6 +63,18 @@
   // forces an API token). `npm run setup -- --with-ai` adds it to the
   // production config:
   //   "ai": { "binding": "AI" }
+  //
+  // Without a provider, AI endpoints answer deterministically:
+  //   503 { ok:false, error:"ai_unavailable" }.
+  // The proactive notification engine skips message generation entirely.
+  //
+  // Cron Trigger for the proactive BakaSur `scheduled` handler. In local dev
+  // nothing fires automatically; use `wrangler dev --test-scheduled` to
+  // trigger it manually. Production scheduling is owned by setup.mjs
+  // (regenerates wrangler.prod.jsonc with the same schedule).
+  "triggers": {
+    "crons": ["*/15 * * * *"]
+  },
   "vars": {
     "APP_ORIGIN": "http://localhost:8787",
     // Vite dev server origin (http://localhost:5173) is the browser origin in

@@ -228,6 +228,24 @@ export async function fileDeleteAllForUser(db: D1Database, userId: string): Prom
 // `reset_account` tool (and only ever scoped by user_id — auth/session/owner
 // state lives outside these tables and is never touched).
 
+/** Distinct user ids with any data — drives the proactive notification
+ * scheduler (there is no users table; identities are Google `sub`s). */
+export async function activeUserIds(db: D1Database): Promise<string[]> {
+  const r = await db
+    .prepare(
+      `SELECT user_id FROM (
+         SELECT user_id FROM tasks
+         UNION SELECT user_id FROM habits
+         UNION SELECT user_id FROM notes
+         UNION SELECT user_id FROM journal
+         UNION SELECT user_id FROM files
+       )`,
+    )
+    .all();
+  return ((r.results ?? []) as Array<{ user_id: string }>).map((row) => row.user_id);
+}
+
+
 export async function taskDeleteAllForUser(db: D1Database, userId: string): Promise<number> {
   const r = await db.prepare("DELETE FROM tasks WHERE user_id=?1").bind(userId).run();
   return r.meta?.changes ?? 0;
