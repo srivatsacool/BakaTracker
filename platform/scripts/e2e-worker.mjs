@@ -87,10 +87,13 @@ const { workerOptions } = unstable_getMiniflareWorkerOptions("wrangler.jsonc");
 // devVars: config + .dev.vars secrets (the probe showed these come back as scalar
 // bindings) overlaid with our local E2E values (APP_ORIGIN/CORS point at :8787).
 // TEST_LOCAL=1 allows non-Secure cookies for local dev/test (Secure flag requires HTTPS).
+// E2E_CORS_ORIGINS: override the browser-origin allowlist (comma-separated) so a
+// Pages-like static SPA origin (e.g. `npm run test:pages:local` on :4173) can be
+// exercised from a real browser — mirrors what `setup.mjs --ui-origin` writes in prod.
 const devVars = {
   ...(workerOptions.bindings ?? {}),
   APP_ORIGIN: "http://localhost:8787",
-  CORS_ALLOWED_ORIGINS: "http://localhost:5173",
+  CORS_ALLOWED_ORIGINS: process.env.E2E_CORS_ORIGINS ?? "http://localhost:5173",
   SYNC_LOCK_TTL_SECONDS: "60",
   TEST_LOCAL: "1",
 };

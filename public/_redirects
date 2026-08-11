@@ -1,0 +1,13 @@
+# Cloudflare Pages SPA fallback.
+#
+# Every unmatched path (deep links, hard refreshes of /journey, /habits, …,
+# and the OAuth code return landing on /?code=…&state=…) must serve index.html
+# with a 200 so the React Router can render the route. Exact static-file
+# matches (assets/*, sw.js, logo.png, …) are served directly and never pass
+# through this rule.
+#
+# The wrangler assets worker (root wrangler.jsonc) uses
+# `assets.not_found_handling: single-page-application` for the same behavior;
+# this file makes a Cloudflare Pages deployment behave identically without
+# relying on dashboard settings.
+/*	/index.html	200

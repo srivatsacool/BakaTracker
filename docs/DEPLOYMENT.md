@@ -116,6 +116,7 @@ Optional flags:
 | `--domain api.example.com` | Deploy behind a custom domain (see §6) |
 | `--with-r2` | Also create the R2 bucket + binding (v2.0 file storage) |
 | `--with-ai` | Add the Workers AI binding (`AI`) |
+| `--ui-origin https://app.pages.dev` | Allow a Pages/UI browser origin in the CORS allowlist (repeatable, canonicalized; never a wildcard) |
 | `--google-client-id … --google-client-secret …` | Skip the prompts (CI) |
 | `--dry-run` | Print everything it *would* do; change nothing |
 
@@ -131,10 +132,13 @@ This deploys the **Worker** using the generated production config. The frontend
 
 ---
 
-## 5. Frontend — Cloudflare Pages
+## 5. Frontend — two deployment paths
 
-The Worker `wrangler.prod.json` covers the API + OAuth + MCP side. The React PWA
-is served by Cloudflare Pages:
+The frontend is a static React SPA; its only backend is the Worker, wired at
+build time via `VITE_API_BASE_URL`. The exact same `dist/` artifact can be
+served two ways — pick one:
+
+### Path A — Cloudflare Pages (dashboard / Git integration)
 
 1. Dashboard → **Workers & Pages → Create → Pages → Connect to Git** → your repo.
 2. Build settings:
@@ -147,9 +151,39 @@ is served by Cloudflare Pages:
      setup` printed as APP_ORIGIN)
    - `VITE_GOOGLE_CLIENT_ID` = your Google client ID
 4. **Save and Deploy.** You get `https://<project>.pages.dev`.
+5. SPA deep routes (`/journey`, `/habits`, …) work out of the box: the repo
+   ships `public/_redirects` → `/* /index.html 200`, so no dashboard
+   rewrites are needed.
+6. Let the Worker accept requests from your Pages origin:
+   ```bash
+   npm run setup -- --ui-origin https://<project>.pages.dev
+   ```
+   and redeploy the Worker. (CORS stays an explicit allowlist; `APP_ORIGIN`
+   is always allowed, never a wildcard.)
 
 > ⚠️ If `VITE_API_BASE_URL` is missing in a production build, the app **refuses
 > to start** with a clear error rather than silently talking to `localhost`.
+
+### Path B — Wrangler Workers Assets (root assets Worker)
+
+```bash
+npm run deploy          # = npm run build && wrangler deploy (repo root)
+```
+
+The root `wrangler.jsonc` is an assets-only Worker; the Vite plugin wires
+`dist/` as Workers Assets with `not_found_handling: single-page-application`,
+i.e. deep routes serve `index.html` exactly like `_redirects` does on Pages.
+
+### Verify the deployment contract
+
+```bash
+npm run test:pages      # 10 checks: build, bundle origin, no localhost,
+                        # no secrets, _redirects, SPA fallback, PWA artifacts
+```
+
+See `docs/phases/phase5-pages.md` for the full contract and the local
+Pages-like verification procedure (real Worker + real build + real 401
+auth boundary).
 
 ---
 
@@ -216,6 +250,27 @@ Local secrets go in `platform/.dev.vars` (gitignored) — copy
 `platform/.dev.vars.example`. Local D1/KV are simulated by Wrangler, no real
 resources needed.
 
+### Pages-like local verification (production build + real Worker)
+
+```bash
+# 1. Production build pointed at the LOCAL worker
+VITE_API_BASE_URL=http://localhost:8787 VITE_GOOGLE_CLIENT_ID=<any> npm run build
+
+# 2. Real API Worker on :8787 (only Google's external endpoints are stubbed)
+cd platform
+E2E_CORS_ORIGINS="http://localhost:4173,http://localhost:5173" node scripts/e2e-worker.mjs
+
+# 3. Pages-like static server honoring dist/_redirects on :4173
+cd ..
+node scripts/pages-like-server.mjs 4173
+```
+
+Then prove the contract: `/api/v1/whoami` → **401** (real auth boundary; no
+token injected, no auth bypassed), `/journey` → **200** `index.html`
+(deep SPA route), browser at `:4173` fetches the Worker through the CORS
+allowlist. Full procedure + captured results in
+`docs/phases/phase5-pages.md`.
+
 ### Database migrations
 
 - **One authoritative source:** `platform/migrations/NNNN_name.sql` (already
@@ -248,7 +303,7 @@ resources needed.
 | OAuth redirect error `redirect_uri_mismatch` | The URI registered in Google must equal `APP_ORIGIN + /callback` exactly (no trailing slash). Re-run setup and re-check. |
 | App refuses to start in production | `VITE_API_BASE_URL` missing in Pages env — add it (never `localhost`). |
 | `wrangler secret put` hangs | It waits on stdin — pipe the value: `echo "$VAL" \| npx wrangler secret put NAME`. |
-| CORS errors in browser | Add the exact UI origin to `CORS_ALLOWED_ORIGINS` (comma-separated; the Worker origin is always allowed). It must match the origin in the address bar exactly — scheme, host, and port. |
+| CORS errors in browser | Allow the exact UI origin with `npm run setup -- --ui-origin https://<pages-origin>` (adds it to `CORS_ALLOWED_ORIGINS`; the Worker origin is always allowed). It must match the origin in the address bar exactly — scheme, host, and port. |
 
 ---
 

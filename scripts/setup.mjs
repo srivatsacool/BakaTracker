@@ -17,6 +17,8 @@
  *   npm run setup -- --domain api.example.com
  *   npm run setup -- --with-r2         # also create an R2 bucket
  *   npm run setup -- --with-ai         # add the Workers AI binding
+ *   npm run setup -- --ui-origin https://app.pages.dev
+ *                                     # allow a Pages/UI origin in CORS (repeatable)
  *   npm run setup -- --dry-run         # validate only, change nothing
  *
  * Google OAuth creds can be supplied via flags or GOOGLE_CLIENT_ID /
@@ -64,6 +66,27 @@ const opts = {
   googleClientId: flag("--google-client-id", process.env.GOOGLE_CLIENT_ID),
   googleClientSecret: flag("--google-client-secret", process.env.GOOGLE_CLIENT_SECRET),
 };
+
+// UI origins allowed to call the API from the browser (e.g. a Cloudflare
+// Pages deployment). Repeatable: --ui-origin https://a.pages.dev --ui-origin https://b.example.com
+// The Worker's own origin (APP_ORIGIN) is ALWAYS allowed by the runtime CORS
+// helper, so only genuinely other origins belong here. Canonicalize scheme+
+// host+port so "https://app.pages.dev/" and "app.pages.dev" both work.
+const uiOrigins = [];
+{
+  let i = 0;
+  while ((i = args.indexOf("--ui-origin", i)) >= 0) {
+    const v = args[i + 1];
+    if (v) {
+      try {
+        uiOrigins.push(new URL(v).origin);
+      } catch {
+        warn(`ignoring invalid --ui-origin value: ${v}`);
+      }
+    }
+    i += 2;
+  }
+}
 
 const log = (...a) => console.log("›", ...a);
 const warn = (...a) => console.log("⚠", ...a);
@@ -174,36 +197,51 @@ async function main() {
   // 1. Auth ---------------------------------------------------------------
   const auth = resolveToken();
   if (!auth) {
-    console.error(
-      "✖ No Cloudflare credentials found.\n" +
-      "  Option A: set CLOUDFLARE_API_TOKEN=<token>\n" +
-      "  Option B: run `wrangler login` in platform/ (interactive), then re-run setup.");
-    process.exit(1);
+    if (opts.dryRun) {
+      log("auth: skipped (dry-run is fully offline — no Cloudflare API calls made)");
+    } else {
+      console.error(
+        "✖ No Cloudflare credentials found.\n" +
+        "  Option A: set CLOUDFARE_API_TOKEN=<token>\n" +
+        "  Option B: run `wrangler login` in platform/ (interactive), then re-run setup.");
+      process.exit(1);
+    }
+  } else {
+    ok(`Cloudflare auth: ${auth.source}`);
   }
-  ok(`Cloudflare auth: ${auth.source}`);
 
   // 2. Account -------------------------------------------------------------
   let accountId = opts.accountId;
   if (!accountId) {
-    const accounts = cf("/accounts?per_page=10", auth.token);
-    if (!accounts.success || !accounts.result?.length) {
-      console.error("✖ Could not list Cloudflare accounts:", JSON.stringify(accounts.errors).slice(0, 300));
-      process.exit(1);
-    }
-    accountId = accounts.result[0].id;
-    log(`Account: ${accounts.result[0].name} (${accountId})`);
-    if (accounts.result.length > 1) {
-      warn(`${accounts.result.length} accounts found — using the first. Pass --account-id to choose.`);
+    if (opts.dryRun) {
+      accountId = "DRY_RUN_FAKE_ACCOUNT_ID";
+      log("account: skipped (dry-run — would auto-resolve your default account)");
+    } else {
+      const accounts = cf("/accounts?per_page=10", auth.token);
+      if (!accounts.success || !accounts.result?.length) {
+        console.error("✖ Could not list Cloudflare accounts:", JSON.stringify(accounts.errors).slice(0, 300));
+        process.exit(1);
+      }
+      accountId = accounts.result[0].id;
+      log(`Account: ${accounts.result[0].name} (${accountId})`);
+      if (accounts.result.length > 1) {
+        warn(`${accounts.result.length} accounts found — using the first. Pass --account-id to choose.`);
+      }
     }
   }
 
   // 3. workers.dev subdomain ----------------------------------------------
-  const sub = cf(`/accounts/${accountId}/workers/subdomain`, auth.token);
   let subdomain = null;
-  if (sub.success && sub.result?.subdomain) subdomain = sub.result.subdomain;
-  if (!subdomain) {
-    console.error("✖ Could not resolve your workers.dev subdomain. Either pass --domain or enable Workers on the account.");
-    process.exit(1);
+  if (opts.dryRun) {
+    subdomain = "bakatracker-dev";
+    log("subdomain: skipped (dry-run — would resolve your workers.dev subdomain)");
+  } else {
+    const sub = cf(`/accounts/${accountId}/workers/subdomain`, auth.token);
+    if (sub.success && sub.result?.subdomain) subdomain = sub.result.subdomain;
+    if (!subdomain) {
+      console.error("✖ Could not resolve your workers.dev subdomain. Either pass --domain or enable Workers on the account.");
+      process.exit(1);
+    }
   }
 
   if (opts.domain) {
@@ -307,10 +345,11 @@ async function main() {
     routes: opts.domain ? [{ pattern: opts.domain, custom_domain: true }] : undefined,
     vars: {
       APP_ORIGIN: origin,
-      // Explicit CORS allowlist (security pass): the worker's own origin is the
-      // safe default; self-hosters serving the UI from Pages/a custom domain
-      // extend this with their UI origin (comma-separated). Never a wildcard.
-      CORS_ALLOWED_ORIGINS: origin,
+      // Explicit CORS allowlist (security pass): the worker's own origin is
+      // ALWAYS allowed by the runtime helper, so CORS_ALLOWED_ORIGINS lists
+      // only OTHER browser origins that may call the API — e.g. a Cloudflare
+      // Pages UI via --ui-origin (comma-separated). Never a wildcard.
+      CORS_ALLOWED_ORIGINS: uiOrigins.join(","),
       SYNC_LOCK_TTL_SECONDS: 60,
     },
     observability: { enabled: true },
@@ -321,7 +360,7 @@ async function main() {
   if (opts.dryRun) {
     log(`config: would write ${PROD_CONFIG} (gitignored) with:`);
     log(`  name=${opts.name}  d1=${opts.d1Name}  kv=${opts.kvName}  origin=${origin}`);
-    log(`  cors allowlist: ${origin} (+ edit vars.CORS_ALLOWED_ORIGINS for a Pages/UI origin)`);
+    log(`  cors allowlist: ${uiOrigins.length ? uiOrigins.join(", ") : "(none — worker origin only; pass --ui-origin <pages-url> to allow a UI origin)"}`);
     if (prod.ai) log("  ai binding enabled");
     if (prod.r2_buckets) log(`  r2 binding: ${JSON.stringify(prod.r2_buckets[0].bucket_name)}`);
     if (prod.routes) log(`  routes: ${JSON.stringify(prod.routes)}`);
@@ -363,6 +402,7 @@ async function main() {
   console.log(`\n  Worker name      : ${opts.name}`);
   console.log(`  APP_ORIGIN       : ${origin}`);
   console.log(`  Google redirect  : ${redirect}`);
+  console.log(`  CORS UI origins  : ${uiOrigins.length ? uiOrigins.join(", ") : "(none — Worker origin only; add --ui-origin <pages-url> to allow a Pages UI)"}`);
   console.log(`  Deploy config    : ${PROD_CONFIG}`);
   console.log(`\n  → Register this EXACT redirect URI in Google Cloud Console`);
   console.log(`    (APIs & Services → Credentials → your OAuth client → Authorized redirect URIs).`);

@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
+    "test:pages": "node --test scripts/pages-check.test.mjs",
     "preview": "npm run build && wrangler dev",
     "setup": "node scripts/setup.mjs",
     "setup:dry-run": "node scripts/setup.mjs --dry-run",
