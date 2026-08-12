@@ -20,12 +20,14 @@
  *      against the SAME files — never a second schema source.
  */
 
-/** Strip full-line `--` comments and split on `;` (mirrors what `wrangler d1
- * migrations apply` does internally per migration file). */
+/** Strip SQL line comments (`-- …` to end of line) and split on `;`
+ * (mirrors what `wrangler d1 migrations apply` does internally per migration
+ * file). Comments are removed BEFORE splitting so that trailing comments after
+ * a `;` and `;` characters inside comments cannot corrupt the statement list. */
 export function splitSqlStatements(raw) {
   return raw
-    // strip full-line comments (e.g. `-- Google \`sub\``)
-    .replace(/^\s*--.*$/gm, "")
+    // strip every `--` line comment, full-line or trailing (e.g. `-- Google \`sub\``)
+    .replace(/--.*$/gm, "")
     .split(";")
     .map((s) => s.trim())
     .filter((s) => s.length > 0);

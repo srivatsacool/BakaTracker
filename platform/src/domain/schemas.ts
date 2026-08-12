@@ -73,9 +73,96 @@ export const Note = NoteInput.extend({
   user_id: z.string(),
   created_at: z.string(),
   updated_at: z.string(),
+  kind: z.enum(["text", "excalidraw"]).optional().default("text"),
+  scene: z.string().nullable().optional(),
+  notebook_id: z.string().nullable().optional(),
+  position: z.number().int().nonnegative().optional().default(0),
+  archived_at: z.string().nullable().optional(),
+  revision: z.number().int().nonnegative().optional().default(0),
 });
 export type Note = z.infer<typeof Note>;
 export type NoteInput = z.infer<typeof NoteInput>;
+
+// --- Notebooks (v2.1: Notebook → Pages, Excalidraw workspace) --------------
+export const NotebookInput = z.object({
+  name: z.string().min(1).max(200).default("Personal"),
+  position: z.number().int().nonnegative().optional().default(0),
+});
+export const Notebook = NotebookInput.extend({
+  id: z.string(),
+  user_id: z.string(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+export type Notebook = z.infer<typeof Notebook>;
+export type NotebookInput = z.infer<typeof NotebookInput>;
+
+// --- Page inputs (v2.1 notebook/page CRUD + versioned scene save) ----------
+// Page IDs and notebook IDs follow the existing deterministic prefix convention
+// (see util.id): `note_<uuid>` and `notebook_<uuid>`.
+export const PAGE_KIND = z.enum(["text", "excalidraw"]).default("excalidraw");
+export const PAGE_KIND_VALUES: ReadonlyArray<string> = ["text", "excalidraw"];
+export type PageKind = (typeof PAGE_KIND_VALUES)[number];
+
+/** Title bound for pages (shared with note title). */
+export const PAGE_TITLE_MAX = 300;
+/** Scene JSON size cap — bounded so D1 rows stay small (Excalidraw scenes are
+ * typically a few hundred KB; 2 MiB keeps D1 row sizes sane per the storage rules). */
+export const PAGE_SCENE_MAX_BYTES = 2 * 1024 * 1024; // 2 MiB
+/** Max pages returned in a single list call. */
+export const PAGE_LIST_MAX = 500;
+/** Sparse-integer spacing between positions (reorder only touches the moved range). */
+export const PAGE_POSITION_STEP = 1000;
+
+export const CreatePageInput = z.object({
+  notebook_id: z.string().optional(),
+  title: z.string().min(1).max(PAGE_TITLE_MAX),
+  kind: PAGE_KIND.optional(),
+});
+export type CreatePageInput = z.infer<typeof CreatePageInput>;
+
+export const UpdatePageInput = z.object({
+  id: z.string(),
+  title: z.string().min(1).max(PAGE_TITLE_MAX).optional(),
+  notebook_id: z.string().optional(),
+  position: z.number().int().nonnegative().optional(),
+});
+export type UpdatePageInput = z.infer<typeof UpdatePageInput>;
+
+export const ReorderPageInput = z.object({
+  /** Ordered list of page ids; positions are recomputed 0..N*step. */
+  order: z.array(z.string()).min(1).max(PAGE_LIST_MAX),
+});
+export type ReorderPageInput = z.infer<typeof ReorderPageInput>;
+
+export const SaveSceneInput = z.object({
+  id: z.string(),
+  // No `.max()` here — the byte cap is enforced explicitly by each transport
+  // (REST → 413 too_large, tool → byte-cap error) so clients get the contract
+  // error code instead of a generic zod 400.
+  scene: z.string().min(1),
+  /** Client's expected revision; must match server revision to save (409 otherwise). */
+  expected_revision: z.number().int().nonnegative(),
+});
+export type SaveSceneInput = z.infer<typeof SaveSceneInput>;
+
+/** The canonical page read model returned by GET page / list pages. */
+export const Page = z.object({
+  id: z.string(),
+  user_id: z.string(),
+  title: z.string(),
+  body: z.string().default(""),
+  kind: z.enum(["text", "excalidraw"]).default("excalidraw"),
+  scene: z.string().nullable(),
+  notebook_id: z.string().nullable(),
+  position: z.number().int().nonnegative().default(0),
+  archived_at: z.string().nullable(),
+  revision: z.number().int().nonnegative(),
+  tags: z.array(z.string()).default([]),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+export type Page = z.infer<typeof Page>;
 
 // --- Journal --------------------------------------------------------------
 export const JournalInput = z.object({

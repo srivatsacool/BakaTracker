@@ -13,6 +13,12 @@ import {
   createNoteTool, getNoteTool, updateNoteTool, deleteNoteTool,
   listNotesTool, searchNotesTool,
 } from "./notes";
+import {
+  createNotebookTool, listNotebooksTool, deleteNotebookTool,
+  createPageTool, listPagesTool, getPageTool, updatePageTool,
+  deletePageTool, restorePageTool, duplicatePageTool, reorderPagesTool,
+  savePageSceneTool,
+} from "./pages";
 import { journalTodayTool, getJournalTool, listJournalTool } from "./journal";
 import { analyticsTool } from "./analytics";
 import { planDayTool, weeklyReviewTool } from "./planning";
@@ -33,5 +39,10 @@ export function registerAll(registry: import("../registry").Registry): void {
     analyticsTool, planDayTool, weeklyReviewTool, rememberTool, recallTool,
     // Data management
     resetAccountTool,
+    // v2.1 Notebooks + Pages (Visual Notes backend)
+    createNotebookTool, listNotebooksTool, deleteNotebookTool,
+    createPageTool, listPagesTool, getPageTool, updatePageTool,
+    deletePageTool, restorePageTool, duplicatePageTool, reorderPagesTool,
+    savePageSceneTool,
   ]);
 }

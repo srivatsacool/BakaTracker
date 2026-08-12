@@ -5,8 +5,8 @@
  * D1 mirrors data for cross-device search, analytics, and the sync ledger.
  * All access is user-scoped by the Google `sub`.
  */
-import type { Task, Note, Habit, Journal } from "../domain/schemas";
-import { todayISO } from "../shared/util";
+import type { Task, Note, Notebook, Habit, Journal } from "../domain/schemas";
+import { nowISO, todayISO } from "../shared/util";
 
 // --- JSON-column hydration helpers -----------------------------------------
 
@@ -26,7 +26,17 @@ function unwrapHabit(r: any): Habit {
   };
 }
 function unwrapNote(r: any): Note {
-  return { ...r, body: r.body ?? "" };
+  return {
+    ...r,
+    body: r.body ?? "",
+    kind: r.kind ?? "text",
+    scene: r.scene ?? null,
+    notebook_id: r.notebook_id ?? null,
+    position: r.position ?? 0,
+    archived_at: r.archived_at ?? null,
+    revision: r.revision ?? 0,
+    tags: Array.isArray(r.tags) ? r.tags : r.tags ? JSON.parse(r.tags) : [],
+  };
 }
 
 // --- TASKS -----------------------------------------------------------------
@@ -95,11 +105,20 @@ export async function habitList(db: D1Database, userId: string): Promise<Habit[]
 export async function noteUpsert(db: D1Database, n: Note): Promise<void> {
   await db
     .prepare(
-      `INSERT INTO notes (id, user_id, created_at, updated_at, title, body, tags)
-       VALUES (?1,?2,?3,?4,?5,?6,?7)
-       ON CONFLICT(id) DO UPDATE SET updated_at=?4, title=?5, body=?6, tags=?7`,
+      `INSERT INTO notes (id, user_id, created_at, updated_at, title, body, tags, kind, scene, notebook_id, position, archived_at, revision)
+       VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13)
+       ON CONFLICT(id) DO UPDATE SET updated_at=?4, title=?5, body=?6, tags=?7,
+         kind=COALESCE(excluded.kind, notes.kind),
+         scene=excluded.scene, notebook_id=excluded.notebook_id,
+         position=excluded.position, archived_at=excluded.archived_at,
+         revision=excluded.revision`,
     )
-    .bind(n.id, n.user_id, n.created_at, n.updated_at, n.title, n.body ?? "", JSON.stringify(n.tags ?? []))
+    .bind(
+      n.id, n.user_id, n.created_at, n.updated_at, n.title, n.body ?? null,
+      JSON.stringify(n.tags ?? []),
+      n.kind ?? "text", n.scene ?? null, n.notebook_id ?? null,
+      n.position ?? 0, n.archived_at ?? null, n.revision ?? 0,
+    )
     .run();
 }
 
@@ -148,6 +167,146 @@ export async function searchNotes(
   }
 
   return out.slice(0, limit);
+}
+
+// --- NOTEBOOKS (v2.1: Notebook → Pages) -------------------------------------
+export async function notebookUpsert(db: D1Database, n: Notebook): Promise<void> {
+  await db
+    .prepare(
+      `INSERT INTO notebooks (id, user_id, name, position, created_at, updated_at)
+       VALUES (?1,?2,?3,?4,?5,?6)
+       ON CONFLICT(id) DO UPDATE SET name=?3, position=?4, updated_at=?6`,
+    )
+    .bind(n.id, n.user_id, n.name, n.position ?? 0, n.created_at, n.updated_at)
+    .run();
+}
+
+export async function notebookGet(db: D1Database, userId: string, id: string): Promise<Notebook | null> {
+  const r = await db.prepare("SELECT * FROM notebooks WHERE id=?1 AND user_id=?2").bind(id, userId).first();
+  if (!r) return null;
+  const row = r as { name?: string; position?: number; created_at?: string; updated_at?: string };
+  const nb: Notebook = {
+    id: r.id as string,
+    user_id: r.user_id as string,
+    name: row.name ?? "Personal",
+    position: row.position ?? 0,
+    created_at: row.created_at ?? "",
+    updated_at: row.updated_at ?? "",
+  };
+  return nb;
+}
+
+export async function notebookList(db: D1Database, userId: string): Promise<Notebook[]> {
+  const res = await db
+    .prepare("SELECT * FROM notebooks WHERE user_id=?1 ORDER BY position, created_at ASC")
+    .bind(userId)
+    .all();
+  return (res.results ?? []) as unknown as Notebook[];
+}
+
+export async function notebookDelete(db: D1Database, userId: string, id: string): Promise<boolean> {
+  const r = await db.prepare("DELETE FROM notebooks WHERE id=?1 AND user_id=?2").bind(id, userId).run();
+  return (r.meta?.changes ?? 0) > 0;
+}
+
+export async function notebookCountForUser(db: D1Database, userId: string): Promise<number> {
+  const r = await db.prepare("SELECT COUNT(*) n FROM notebooks WHERE user_id=?1").bind(userId).first<{ n: number }>();
+  return r?.n ?? 0;
+}
+
+// --- PAGES (v2.1: notes as pages with scene + revision) ---------------------
+// noteUpsert already persists all v2.1 columns (kind, scene, notebook_id,
+// position, archived_at, revision) — it IS the page upsert. No separate
+// noteUpsertPage function is needed.
+
+/** List a notebook's active pages, ordered by position then updated_at. */
+export async function noteListPages(
+  db: D1Database, userId: string, notebookId: string | null, limit = 500,
+): Promise<Note[]> {
+  const res = await db
+    .prepare(
+      `SELECT * FROM notes
+       WHERE user_id=?1 AND archived_at IS NULL
+         AND (notebook_id=?2 OR (?2 IS NULL AND notebook_id IS NULL))
+       ORDER BY position ASC, updated_at DESC LIMIT ?3`,
+    )
+    .bind(userId, notebookId, limit)
+    .all();
+  return (res.results ?? []).map(unwrapNote);
+}
+
+/** List ALL of a user's active pages across notebooks (for search / global view). */
+export async function noteListAllPages(db: D1Database, userId: string, limit = 500): Promise<Note[]> {
+  const res = await db
+    .prepare(
+      "SELECT * FROM notes WHERE user_id=?1 AND archived_at IS NULL ORDER BY position ASC, updated_at DESC LIMIT ?2",
+    )
+    .bind(userId, limit)
+    .all();
+  return (res.results ?? []).map(unwrapNote);
+}
+
+/** Count active pages for a user. */
+export async function notePageCount(db: D1Database, userId: string): Promise<number> {
+  const r = await db
+    .prepare("SELECT COUNT(*) n FROM notes WHERE user_id=?1 AND archived_at IS NULL")
+    .bind(userId)
+    .first<{ n: number }>();
+  return r?.n ?? 0;
+}
+
+/** Optimistic-concurrency scene save. Atomically updates `scene`, `body`,
+ * `revision`+1, `updated_at` ONLY when the current revision matches
+ * `expectedRevision`. Returns the new revision (or null on stale revision → 409). */
+export async function noteSaveScene(
+  db: D1Database, userId: string, id: string, scene: string, body: string | null,
+  expectedRevision: number,
+): Promise<number | null> {
+  const now = nowISO();
+  const r = await db
+    .prepare(
+      `UPDATE notes
+       SET scene=?3, body=COALESCE(?4, body), revision=revision+1, updated_at=?5
+       WHERE id=?1 AND user_id=?2 AND revision=?6`,
+    )
+    .bind(id, userId, scene, body, now, expectedRevision)
+    .run();
+  if ((r.meta?.changes ?? 0) === 0) return null;
+  const row = await db.prepare("SELECT revision FROM notes WHERE id=?1 AND user_id=?2").bind(id, userId).first<{ revision: number }>();
+  return row?.revision ?? null;
+}
+
+/** Soft-delete (archive) a page. */
+export async function noteArchive(db: D1Database, userId: string, id: string): Promise<boolean> {
+  const r = await db
+    .prepare("UPDATE notes SET archived_at=datetime('now') WHERE id=?1 AND user_id=?2 AND archived_at IS NULL")
+    .bind(id, userId)
+    .run();
+  return (r.meta?.changes ?? 0) > 0;
+}
+
+/** Restore a previously-archived page. */
+export async function noteRestore(db: D1Database, userId: string, id: string): Promise<boolean> {
+  const r = await db
+    .prepare("UPDATE notes SET archived_at=NULL WHERE id=?1 AND user_id=?2 AND archived_at IS NOT NULL")
+    .bind(id, userId)
+    .run();
+  return (r.meta?.changes ?? 0) > 0;
+}
+
+/** Reassign positions for a set of pages (reorder). The `order` array maps
+ *  index → page id; each gets position = index * step. */
+export async function noteReorder(
+  db: D1Database, userId: string, notebookId: string | null, order: string[], step: number,
+): Promise<void> {
+  const now = nowISO();
+  void notebookId; // ordering is scoped by user+id; notebookId available for future partitioning
+  for (let i = 0; i < order.length; i++) {
+    await db
+      .prepare("UPDATE notes SET position=?3, updated_at=?4 WHERE id=?1 AND user_id=?2 AND archived_at IS NULL")
+      .bind(order[i], userId, i * step, now)
+      .run();
+  }
 }
 
 // --- JOURNAL ---------------------------------------------------------------

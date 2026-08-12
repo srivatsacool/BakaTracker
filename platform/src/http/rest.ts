@@ -22,13 +22,16 @@ import { ToolRegistry, ToolRegistryError } from "../registry";
 import { registerAll } from "../tools";
 import { makeAIProvider, type AiService } from "../ai";
 import { repositories, FileError } from "../storage/repositories";
+import type { Note } from "../domain/schemas";
 import { applySyncPush, pullOps } from "../storage/sync";
 import { SyncPush } from "../domain/schemas";
-import { MAX_FILE_SIZE } from "../domain/schemas";
+import { MAX_FILE_SIZE, NotebookInput, CreatePageInput, UpdatePageInput, ReorderPageInput, SaveSceneInput, PAGE_SCENE_MAX_BYTES, PAGE_POSITION_STEP } from "../domain/schemas";
 import type { Props } from "../auth/props";
 import { isAllowedCorsOrigin, isLocalDevOrigin } from "../auth/app-origin";
 import { handleNoteSummarize, buildAiService } from "./notes-ai";
 import { handleGetSettings, handlePutSettings } from "./notifications";
+import { nowISO } from "../shared/util";
+import { PageSaveConflictError, PageNotFoundError } from "../storage/repositories/notes";
 
 export const REST_PREFIX = "/api/v1";
 
@@ -244,9 +247,230 @@ export function buildRestApp(options: RestAppOptions = {}): Hono<{ Bindings: RES
     return handleNoteSummarize(c, ai);
   });
 
+  // --- v2.1 Notebooks + Pages (Visual Notes persistence) ---------------------
+  // Thin REST transport over the same Tool Registry tools — one business logic
+  // layer, many transports. Auth guard above applies; user is ctx.user.sub only.
+  // (The global auth middleware at app.use("*") already protects these routes.)
+
+  // Notebooks: list + create + delete
+  app.get("/notebooks", async (c) => {
+    const repos = repositories(c.env.BAKA_DB, c.env.R2_BUCKET);
+    const user = c.get("user") as RESTVariables["user"];
+    return c.json({ ok: true, notebooks: await repos.notebooks.list(user.sub) });
+  });
+
+  app.post("/notebooks", async (c) => {
+    const repos = repositories(c.env.BAKA_DB, c.env.R2_BUCKET);
+    const user = c.get("user") as RESTVariables["user"];
+    const body = await c.req.json().catch(() => null);
+    const parsed = NotebookInput.safeParse(body ?? {});
+    if (!parsed.success) return c.json({ ok: false, error: "invalid_input", message: parsed.error.message }, 400);
+    const now = nowISO();
+    const count = await repos.notebooks.count(user.sub);
+    const nb = {
+      id: parsed.data.name === "Personal" && count === 0 ? "notebook_personal" : `notebook_${crypto.randomUUID()}`,
+      user_id: user.sub,
+      name: parsed.data.name,
+      position: parsed.data.position ?? count * PAGE_POSITION_STEP,
+      created_at: now,
+      updated_at: now,
+    };
+    await repos.notebooks.upsert(nb);
+    return c.json({ ok: true, notebook: nb }, 201);
+  });
+
+  app.delete("/notebooks/:id", async (c) => {
+    const repos = repositories(c.env.BAKA_DB, c.env.R2_BUCKET);
+    const user = c.get("user") as RESTVariables["user"];
+    const nbId = c.req.param("id");
+    // Reassign any pages in this notebook to the default notebook before deletion.
+    const pages = await repos.notes.listPages(user.sub, nbId);
+    if (pages.length > 0) {
+      const defaultId = (await ensureDefaultNotebookRest(repos, user.sub)) ?? nbId;
+      for (const p of pages) {
+        await repos.notes.updatePageMeta(user.sub, p.id, { notebook_id: defaultId });
+      }
+    }
+    const removed = await repos.notebooks.delete(user.sub, nbId);
+    if (!removed) return c.json({ ok: false, error: "not_found", message: "Notebook not found." }, 404);
+    return c.json({ ok: true, removed: true });
+  });
+
+  // Pages: create + list
+  app.get("/notebooks/:id/pages", async (c) => {
+    const repos = repositories(c.env.BAKA_DB, c.env.R2_BUCKET);
+    const user = c.get("user") as RESTVariables["user"];
+    const nbId = c.req.param("id");
+    // Ownership gate — cross-user notebooks are indistinguishable from missing
+    // (no existence oracle): 404 either way.
+    const nb = await repos.notebooks.get(user.sub, nbId);
+    if (!nb) return c.json({ ok: false, error: "not_found", message: "Notebook not found." }, 404);
+    return c.json({ ok: true, pages: await repos.notes.listPages(user.sub, nbId) });
+  });
+
+  app.post("/pages", async (c) => {
+    const repos = repositories(c.env.BAKA_DB, c.env.R2_BUCKET);
+    const user = c.get("user") as RESTVariables["user"];
+    const body = await c.req.json().catch(() => null);
+    const parsed = CreatePageInput.safeParse(body ?? {});
+    if (!parsed.success) return c.json({ ok: false, error: "invalid_input", message: parsed.error.message }, 400);
+    // If a notebook_id is provided, verify ownership (no existence oracle for
+    // other users' notebooks → 404 when it doesn't belong to the caller).
+    let notebookId = parsed.data.notebook_id ?? c.req.query("notebook_id") ?? null;
+    if (notebookId) {
+      const nb = await repos.notebooks.get(user.sub, notebookId);
+      if (!nb) return c.json({ ok: false, error: "not_found", message: "Notebook not found." }, 404);
+      notebookId = nb.id;
+    } else {
+      notebookId = await ensureDefaultNotebookRest(repos, user.sub);
+    }
+    const page = await repos.notes.createPage(user.sub, {
+      notebookId: notebookId ?? null,
+      title: parsed.data.title,
+      kind: parsed.data.kind,
+    });
+    return c.json({ ok: true, page }, 201);
+  });
+
+  // Pages: get + update + delete + duplicate + restore
+  app.get("/pages/:id", async (c) => {
+    const repos = repositories(c.env.BAKA_DB, c.env.R2_BUCKET);
+    const user = c.get("user") as RESTVariables["user"];
+    const page = await repos.notes.get(user.sub, c.req.param("id"));
+    if (!page) return c.json({ ok: false, error: "not_found", message: "Page not found." }, 404);
+    return c.json({ ok: true, page: toPageResponse(page) });
+  });
+
+  app.patch("/pages/:id", async (c) => {
+    const repos = repositories(c.env.BAKA_DB, c.env.R2_BUCKET);
+    const user = c.get("user") as RESTVariables["user"];
+    const body = await c.req.json().catch(() => null);
+    const parsed = UpdatePageInput.safeParse({ id: c.req.param("id"), ...(body ?? {}) });
+    if (!parsed.success) return c.json({ ok: false, error: "invalid_input", message: parsed.error.message }, 400);
+    const updated = await repos.notes.updatePageMeta(user.sub, parsed.data.id, {
+      title: parsed.data.title,
+      notebook_id: parsed.data.notebook_id,
+      position: parsed.data.position,
+    });
+    if (!updated) return c.json({ ok: false, error: "not_found", message: "Page not found." }, 404);
+    return c.json({ ok: true, page: toPageResponse(updated) });
+  });
+
+  app.delete("/pages/:id", async (c) => {
+    const repos = repositories(c.env.BAKA_DB, c.env.R2_BUCKET);
+    const user = c.get("user") as RESTVariables["user"];
+    const archived = await repos.notes.archive(user.sub, c.req.param("id"));
+    if (!archived) return c.json({ ok: false, error: "not_found", message: "Page not found." }, 404);
+    return c.json({ ok: true, archived: true });
+  });
+
+  app.post("/pages/:id/duplicate", async (c) => {
+    const repos = repositories(c.env.BAKA_DB, c.env.R2_BUCKET);
+    const user = c.get("user") as RESTVariables["user"];
+    const copy = await repos.notes.duplicatePage(user.sub, c.req.param("id"));
+    if (!copy) return c.json({ ok: false, error: "not_found", message: "Page not found." }, 404);
+    return c.json({ ok: true, page: toPageResponse(copy) }, 201);
+  });
+
+  app.post("/pages/:id/restore", async (c) => {
+    const repos = repositories(c.env.BAKA_DB, c.env.R2_BUCKET);
+    const user = c.get("user") as RESTVariables["user"];
+    const restored = await repos.notes.restore(user.sub, c.req.param("id"));
+    if (!restored) return c.json({ ok: false, error: "not_found", message: "Page not found or not archived." }, 404);
+    return c.json({ ok: true, restored: true });
+  });
+
+  app.post("/pages/:id/archive", async (c) => {
+    const repos = repositories(c.env.BAKA_DB, c.env.R2_BUCKET);
+    const user = c.get("user") as RESTVariables["user"];
+    const archived = await repos.notes.archive(user.sub, c.req.param("id"));
+    if (!archived) return c.json({ ok: false, error: "not_found", message: "Page not found or already archived." }, 404);
+    return c.json({ ok: true, archived: true });
+  });
+
+  // Pages: reorder + scene save
+  app.post("/pages/reorder", async (c) => {
+    const repos = repositories(c.env.BAKA_DB, c.env.R2_BUCKET);
+    const user = c.get("user") as RESTVariables["user"];
+    const body = await c.req.json().catch(() => null);
+    const parsed = ReorderPageInput.safeParse(body ?? {});
+    if (!parsed.success) return c.json({ ok: false, error: "invalid_input", message: parsed.error.message }, 400);
+    const notebookId = c.req.query("notebook_id") ?? null;
+    await repos.notes.reorder(user.sub, notebookId, parsed.data.order);
+    return c.json({ ok: true, reordered: parsed.data.order.length });
+  });
+
+  app.put("/pages/:id/scene", async (c) => {
+    const repos = repositories(c.env.BAKA_DB, c.env.R2_BUCKET);
+    const user = c.get("user") as RESTVariables["user"];
+    const body = await c.req.json().catch(() => null);
+    const parsed = SaveSceneInput.safeParse({ id: c.req.param("id"), ...(body ?? {}) });
+    if (!parsed.success) return c.json({ ok: false, error: "invalid_input", message: parsed.error.message }, 400);
+    if (parsed.data.scene.length > PAGE_SCENE_MAX_BYTES) {
+      return c.json({ ok: false, error: "too_large", message: `Scene exceeds the ${PAGE_SCENE_MAX_BYTES / (1024 * 1024)} MiB cap.` }, 413);
+    }
+    try {
+      const revision = await repos.notes.saveScene(
+        user.sub, parsed.data.id, parsed.data.scene, null, parsed.data.expected_revision,
+      );
+      return c.json({ ok: true, revision });
+    } catch (e) {
+      if (e instanceof PageSaveConflictError) {
+        return c.json(
+          { ok: false, error: "conflict", currentRevision: e.currentRevision,
+            message: `Stale revision: expected ${parsed.data.expected_revision}, found ${e.currentRevision}.` },
+          409,
+        );
+      }
+      if (e instanceof PageNotFoundError) {
+        return c.json({ ok: false, error: "not_found", message: "Page not found." }, 404);
+      }
+      return c.json({ ok: false, error: "internal", message: (e as Error).message }, 500);
+    }
+  });
+
   // --- Notification settings (proactive BakaSur preferences) ----------------
   app.get("/notifications/settings", handleGetSettings);
   app.put("/notifications/settings", handlePutSettings);
 
   return app;
+}
+
+// --- v2.1 helpers ----------------------------------------------------------
+/** Ensure the caller has a default "Personal" notebook; returns its id. */
+async function ensureDefaultNotebookRest(
+  repos: ReturnType<typeof repositories>, userId: string,
+): Promise<string | null> {
+  const nb = await repos.notebooks.get(userId, "notebook_personal");
+  if (nb) return nb.id;
+  const now = nowISO();
+  const defaultNb = {
+    id: "notebook_personal",
+    user_id: userId,
+    name: "Personal",
+    position: 0,
+    created_at: now,
+    updated_at: now,
+  };
+  await repos.notebooks.upsert(defaultNb);
+  return defaultNb.id;
+}
+
+/** Shape a Note row into the REST page response (strip internal columns). */
+function toPageResponse(note: Note): Record<string, unknown> {
+  return {
+    id: note.id,
+    user_id: note.user_id,
+    title: note.title,
+    body: note.body,
+    kind: note.kind ?? "text",
+    scene: note.scene ?? null,
+    notebook_id: note.notebook_id ?? null,
+    position: note.position ?? 0,
+    archived_at: note.archived_at ?? null,
+    revision: note.revision ?? 0,
+    tags: note.tags ?? [],
+    created_at: note.created_at,
+    updated_at: note.updated_at,
+  };
 }

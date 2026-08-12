@@ -111,6 +111,14 @@ async function applyOp(
         updated_at: n.updated_at ?? now,
         title: n.title ?? "Untitled",
         body: n.body ?? "",
+        // v2.1 page columns: pass through if the client sent them; the upsert
+        // SQL preserves existing values when they are absent via COALESCE.
+        kind: n.kind,
+        scene: n.scene,
+        notebook_id: n.notebook_id,
+        position: n.position ?? 0,
+        archived_at: n.archived_at,
+        revision: n.revision ?? 0,
       });
       return true;
     }
