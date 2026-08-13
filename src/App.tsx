@@ -9,6 +9,8 @@ import { Journal } from './pages/Journal';
 import { Journey } from './pages/Journey';
 import { Landing } from './pages/Landing';
 import { Eisenhower } from './pages/Eisenhower';
+import { Notes } from './pages/Notes';
+import { PageWorkspace } from './pages/PageWorkspace';
 import { ProtectedRoute, useAuth } from './features/auth';
 import { useApiClient } from './api/authFetch';
 
@@ -43,6 +45,8 @@ function App() {
           <Route path="/eisenhower" element={<Eisenhower />} />
           <Route path="/today" element={<Today />} />
           <Route path="/journal" element={<Journal />} />
+          <Route path="/notes" element={<Notes />} />
+          <Route path="/notes/:pageId" element={<PageWorkspace />} />
         </Route>
 
         {/* Fallback redirect */}

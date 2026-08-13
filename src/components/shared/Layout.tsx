@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { Flame, ListTodo, Target, BookOpen, Compass, Cloud, CloudOff, Settings as SettingsIcon, X, Sun, Moon, ChevronLeft, ChevronRight, Download, WifiOff, LayoutGrid, Zap, Play, Shield } from 'lucide-react';
+import { Flame, ListTodo, Target, BookOpen, Compass, Cloud, CloudOff, Settings as SettingsIcon, X, Sun, Moon, ChevronLeft, ChevronRight, Download, WifiOff, LayoutGrid, Zap, Play, Shield, NotebookPen } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import { calculateDailyScore, getTodayDateString } from '../../lib/utils';
 import { OnboardingBanner } from './OnboardingBanner';
@@ -91,8 +91,13 @@ export const Layout: React.FC = () => {
     { path: '/eisenhower', name: 'Matrix', icon: LayoutGrid },
     { path: '/today', name: 'Today', icon: Target },
     { path: '/journal', name: 'Journal', icon: BookOpen },
-    { path: '/journey', name: 'Journey', icon: Compass }
+    { path: '/journey', name: 'Journey', icon: Compass },
+    { path: '/notes', name: 'Notes', icon: NotebookPen }
   ];
+
+  // Editor-route flush mode: /notes/:pageId hands the whole viewport to the
+  // Excalidraw canvas (no padded main, no mobile bottom nav overlap).
+  const isEditorRoute = /^\/notes\/[^/]+/.test(location.pathname);
 
   const handleSaveSettings = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -421,7 +426,7 @@ export const Layout: React.FC = () => {
       </aside>
 
       {/* Mobile Header & Bottom Navigation */}
-      <div className="md:hidden flex flex-col w-full min-h-screen">
+      <div className={`md:hidden flex flex-col w-full ${isEditorRoute ? 'h-screen overflow-hidden' : 'min-h-screen'}`}>
         {/* Mobile Header */}
         <header className="bg-surface border-b-4 border-black p-4 flex items-center justify-between sticky top-0 z-50">
           <div className="flex items-center gap-2">
@@ -499,13 +504,14 @@ export const Layout: React.FC = () => {
         )}
 
         {/* Scrollable Container */}
-        <main className="flex-1 overflow-y-auto pb-24 p-4">
+        <main className={`flex-1 ${isEditorRoute ? 'overflow-hidden p-0 min-h-0' : 'overflow-y-auto pb-24 p-4'}`}>
           <OnboardingBanner />
           <Outlet />
         </main>
 
-        {/* Mobile Navigation Bar */}
-        <nav className="fixed bottom-0 left-0 right-0 bg-surface border-t-4 border-black py-2 px-2 flex justify-around items-center z-50 shadow-[0_-4px_10px_rgba(0,0,0,0.05)]">
+        {/* Mobile Navigation Bar (hidden on editor routes so it doesn't overlap the canvas) */}
+        {!isEditorRoute && (
+          <nav className="fixed bottom-0 left-0 right-0 bg-surface border-t-4 border-black py-2 px-2 flex justify-around items-center z-50 shadow-[0_-4px_10px_rgba(0,0,0,0.05)]">
           {navItems.map(item => {
             const isActive = location.pathname === item.path || (item.path === '/habits' && location.pathname === '/');
             const Icon = item.icon;
@@ -522,11 +528,12 @@ export const Layout: React.FC = () => {
               </Link>
             );
           })}
-        </nav>
+          </nav>
+        )}
       </div>
 
       {/* Desktop Main Content Container */}
-      <main className="hidden md:block flex-1 h-screen overflow-y-auto p-8 bg-bg-primary">
+      <main className={`hidden md:block flex-1 h-screen ${isEditorRoute ? 'overflow-hidden p-0' : 'overflow-y-auto p-8'} bg-bg-primary`}>
         {isOffline && (
           <div className="bg-warning text-black border-2 border-black rounded-lg p-3 text-center font-mono font-bold text-xs flex items-center justify-center gap-2 mb-6 shadow-gumroad-sm">
             <WifiOff className="w-4 h-4 shrink-0" />
