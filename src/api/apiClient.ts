@@ -30,10 +30,14 @@ export class BackendUnavailableError extends Error {
   /** HTTP status of the failed response (undefined for non-HTTP failures). */
   status?: number;
 
-  constructor(message: string = 'Unable to reach your BakaTracker server.', status?: number) {
+  /** Parsed `{ ok:false, ... }` envelope from the worker, when it was JSON. */
+  body?: unknown;
+
+  constructor(message: string = 'Unable to reach your BakaTracker server.', status?: number, body?: unknown) {
     super(message);
     this.name = 'BackendUnavailableError';
     this.status = status;
+    this.body = body;
   }
 }
 
@@ -97,10 +101,13 @@ export class ApiClient {
 
     if (!response.ok) {
       // Surface the worker's `{ ok:false, message }` envelope when present.
+      let serverBody: unknown;
       let serverMessage = '';
       try {
-        const body = await response.clone().json();
-        serverMessage = body?.message || body?.error_description || '';
+        serverBody = await response.clone().json();
+        serverMessage = (serverBody as { message?: string; error_description?: string })?.message
+          || (serverBody as { error_description?: string })?.error_description
+          || '';
       } catch {
         // non-JSON error body — fall through to defaults
       }
@@ -109,7 +116,7 @@ export class ApiClient {
       } else if (response.status === 403) {
         throw new ForbiddenError(serverMessage || undefined);
       } else {
-        throw new BackendUnavailableError(serverMessage || undefined, response.status);
+        throw new BackendUnavailableError(serverMessage || undefined, response.status, serverBody);
       }
     }
 
@@ -140,6 +147,14 @@ export class ApiClient {
     return this.request<T>(path, {
       ...options,
       method: 'PUT',
+      body: JSON.stringify(body),
+    });
+  }
+
+  async patch<T>(path: string, body: any, options?: RequestInit): Promise<T> {
+    return this.request<T>(path, {
+      ...options,
+      method: 'PATCH',
       body: JSON.stringify(body),
     });
   }

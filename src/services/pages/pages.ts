@@ -1,5 +1,5 @@
 import { ApiClient, BackendUnavailableError } from '../../api/apiClient';
-import type { Page } from '../../types/page';
+import type { Notebook, Page } from '../../types/page';
 
 /**
  * Raised when GET /pages/:id returns 404 — page missing, archived for the
@@ -64,8 +64,8 @@ export async function saveScene(
   } catch (err) {
     if (err instanceof BackendUnavailableError) {
       if (err.status === 409) {
-        const body = (err as unknown as { message?: string; currentRevision?: number });
-        throw new PageConflictError(body.currentRevision ?? expectedRevision, body.message);
+        const body = err.body as { currentRevision?: number; message?: string } | undefined;
+        throw new PageConflictError(body?.currentRevision ?? expectedRevision, body?.message);
       }
       if (err.status === 413) {
         throw new PageTooLargeError();
@@ -91,4 +91,97 @@ export async function getPage(client: ApiClient, pageId: string): Promise<Page> 
     }
     throw err;
   }
+}
+
+// --- Notebook + page lifecycle (v2.1B-4 chrome) ---------------------------
+
+export interface ListNotebooksResponse {
+  ok: true;
+  notebooks: Notebook[];
+}
+
+export interface CreateNotebookResponse {
+  ok: true;
+  notebook: Notebook;
+}
+
+export interface ListPagesResponse {
+  ok: true;
+  pages: Page[];
+}
+
+export interface CreatePageResponse {
+  ok: true;
+  page: Page;
+}
+
+export interface UpdatePageResponse {
+  ok: true;
+  page: Page;
+}
+
+export interface DeleteNotebookResponse {
+  ok: true;
+  removed: boolean;
+}
+
+/** List the caller's notebooks (GET /api/v1/notebooks). */
+export async function listNotebooks(client: ApiClient): Promise<Notebook[]> {
+  const res = await client.get<ListNotebooksResponse>('/api/v1/notebooks');
+  return res.notebooks;
+}
+
+/** Create a notebook (POST /api/v1/notebooks). */
+export async function createNotebook(client: ApiClient, name: string, position?: number): Promise<Notebook> {
+  const res = await client.post<CreateNotebookResponse>('/api/v1/notebooks', { name, position });
+  return res.notebook;
+}
+
+/**
+ * Delete a notebook (DELETE /api/v1/notebooks/:id). Pages inside it are
+ * reassigned to the default notebook server-side.
+ */
+export async function deleteNotebook(client: ApiClient, notebookId: string): Promise<void> {
+  await client.delete<DeleteNotebookResponse>(`/api/v1/notebooks/${encodeURIComponent(notebookId)}`);
+}
+
+/** List a notebook's pages (GET /api/v1/notebooks/:id/pages). */
+export async function listPages(client: ApiClient, notebookId: string): Promise<Page[]> {
+  const res = await client.get<ListPagesResponse>(`/api/v1/notebooks/${encodeURIComponent(notebookId)}/pages`);
+  return res.pages;
+}
+
+/** Create a page in a notebook (POST /api/v1/pages). */
+export async function createPage(
+  client: ApiClient,
+  opts: { notebookId?: string | null; title: string; kind?: Page['kind'] },
+): Promise<Page> {
+  const res = await client.post<CreatePageResponse>('/api/v1/pages', {
+    notebook_id: opts.notebookId ?? undefined,
+    title: opts.title,
+    kind: opts.kind ?? 'excalidraw',
+  });
+  return res.page;
+}
+
+/** Rename a page (PATCH /api/v1/pages/:id). */
+export async function renamePage(client: ApiClient, pageId: string, title: string): Promise<Page> {
+  const res = await client.patch<UpdatePageResponse>(`/api/v1/pages/${encodeURIComponent(pageId)}`, { title });
+  return res.page;
+}
+
+/** Archive a page (POST /api/v1/pages/:id/archive). */
+export async function archivePage(client: ApiClient, pageId: string): Promise<void> {
+  await client.post<{ ok: true }>(`/api/v1/pages/${encodeURIComponent(pageId)}/archive`, {});
+}
+
+/** Restore an archived page (POST /api/v1/pages/:id/restore). */
+export async function restorePage(client: ApiClient, pageId: string): Promise<void> {
+  await client.post<{ ok: true }>(`/api/v1/pages/${encodeURIComponent(pageId)}/restore`, {});
+}
+
+/** Duplicate a page (POST /api/v1/pages/:id/duplicate). */
+export async function duplicatePage(client: ApiClient, pageId: string): Promise<Page> {
+  const res = await client.post<CreatePageResponse>(`/api/v1/pages/${encodeURIComponent(pageId)}/duplicate`, {});
+  return res.page;
 }
