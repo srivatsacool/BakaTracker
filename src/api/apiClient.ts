@@ -27,9 +27,13 @@ export class NetworkError extends Error {
 }
 
 export class BackendUnavailableError extends Error {
-  constructor(message: string = 'Unable to reach your BakaTracker server.') {
+  /** HTTP status of the failed response (undefined for non-HTTP failures). */
+  status?: number;
+
+  constructor(message: string = 'Unable to reach your BakaTracker server.', status?: number) {
     super(message);
     this.name = 'BackendUnavailableError';
+    this.status = status;
   }
 }
 
@@ -105,7 +109,7 @@ export class ApiClient {
       } else if (response.status === 403) {
         throw new ForbiddenError(serverMessage || undefined);
       } else {
-        throw new BackendUnavailableError(serverMessage || undefined);
+        throw new BackendUnavailableError(serverMessage || undefined, response.status);
       }
     }
 
