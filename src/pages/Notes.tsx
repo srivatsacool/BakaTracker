@@ -258,12 +258,12 @@ export const Notes: React.FC = () => {
             {isBusy ? (
               <Loader2 className="h-4 w-4 shrink-0 animate-spin text-accent-pink" />
             ) : (
-              <span className="flex shrink-0 items-center gap-0.5 opacity-0 transition group-hover:opacity-100">
+              <span className="flex shrink-0 items-center gap-0.5 sm:opacity-0 sm:transition sm:group-hover:opacity-100">
                 <button
                   type="button"
                   aria-label="Rename page"
                   onClick={() => startRename(page)}
-                  className="rounded p-1 hover:bg-bg-primary"
+                  className="rounded p-1.5 hover:bg-bg-primary"
                 >
                   <Pencil className="h-3.5 w-3.5" />
                 </button>
@@ -271,7 +271,7 @@ export const Notes: React.FC = () => {
                   type="button"
                   aria-label="Duplicate page"
                   onClick={() => void handleDuplicatePage(page)}
-                  className="rounded p-1 hover:bg-bg-primary"
+                  className="rounded p-1.5 hover:bg-bg-primary"
                 >
                   <Copy className="h-3.5 w-3.5" />
                 </button>
@@ -280,7 +280,7 @@ export const Notes: React.FC = () => {
                     type="button"
                     aria-label="Restore page"
                     onClick={() => void handleRestorePage(page)}
-                    className="rounded p-1 hover:bg-bg-primary"
+                    className="rounded p-1.5 hover:bg-bg-primary"
                   >
                     <RotateCcw className="h-3.5 w-3.5" />
                   </button>
@@ -289,7 +289,7 @@ export const Notes: React.FC = () => {
                     type="button"
                     aria-label="Archive page"
                     onClick={() => void handleArchivePage(page)}
-                    className="rounded p-1 hover:bg-bg-primary"
+                    className="rounded p-1.5 hover:bg-bg-primary"
                   >
                     <Archive className="h-3.5 w-3.5" />
                   </button>

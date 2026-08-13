@@ -39,7 +39,9 @@ export const EditorCanvas: React.FC<EditorCanvasProps> = ({ initialData, onChang
   return (
     // Excalidraw requires an explicit height on its container; the parent
     // (PageWorkspace) guarantees a definite height via flex-1/min-h-0.
-    <div className="h-full w-full min-h-0">
+    // bg-bg-primary keeps the frame consistent in dark mode while Excalidraw
+    // themes its own canvas via the `theme` prop.
+    <div className="h-full w-full min-h-0 bg-bg-primary">
       <Suspense fallback={<EditorCanvasFallback />}>
         <Excalidraw
           theme={theme}

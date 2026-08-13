@@ -220,15 +220,15 @@ const PageWorkspaceInner: React.FC<{ pageId: string | undefined; onReload: () =>
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <header className="sticky top-0 z-10 flex shrink-0 items-center gap-3 border-b-2 border-border-primary bg-surface px-4 py-3">
+      <header className="sticky top-0 z-10 flex shrink-0 items-center gap-2 border-b-2 border-border-primary bg-surface px-3 py-2 sm:gap-3 sm:px-4 sm:py-3">
         <Link
           to="/notes"
-          className="flex shrink-0 items-center gap-1.5 rounded-lg border-2 border-border-primary bg-surface px-2.5 py-1.5 font-mono text-xs font-bold shadow-gumroad-sm transition hover:translate-x-[1px] hover:translate-y-[1px]"
+          className="flex shrink-0 items-center gap-1.5 rounded-lg border-2 border-border-primary bg-surface px-2 py-1.5 font-mono text-xs font-bold shadow-gumroad-sm transition hover:translate-x-[1px] hover:translate-y-[1px]"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
-          Back
+          <span className="hidden sm:inline">Back</span>
         </Link>
-        <h1 className="m-0 min-w-0 flex-1 truncate font-black text-lg">{title}</h1>
+        <h1 className="m-0 min-w-0 flex-1 truncate text-base font-black sm:text-lg">{title}</h1>
         <SaveStatusBadge status={saveStatus} />
       </header>
 
@@ -318,22 +318,22 @@ const SaveStatusBadge: React.FC<{ status: SaveStatus }> = ({ status }) => {
 };
 
 const ConflictBanner: React.FC<{ onReload: () => void; onOverwrite: () => void }> = ({ onReload, onOverwrite }) => (
-  <div className="flex items-center justify-between gap-3 border-b-2 border-amber-400 bg-amber-50 px-4 py-2 dark:bg-amber-950/40">
+  <div className="flex flex-col gap-2 border-b-2 border-amber-400 bg-amber-50 px-4 py-2 dark:bg-amber-950/40 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
     <p className="m-0 flex items-center gap-2 font-mono text-xs font-bold text-amber-700 dark:text-amber-300">
-      <AlertTriangle className="h-4 w-4" /> This page was edited somewhere else. Keep your version or load the latest?
+      <AlertTriangle className="h-4 w-4 shrink-0" /> This page was edited somewhere else. Keep your version or load the latest?
     </p>
     <div className="flex shrink-0 gap-2">
       <button
         type="button"
         onClick={onReload}
-        className="rounded-lg border-2 border-border-primary bg-surface px-3 py-1 font-mono text-xs font-bold shadow-gumroad-sm transition hover:translate-x-[1px] hover:translate-y-[1px]"
+        className="flex-1 rounded-lg border-2 border-border-primary bg-surface px-3 py-1.5 font-mono text-xs font-bold shadow-gumroad-sm transition hover:translate-x-[1px] hover:translate-y-[1px] sm:flex-none"
       >
         Load latest
       </button>
       <button
         type="button"
         onClick={onOverwrite}
-        className="rounded-lg border-2 border-border-primary bg-accent-pink px-3 py-1 font-mono text-xs font-bold text-white shadow-gumroad-sm transition hover:translate-x-[1px] hover:translate-y-[1px]"
+        className="flex-1 rounded-lg border-2 border-border-primary bg-accent-pink px-3 py-1.5 font-mono text-xs font-bold text-white shadow-gumroad-sm transition hover:translate-x-[1px] hover:translate-y-[1px] sm:flex-none"
       >
         Keep my version
       </button>
