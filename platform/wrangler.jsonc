@@ -39,6 +39,10 @@
     {
       "binding": "OAUTH_KV",
       "id": "00000000000000000000000000000000"
+    },
+    {
+      "binding": "PUSH_SUBSCRIPTIONS",
+      "id": "00000000000000000000000000000000"
     }
   ],
   "d1_databases": [
@@ -81,7 +85,15 @@
     // local dev — the API lives at :8787, so the two MUST cross-talk. The
     // allowlist is exact-origin; no wildcards.
     "CORS_ALLOWED_ORIGINS": "http://localhost:5173",
-    "SYNC_LOCK_TTL_SECONDS": 60
+    "SYNC_LOCK_TTL_SECONDS": 60,
+    // --- Web Push (proactive notifications) ----------------------------------
+    // VAPID contact + PUBLIC key are safe to keep in source. The PRIVATE key
+    // is a SECRET — set it with `wrangler secret put VAPID_PRIVATE_KEY`
+    // (local: add to .dev.vars) and NEVER commit it. Generate a keypair with:
+    //   npx web-push generate-vapid-keys
+    "VAPID_SUBJECT": "mailto:notifications@bakatracker.app",
+    "VAPID_PUBLIC_KEY": "REPLACE_WITH_YOUR_VAPID_PUBLIC_KEY"
+    // "VAPID_PRIVATE_KEY": "<set via wrangler secret put; do not inline>"
   },
   "observability": {
     "enabled": true

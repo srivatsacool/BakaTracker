@@ -15,6 +15,16 @@ export interface Env {
   // --- Durable Objects -----------------------------------------------------
   MCP_OBJECT: DurableObjectNamespace<import("./mcp/server").MyMCP>;
 
+  // --- Web Push (proactive notification delivery) --------------------------
+  // VAPID keys for the Web Push protocol. The PUBLIC key is sent to the
+  // browser so it can subscribe; the PRIVATE key signs each push — it is a
+  // SECRET (set via `wrangler secret put VAPID_PRIVATE_KEY`, never committed).
+  VAPID_SUBJECT?: string; // e.g. "mailto:notifications@bakatracker.app"
+  VAPID_PUBLIC_KEY?: string;
+  VAPID_PRIVATE_KEY?: string;
+  /** Per-device push subscription list (user-scoped). */
+  PUSH_SUBSCRIPTIONS?: KVNamespace;
+
   // --- AI (Workers AI binding — Gemini/llama models via Cloudflare) --------
   AI?: Ai;
   /** Text-generation model override (default: @cf/meta/llama-3.3-70b-instruct-fp8-fast). */

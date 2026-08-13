@@ -30,6 +30,7 @@ import type { Props } from "../auth/props";
 import { isAllowedCorsOrigin, isLocalDevOrigin } from "../auth/app-origin";
 import { handleNoteSummarize, buildAiService } from "./notes-ai";
 import { handleGetSettings, handlePutSettings } from "./notifications";
+import { handlePostSubscription, handleDeleteSubscription } from "./push";
 import { nowISO } from "../shared/util";
 import { PageSaveConflictError, PageNotFoundError } from "../storage/repositories/notes";
 
@@ -432,6 +433,10 @@ export function buildRestApp(options: RestAppOptions = {}): Hono<{ Bindings: RES
   // --- Notification settings (proactive BakaSur preferences) ----------------
   app.get("/notifications/settings", handleGetSettings);
   app.put("/notifications/settings", handlePutSettings);
+
+  // --- Web Push subscription registration (device ↔ user) ------------------
+  app.post("/push/subscription", handlePostSubscription);
+  app.delete("/push/subscription", handleDeleteSubscription);
 
   return app;
 }

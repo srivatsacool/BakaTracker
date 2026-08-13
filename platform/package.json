@@ -20,6 +20,7 @@
     "db:verify:remote": "node scripts/db-verify.mjs --remote"
   },
   "dependencies": {
+    "@block65/webcrypto-web-push": "^1.0.2",
     "@cfworker/json-schema": "^4.1.1",
     "@cloudflare/workers-oauth-provider": "^0.8.1",
     "@modelcontextprotocol/sdk": "^1.29.0",

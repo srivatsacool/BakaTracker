@@ -19,6 +19,7 @@ import { collectCandidates } from "./candidates";
 import { evaluateCandidatePolicy, recordSent, appendHistory, loadSettings } from "./policy";
 import { generateNotificationMessage } from "./message";
 import { LogDelivery, NullDelivery } from "./delivery";
+import { WebPushDelivery } from "./webpush";
 import type { Notification, NotificationDelivery } from "./types";
 import { id, nowISO } from "../shared/util";
 
@@ -31,6 +32,24 @@ export interface EvaluationOptions {
   ai?: AiService;
   /** When true, evaluate policy but never deliver (dry run). */
   dryRun?: boolean;
+}
+
+/**
+ * Pick the delivery transport. Web Push is used only when VAPID is fully
+ * configured AND a push-subscription KV is bound; otherwise we fall back to
+ * `LogDelivery` so local/dev and misconfigured prod behave exactly as before
+ * (no behavior change when push isn't set up).
+ */
+function resolveDelivery(env: Env, opts: EvaluationOptions): NotificationDelivery {
+  if (opts.delivery) return opts.delivery;
+  if (opts.dryRun) return new NullDelivery();
+  if (env.PUSH_SUBSCRIPTIONS && WebPushDelivery.isConfigured(env)) {
+    return new WebPushDelivery(
+      env.PUSH_SUBSCRIPTIONS,
+      { subject: env.VAPID_SUBJECT!, publicKey: env.VAPID_PUBLIC_KEY!, privateKey: env.VAPID_PRIVATE_KEY! },
+    );
+  }
+  return new LogDelivery();
 }
 
 export interface EvaluationSummary {
@@ -48,7 +67,7 @@ export async function runNotificationEvaluation(
   opts: EvaluationOptions = {},
 ): Promise<EvaluationSummary> {
   const now = opts.now ?? new Date();
-  const delivery = opts.delivery ?? (opts.dryRun ? new NullDelivery() : new LogDelivery());
+  const delivery = resolveDelivery(env, opts);
   const ai = opts.ai ?? buildAiService(env);
 
   const summary: EvaluationSummary = { users_evaluated: 0, candidates_found: 0, delivered: 0, suppressed: 0, failed: 0 };
