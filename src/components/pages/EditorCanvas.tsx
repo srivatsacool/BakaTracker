@@ -1,6 +1,8 @@
 import React, { Suspense, lazy } from 'react';
 import { useStore } from '../../store/useStore';
 import type { ExcalidrawInitialDataState } from '@excalidraw/excalidraw/types';
+import type { ExcalidrawElement } from '@excalidraw/excalidraw/element/types';
+import type { AppState, BinaryFiles } from '@excalidraw/excalidraw/types';
 import '@excalidraw/excalidraw/index.css';
 
 // Lazy-load Excalidraw so the ~180KiB (gzip) editor bundle only downloads
@@ -27,9 +29,11 @@ interface EditorCanvasProps {
    * Only applied on mount — Excalidraw treats initialData as initial.
    */
   initialData?: ExcalidrawInitialDataState | null;
+  /** Forwarded to Excalidraw's onChange — fires on every scene mutation. */
+  onChange?: (elements: readonly ExcalidrawElement[], appState: AppState, files: BinaryFiles) => void;
 }
 
-export const EditorCanvas: React.FC<EditorCanvasProps> = ({ initialData }) => {
+export const EditorCanvas: React.FC<EditorCanvasProps> = ({ initialData, onChange }) => {
   const theme = useStore(state => state.theme);
 
   return (
@@ -37,7 +41,11 @@ export const EditorCanvas: React.FC<EditorCanvasProps> = ({ initialData }) => {
     // (PageWorkspace) guarantees a definite height via flex-1/min-h-0.
     <div className="h-full w-full min-h-0">
       <Suspense fallback={<EditorCanvasFallback />}>
-        <Excalidraw theme={theme} initialData={initialData} />
+        <Excalidraw
+          theme={theme}
+          initialData={initialData ?? undefined}
+          onChange={onChange}
+        />
       </Suspense>
     </div>
   );

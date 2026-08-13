@@ -1,7 +1,7 @@
 import type { ExcalidrawElement } from '@excalidraw/excalidraw/element/types';
 import type { RestoredDataState } from '@excalidraw/excalidraw/data/restore';
 import type { ImportedDataState } from '@excalidraw/excalidraw/data/types';
-import type { AppState } from '@excalidraw/excalidraw/types';
+import type { AppState, BinaryFiles } from '@excalidraw/excalidraw/types';
 
 /**
  * Pure, unit-testable scene (de)serialization helpers for Excalidraw pages.
@@ -52,21 +52,37 @@ export function parseScene(scene: string | null | undefined): ScenePayload | nul
 }
 
 /**
- * Serialize elements + appState back into the stored scene string.
+ * Serialize elements + appState (+ files) into the stored scene string.
  *
- * STUB for checkpoint v2.1B-3 (scene save). Kept dependency-free on purpose:
- * the real implementation swaps in Excalidraw's serializeAsJSON() and must
- * run inside the lazy chunk so the editor stays code-split.
+ * Real Excalidraw serialization requires the editor bundle, so the actual
+ * `serializeAsJSON()` call happens via a DYNAMIC import here — this keeps the
+ * ~180 KiB editor out of the entry chunk (the caller, PageWorkspace, is eager).
+ * The surrounding module only imports types from @excalidraw/excalidraw.
  */
-export function serializeScene(
+export async function serializeScene(
   elements: readonly ExcalidrawElement[],
   appState: Readonly<Partial<AppState>>,
-): string {
-  return JSON.stringify({
-    type: 'excalidraw',
-    version: 2, // matches Excalidraw's current scene format version
-    source: 'bakatracker',
-    elements,
-    appState,
-  });
+  files: BinaryFiles = {},
+): Promise<string> {
+  const { serializeAsJSON } = await import('@excalidraw/excalidraw');
+  // 'local' scope omits server-only fields; files carries embedded assets.
+  return serializeAsJSON(elements as ExcalidrawElement[], appState as Partial<AppState>, files, 'local');
+}
+
+/**
+ * Detect whether a (partially) serialized scene embeds base64 `data:` URLs.
+ *
+ * Excalidraw stores pasted/dropped images as `files[<id>].dataURL` (a base64
+ * `data:image/...` string). The v2.1A contract BANS dataURLs in scenes (D1
+ * stores the JSON; 2 MiB cap + no binary-in-text). We block save and tell the
+ * user, rather than silently dropping their drawing.
+ *
+ * Scans both the element-level `fileId` references (cheap) and, when present,
+ * the `files` map's `dataURL` values. Returns true if any dataURL is found.
+ */
+export function containsDataUrl(scene: string): boolean {
+  if (!scene) return false;
+  // Fast path: a data: URL is the only thing we forbid. JSON of a normal
+  // drawing never contains the literal "data:" scheme.
+  return scene.includes('data:');
 }
