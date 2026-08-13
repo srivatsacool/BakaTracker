@@ -5,7 +5,7 @@ import { useStore } from '../../store/useStore';
 import { LoadingScreen } from './components/LoadingScreen';
 
 export const AuthContext = createContext<IdentityProvider | undefined>(undefined);
-// eslint-disable-next-line react-refresh/only-export-components
+ 
 export type { IdentityProvider };
 
 // ---------------------------------------------------------------------------
@@ -150,7 +150,7 @@ const AuthProviderInner: React.FC<{ children: React.ReactNode }> = ({ children }
     if (data.refresh_token) sessionStorage.setItem(SESSION_REFRESH, data.refresh_token);
     sessionStorage.setItem(SESSION_EXPIRES, String(Date.now() + (data.expires_in ?? 3600) * 1000));
     return data.access_token;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, []);
 
   // Hydrate the user profile from the worker (whoami) using the stored token.

@@ -529,7 +529,7 @@ export const useStore = create<BakaState>((set, get) => ({
     if (!habit) return;
 
     const existingIndex = habitLogs.findIndex(l => l.habit_id === id && l.date === date);
-    let newLogs = [...habitLogs];
+    const newLogs = [...habitLogs];
     let newEvents = [...events];
 
     if (existingIndex > -1) {
@@ -594,7 +594,7 @@ export const useStore = create<BakaState>((set, get) => ({
     if (!habit) return;
 
     const existingIndex = habitLogs.findIndex(l => l.habit_id === id && l.date === date);
-    let newLogs = [...habitLogs];
+    const newLogs = [...habitLogs];
     let newEvents = [...events];
 
     if (existingIndex > -1) {
@@ -658,7 +658,7 @@ export const useStore = create<BakaState>((set, get) => ({
     if (!habit) return;
 
     const existingIndex = habitLogs.findIndex(l => l.habit_id === id && l.date === date);
-    let newLogs = [...habitLogs];
+    const newLogs = [...habitLogs];
     let newEvents = [...events];
 
     if (value <= 0) {
@@ -709,7 +709,7 @@ export const useStore = create<BakaState>((set, get) => ({
     if (!habit) return;
 
     const existingIndex = habitLogs.findIndex(l => l.habit_id === id && l.date === date);
-    let newLogs = [...habitLogs];
+    const newLogs = [...habitLogs];
     let newEvents = [...events];
 
     if (!mood) {
@@ -760,7 +760,7 @@ export const useStore = create<BakaState>((set, get) => ({
     if (!habit) return;
 
     const existingIndex = habitLogs.findIndex(l => l.habit_id === id && l.date === date);
-    let newLogs = [...habitLogs];
+    const newLogs = [...habitLogs];
     let newEvents = [...events];
 
     if (!energy) {
@@ -917,7 +917,7 @@ export const useStore = create<BakaState>((set, get) => ({
   saveJournalEntry: async (date: string, highlight: string, notes: string, mood: JournalEntry['mood']) => {
     const { journal, currentQuote, habits, habitLogs, tasks, events } = get();
     const existingIndex = journal.findIndex(j => j.date === date);
-    let newJournal = [...journal];
+    const newJournal = [...journal];
     let newEvents = [...events];
 
     const quoteId = currentQuote ? currentQuote.id : 'q1';
