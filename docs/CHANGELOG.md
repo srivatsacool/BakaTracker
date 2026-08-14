@@ -25,9 +25,25 @@ All notable changes to the BakaTracker project are documented in this file.
 * **Layout double-mount** — Layout renders the routed page into two `<main>` elements (hidden mobile + visible desktop). Excalidraw renders in both; canvas locators now scope to `main.hidden.md\:block` (desktop) for deterministic targeting.
 
 ### Deferred from 2.1.0-beta
-* Custom service worker (vite-plugin-pwa `injectManifest`) + browser Push subscription.
-* Push settings UI + end-to-end delivery test.
 * v2.0 released notes UI (deferred to v2.3 UI rehaul).
+
+---
+
+## [2.1.0-beta.2] — 2026-08-14 (BakaSur Page AI + Web Push Delivery)
+
+### Added
+* **Page interpretation layer (3C)** — `platform/src/ai/interpret.ts`: self-contained worker-side `PageRepresentation` (no `@excalidraw/excalidraw` import). Scene → bounded text (≤ 8000 chars), element-type histogram, frame sections, arrow relationship graph (≤ 200), image metadata only (never dataURLs), links, version. Malformed scenes fall back to a text representation. The model never sees raw scene JSON.
+* **Five read-only note AI actions (3C)** — `explain`, `ask` (validated `{question}` body, 400 on missing/oversized), `extract-tasks` (candidates only — creation stays explicit), `extract-concepts`, `generate-questions`. Same guard → ownership → bound → `generateStructured` pipeline as `summarize`; zod fail-closed schemas + fixed app-authored prompts.
+* **Notification settings surface (3F)** — settings modal "BakaSur Notifications" section: master opt-in, 6-personality select, quiet hours (enable + HH:MM). Guest-guarded fetch on modal open, optimistic saves with sequence guard, inline errors keep selections. Full-object PUT preserves `timezone`/`max_per_day`/`categories`.
+* **Web Push browser flow (WS2-3/WS2-4)** — custom service worker (`src/sw.ts`, injectManifest) with `push`/`notificationclick` handlers; `src/services/push.ts` subscription manager; settings modal Push toggle with Active/Off badge.
+* **Push delivery-chain tests (WS2-4)** — `push-rest.spec.ts` (REST subscription lifecycle: 401/400/201-upsert/ownership isolation/LRU cap) + delivery with real `@block65/webcrypto-web-push` crypto asserting endpoint/TTL/urgency/VAPID auth/crypto headers/encrypted payload; `e2e/push-delivery.e2e.spec.ts` browser spec (full happy path when a SW is served, documented graceful path in dev).
+
+### Fixed
+* **Push toggle hang** — `navigator.serviceWorker.ready` never settles when no SW is registered (dev), leaving the Enable Push button stuck at `'...'`. `readyServiceWorker()` races it against a 5s timeout; subscribe/unsubscribe/isPushSubscribed fall back to the graceful error path.
+
+### Changed
+* **E2E harness** — `VITE_VAPID_PUBLIC_KEY` (test key) injected into the Playwright vite webServer env so the push flow is exercised against a real `pushManager.subscribe` path.
+* **Platform suite** — 212 tests (10 files), zero live inference (deterministic `FakeProvider` only).
 
 ---
 

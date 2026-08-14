@@ -1,8 +1,9 @@
 # Notes AI Action Contract (v2.1 notepad backend)
 
-The final v2.1 Notes UI will call these backend actions. **Only `summarize`
-is implemented this phase**; the other eight are specified so the notepad
-can be built without a backend redesign. Actions are user-scoped REST
+The v2.1 Notes UI calls these backend actions. **`summarize` (Phase 7) and the
+five track-3C actions (`explain`, `ask`, `extract-tasks`, `extract-concepts`,
+`generate-questions`) are implemented**; the remaining three are specified so
+they can be added without a backend redesign. Actions are user-scoped REST
 endpoints; the UI never talks to the model directly.
 
 ## Common conventions
@@ -32,17 +33,77 @@ endpoints; the UI never talks to the model directly.
 // 503 AI disabled/not configured · 502 upstream or output-validation failure
 ```
 
+### explain — `POST /api/v1/notes/:id/ai/explain`
+
+```jsonc
+// 200
+{ "ok": true, "result": {
+    "explanation": "string ≤ 2000",
+    "model":       "...", "request_id": "uuid"
+} }
+```
+
+### ask — `POST /api/v1/notes/:id/ai/ask`
+
+```jsonc
+// request body: { "question": "string ≤ 1000" }  (missing/oversized → 400 invalid_input)
+// 200
+{ "ok": true, "result": {
+    "answer":      "string ≤ 2000",
+    "confidence":  "optional string ≤ 100",
+    "model":       "...", "request_id": "uuid"
+} }
+```
+
+### extract-tasks — `POST /api/v1/notes/:id/ai/extract-tasks`
+
+```jsonc
+// READ-ONLY: returns candidate tasks only; creation stays an explicit user
+// action via the Tasks API.
+// 200
+{ "ok": true, "result": {
+    "tasks":       [{ "title": "string ≤ 200", "due": "optional ≤ 50", "priority": "optional ≤ 50" }, ... ≤ 20],
+    "model":       "...", "request_id": "uuid"
+} }
+```
+
+### extract-concepts — `POST /api/v1/notes/:id/ai/extract-concepts`
+
+```jsonc
+// 200
+{ "ok": true, "result": {
+    "concepts":    [{ "term": "string ≤ 100", "definition": "string ≤ 400", "references": ["string ≤ 200", ... ≤ 10] }, ... ≤ 15],
+    "model":       "...", "request_id": "uuid"
+} }
+```
+
+### generate-questions — `POST /api/v1/notes/:id/ai/generate-questions`
+
+```jsonc
+// 200
+{ "ok": true, "result": {
+    "questions":   ["string ≤ 200", ... ≤ 10],
+    "model":       "...", "request_id": "uuid"
+} }
+```
+
+### Page interpretation (track 3C)
+
+Excalidraw pages are NEVER fed to the model as raw scene JSON. A worker-side
+interpretation layer (`platform/src/ai/interpret.ts`, self-contained — no
+`@excalidraw/excalidraw` import) reduces the scene to a bounded
+`PageRepresentation` (text ≤ 8000 chars, relationships ≤ 200, serialized ≤
+~12000 chars; image metadata only — never dataURLs; deleted elements
+excluded; frames → sections; arrows → relationship graph; links + counts).
+Text notes keep the `title\n\nbody` window. See `docs/phases/phase8-notes-excalidraw.md` §3.1.
+
 ## Specified, future phases
 
 | Action | Path suffix | Result shape (draft) | Notes |
 |---|---|---|---|
-| explain | `/ai/explain` | `{ explanation, sections[] }` | ELI5-level breakdown, cite note sections |
 | rewrite | `/ai/rewrite` | `{ rewritten, changed: string[] }` | tone/format params (`tone`, `format`) |
 | expand | `/ai/expand` | `{ expanded }` | bounded by `AI_OUTPUT_MAX_CHARS` |
 | simplify | `/ai/simplify` | `{ simplified, reading_level }` | plain-language pass |
-| extract_tasks | `/ai/extract_tasks` | `{ tasks: [{ title, due?, priority? }] }` | **read-only**: returns candidates; creation stays explicit user action via `create_task` |
-| extract_concepts | `/ai/extract_concepts` | `{ concepts: [{ term, definition, references[] }] }` | feeds future memory graph |
-| generate_questions | `/ai/generate_questions` | `{ questions: ["string ≤ 200", ...] }` | spaced-repetition fodder |
 | ask_note | `/ai/ask_note` | `{ answer, sources: [{ note_id, chunk_index }] }` | requires semantic retrieval (Vectorize) — the only action blocked on `docs/ai/memory-vectorize.md`; v1 fallback: lexical search |
 
 Every action follows the same pipeline: authenticate → authorize ownership →

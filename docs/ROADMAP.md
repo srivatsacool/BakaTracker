@@ -38,9 +38,16 @@ Four implementation tracks (detail: `docs/phases/phase8-notes-excalidraw.md`, `d
 | `26fedaa` | B-4 Notebook/page chrome (full lifecycle) | ✅ |
 | `24a64f9` | B-5 Theme + mobile responsiveness | ✅ |
 | `d87ddee` | B-6 Playwright E2E persistence gate + 3 prod bug fixes | ✅ |
-| — | B-7 Documentation + roadmap bump | ⬜ |
-| — | WS2-3 Custom service worker + browser push subscription | ⬜ |
-| — | WS2-4 Push settings UI + end-to-end delivery test | ⬜ |
+| `76873e5` | B-7 Documentation + roadmap bump | ✅ |
+| `777e01c` | WS2-3 Custom service worker + push subscription manager | ✅ |
+| `01ecd99` `46f0340` | WS2-4 Push settings UI + e2e gate | ✅ |
+| `ae50206` | WS2-4 Delivery-chain tests + browser spec + SW-ready race fix | ✅ |
+| `8f260b2` | 3C Page interpretation + 5 read-only AI actions | ✅ |
+| `1834759` | 3F Notification settings surface (opt-out, tone, quiet hours) | ✅ |
+
+**v2.1 code is feature-complete.** Remaining before release: production AI
+deployment behind the explicit §6 approval gate (Plan.md), then the
+scheduled-trigger + authenticated AI + notification delivery smoke sequence.
 
 ### Production Bugs Found by B-6 E2E Gate
 1. **Autosave race:** overlapping flushes reused same `expected_revision` → spurious 409. Fixed with in-flight serialization guard.
