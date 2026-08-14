@@ -50,6 +50,14 @@ export default defineConfig({
       port: 8787,
       reuseExistingServer: true,
       timeout: 120_000,
+      // The SPA runs on 127.0.0.1:5173 (see baseURL) — the worker's CORS
+      // allowlist must include that EXACT origin or the browser's own
+      // whoami/REST fetches (preflighted due to the Authorization header)
+      // fail and ProtectedRoute bounces to the Landing page. This is the
+      // documented E2E_CORS_ORIGINS override seam in e2e-worker.mjs.
+      env: {
+        E2E_CORS_ORIGINS: 'http://127.0.0.1:5173,http://localhost:5173',
+      },
     },
     {
       command: 'npx vite --host 127.0.0.1',

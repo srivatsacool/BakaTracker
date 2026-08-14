@@ -166,10 +166,13 @@ export const Notes: React.FC = () => {
     if (busy) return;
     await runBusy(`pg:archive:${page.id}`, async () => {
       await archivePage(apiClient, page.id);
+      // Keep the page in state with archived_at set (NOT removed) so the
+      // "Show archived" toggle can render it again — the render layer
+      // filters by archived_at.
       const nbId = page.notebook_id ?? '';
       setPagesByNb(prev => ({
         ...prev,
-        [nbId]: (prev[nbId] ?? []).filter(p => p.id !== page.id),
+        [nbId]: (prev[nbId] ?? []).map(p => (p.id === page.id ? { ...p, archived_at: new Date().toISOString() } : p)),
       }));
     }).catch(() => undefined);
   };

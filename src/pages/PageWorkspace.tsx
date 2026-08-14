@@ -69,66 +69,84 @@ const PageWorkspaceInner: React.FC<{ pageId: string | undefined; onReload: () =>
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Ref to the latest flush so setTimeout closures avoid TDZ / stale captures.
   const flushRef = useRef<(() => Promise<void>) | undefined>(undefined);
+  // Serializes saves: only ONE flush in flight at a time. Without this,
+  // overlapping flushes both send the same expected_revision and the loser
+  // gets a 409 even though no external edit happened.
+  const inFlightRef = useRef<Promise<void> | null>(null);
 
-  const flush = useCallback(async () => {
+  const flush = useCallback(async (): Promise<void> => {
     if (!pageId) return;
-    dirtyRef.current = false;
-
-    // Nothing ever changed (e.g. save triggered with no onChange captured yet).
-    if (elementsRef.current === null) {
-      setSaveStatus({ kind: 'saved' });
+    if (inFlightRef.current) {
+      // A save is already running; the caller re-arms the debounce so this
+      // flush runs again after the in-flight one lands (dirty flag stays set).
       return;
     }
 
-    // Serialize inside the lazy editor chunk (serializeScene dynamic-imports
-    // the package), preserving the code-split.
-    let scene: string;
-    try {
-      scene = await serializeScene(elementsRef.current, appStateRef.current ?? {}, filesRef.current ?? {});
-    } catch {
-      setSaveStatus({ kind: 'error', message: 'Could not serialize the canvas. Try again.' });
-      return;
-    }
+    const run = async (): Promise<void> => {
+      dirtyRef.current = false;
 
-    // v2.1A contract bans dataURLs in scenes (D1 cap + no binary-in-text).
-    if (containsDataUrl(scene)) {
-      setSaveStatus({ kind: 'data-url' });
-      return;
-    }
-    if (scene.length > SOFT_MAX_BYTES) {
-      setSaveStatus({ kind: 'too-large' });
-      return;
-    }
-
-    setSaveStatus({ kind: 'saving' });
-    const expectedRevision = revisionRef.current;
-    try {
-      const newRevision = await saveScene(apiClient, pageId, scene, expectedRevision);
-      revisionRef.current = newRevision;
-      // A change may have landed during the request — re-save shortly.
-      if (dirtyRef.current) {
-        if (debounceRef.current) clearTimeout(debounceRef.current);
-        debounceRef.current = setTimeout(() => {
-          void flushRef.current?.();
-        }, AUTOSAVE_DEBOUNCE_MS);
+      // Nothing ever changed (e.g. save triggered with no onChange captured yet).
+      if (elementsRef.current === null) {
+        setSaveStatus({ kind: 'saved' });
         return;
       }
-      setSaveStatus({ kind: 'saved' });
-    } catch (err) {
-      if (err instanceof PageConflictError) {
-        revisionRef.current = err.currentRevision;
-        setSaveStatus({ kind: 'conflict', currentRevision: err.currentRevision });
+
+      // Serialize inside the lazy editor chunk (serializeScene dynamic-imports
+      // the package), preserving the code-split.
+      let scene: string;
+      try {
+        scene = await serializeScene(elementsRef.current, appStateRef.current ?? {}, filesRef.current ?? {});
+      } catch {
+        setSaveStatus({ kind: 'error', message: 'Could not serialize the canvas. Try again.' });
         return;
       }
-      if (err instanceof PageTooLargeError) {
+
+      // v2.1A contract bans dataURLs in scenes (D1 cap + no binary-in-text).
+      if (containsDataUrl(scene)) {
+        setSaveStatus({ kind: 'data-url' });
+        return;
+      }
+      if (scene.length > SOFT_MAX_BYTES) {
         setSaveStatus({ kind: 'too-large' });
         return;
       }
-      setSaveStatus({
-        kind: 'error',
-        message: err instanceof Error ? err.message : 'Save failed. Check your connection.',
-      });
-    }
+
+      setSaveStatus({ kind: 'saving' });
+      const expectedRevision = revisionRef.current;
+      try {
+        const newRevision = await saveScene(apiClient, pageId, scene, expectedRevision);
+        revisionRef.current = newRevision;
+        // A change may have landed during the request — re-save shortly.
+        if (dirtyRef.current) {
+          if (debounceRef.current) clearTimeout(debounceRef.current);
+          debounceRef.current = setTimeout(() => {
+            void flushRef.current?.();
+          }, AUTOSAVE_DEBOUNCE_MS);
+          return;
+        }
+        setSaveStatus({ kind: 'saved' });
+      } catch (err) {
+        if (err instanceof PageConflictError) {
+          revisionRef.current = err.currentRevision;
+          setSaveStatus({ kind: 'conflict', currentRevision: err.currentRevision });
+          return;
+        }
+        if (err instanceof PageTooLargeError) {
+          setSaveStatus({ kind: 'too-large' });
+          return;
+        }
+        setSaveStatus({
+          kind: 'error',
+          message: err instanceof Error ? err.message : 'Save failed. Check your connection.',
+        });
+      }
+    };
+
+    const tracked = run().finally(() => {
+      inFlightRef.current = null;
+    });
+    inFlightRef.current = tracked;
+    await tracked;
   }, [apiClient, pageId]);
 
   const scheduleFlush = useCallback(() => {
@@ -145,18 +163,35 @@ const PageWorkspaceInner: React.FC<{ pageId: string | undefined; onReload: () =>
     flushRef.current = flush;
   }, [flush]);
 
-  // Excalidraw fires onChange on mount; ignore the first to avoid an
-  // immediate save of the just-hydrated scene.
-  const firstChangeRef = useRef(true);
+  // Excalidraw fires onChange repeatedly on mount (hydration + appState
+  // bursts like cursor/zoom) with the SAME elements as the just-hydrated
+  // scene. Saving any of those would write an empty/unchanged scene and race
+  // the real first save (stale-revision 409). Skip until the elements differ
+  // from the hydrated snapshot — i.e. until the user actually drew something.
+  const hydratedIdsRef = useRef<Set<string> | null>(null);
+  const hydratedCountRef = useRef(-1);
   const handleChange = useCallback(
     (elements: readonly ExcalidrawElement[], appState: AppState, files: BinaryFiles) => {
       elementsRef.current = elements;
       appStateRef.current = appState;
       filesRef.current = files;
-      if (firstChangeRef.current) {
-        firstChangeRef.current = false;
+      // First callback after hydration: snapshot the scene to compare against.
+      if (hydratedIdsRef.current === null) {
+        hydratedIdsRef.current = new Set(elements.map(e => e.id));
+        hydratedCountRef.current = elements.length;
         return;
       }
+      // Same element set as hydration → still the mount burst, not user edits.
+      if (
+        elements.length === hydratedCountRef.current &&
+        elements.every(e => hydratedIdsRef.current!.has(e.id))
+      ) {
+        return;
+      }
+      // First REAL change: disarm the snapshot comparison (disarm by making
+      // the count unmatchable) so later edits — even ones that return to the
+      // hydrated element set, like draw-then-delete-everything — always save.
+      hydratedCountRef.current = -1;
       scheduleFlush();
     },
     [scheduleFlush],
