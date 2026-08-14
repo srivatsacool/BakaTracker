@@ -9,6 +9,7 @@ import { useAuth } from '../../features/auth';
 import { authConfig } from '../../features/auth/config';
 import { useApiClient } from '../../api/authFetch';
 import { seedDemoData } from '../../services/demoMode';
+import { subscribeToPush, unsubscribeFromPush, isPushSubscribed } from '../../services/push';
 import { FirstRunWizard } from './FirstRunWizard';
 import { FirstRunSetup } from './FirstRunSetup';
 import { useAppTour } from '../../lib/useAppTour';
@@ -19,7 +20,7 @@ export const Layout: React.FC = () => {
   const navigate = useNavigate();
   const { startTour } = useAppTour(navigate);
   const { stats, settings, syncStatus, syncError, habits, habitLogs, tasks, journal, syncWithSheets, setSheetsUrl, setApiKey, theme, toggleTheme, setAccentColors, loadDemoData, clearDataByDays } = useStore();
-  const { user, login } = useAuth();
+  const { user, login, getAccessToken } = useAuth();
     const apiClient = useApiClient();
     const init = useStore((s) => s.init);
     const isGuest = user?.provider === 'guest';
@@ -39,6 +40,13 @@ export const Layout: React.FC = () => {
 
   const [clearDays, setClearDays] = useState<number | 'all'>(7);
     const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [isSubscribed, setIsSubscribed] = useState(false);
+  const [pushBusy, setPushBusy] = useState(false);
+
+  // Check push subscription status on mount.
+  useEffect(() => {
+    isPushSubscribed().then(setIsSubscribed);
+  }, []);
 
   // PWA & Offline State
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
@@ -670,7 +678,41 @@ export const Layout: React.FC = () => {
                 </div>
               </div>
 
-              <div className="flex flex-col gap-1 bg-bg-primary p-3 rounded-lg border border-black/10 text-[10px] leading-relaxed font-mono text-gray-600">
+                {/* Push Notifications */}
+                <div className="flex flex-col gap-2 border-t border-black/10 pt-3">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-black font-mono">Push Notifications</label>
+                    <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full ${isSubscribed ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                      {isSubscribed ? 'Active' : 'Off'}
+                    </span>
+                  </div>
+                  <p className="m-0 text-[10px] text-gray-500 dark:text-gray-400 leading-relaxed font-mono">
+                    Receive proactive reminders from BakaSur when habits lapse, tasks are due, or milestones are reached.
+                  </p>
+                  <button
+                    type="button"
+                    disabled={pushBusy}
+                    onClick={async () => {
+                      const token = await getAccessToken();
+                      if (!token) return;
+                      setPushBusy(true);
+                      if (isSubscribed) {
+                        await unsubscribeFromPush(token);
+                        setIsSubscribed(false);
+                      } else {
+                        const result = await subscribeToPush(token);
+                        if (result.success) setIsSubscribed(true);
+                        if (result.message) alert(result.message);
+                      }
+                      setPushBusy(false);
+                    }}
+                    className="self-start px-3 py-1.5 rounded-lg border-2 border-black font-bold text-xs shadow-gumroad-sm transition hover:translate-x-[1px] hover:translate-y-[1px] disabled:opacity-50 bg-white hover:bg-gray-50"
+                  >
+                    {pushBusy ? '...' : isSubscribed ? 'Disable Push' : 'Enable Push'}
+                  </button>
+                </div>
+
+                <div className="flex flex-col gap-1 bg-bg-primary p-3 rounded-lg border border-black/10 text-[10px] leading-relaxed font-mono text-gray-600">
                 <span className="font-bold text-black uppercase">How to set up:</span>
                 <ol className="list-decimal list-inside flex flex-col gap-0.5">
                   <li>Deploy the script from <b>google-apps-script.js</b> in your Google Sheets Apps Script.</li>
