@@ -50,6 +50,61 @@ export const SummarizeResultSchema = z.object({
 });
 export type SummarizeResult = z.infer<typeof SummarizeResultSchema>;
 
+// --- v2.1 track 3C: read-only page AI actions -------------------------------
+// Every result schema below is zod-validated fail-closed (exact bounds from
+// the phase8 design). All five actions are READ-ONLY: they never mutate notes.
+
+/** Structured result of the notes `explain` action (ELI5 breakdown). */
+export const ExplainResultSchema = z.object({
+  explanation: z.string().min(1).max(2_000),
+});
+export type ExplainResult = z.infer<typeof ExplainResultSchema>;
+
+/** Input contract for the notes `ask` action. */
+export const AskInputSchema = z.object({
+  question: z.string().min(1).max(1_000),
+});
+export type AskInput = z.infer<typeof AskInputSchema>;
+
+/** Structured result of the notes `ask` action. */
+export const AskResultSchema = z.object({
+  answer: z.string().min(1).max(2_000),
+  confidence: z.string().max(100).optional(),
+});
+export type AskResult = z.infer<typeof AskResultSchema>;
+
+/** Structured result of the notes `extract-tasks` action — READ-ONLY candidate
+ * suggestions only; the AI never creates tasks. Empty arrays are valid (a note
+ * may contain no task-like items). */
+export const TasksResultSchema = z.object({
+  tasks: z.array(
+    z.object({
+      title: z.string().min(1).max(200),
+      due: z.string().max(50).optional(),
+      priority: z.string().max(50).optional(),
+    }),
+  ).max(20),
+});
+export type TasksResult = z.infer<typeof TasksResultSchema>;
+
+/** Structured result of the notes `extract-concepts` action. */
+export const ConceptsResultSchema = z.object({
+  concepts: z.array(
+    z.object({
+      term: z.string().min(1).max(100),
+      definition: z.string().min(1).max(400),
+      references: z.array(z.string().min(1).max(200)).max(10),
+    }),
+  ).max(15),
+});
+export type ConceptsResult = z.infer<typeof ConceptsResultSchema>;
+
+/** Structured result of the notes `generate-questions` action. */
+export const QuestionsResultSchema = z.object({
+  questions: z.array(z.string().min(1).max(200)).max(10),
+});
+export type QuestionsResult = z.infer<typeof QuestionsResultSchema>;
+
 export interface StructuredOptions<T extends z.ZodType> {
   /** Fixed, app-authored system prompt. Never contains user/model text. */
   system: string;

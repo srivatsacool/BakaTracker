@@ -23,5 +23,18 @@ export { AiService, AiError, AI_INPUT_MAX_CHARS, AI_OUTPUT_MAX_CHARS, AI_EMBED_M
 export type { StructuredOptions, TextOptions, AiServiceResult } from "./service";
 export { SummarizeResultSchema } from "./service";
 export type { SummarizeResult } from "./service";
+export {
+  ExplainResultSchema, AskInputSchema, AskResultSchema,
+  TasksResultSchema, ConceptsResultSchema, QuestionsResultSchema,
+} from "./service";
+export type {
+  ExplainResult, AskInput, AskResult, TasksResult, ConceptsResult, QuestionsResult,
+} from "./service";
 export { BAKASUR_ALLOWED_TOOLS, BAKASUR_DENIED_TOOLS, assertBakasurAllowed } from "./bakasur";
-export { BAKASUR_CORE_SYSTEM, SUMMARIZE_SYSTEM, notificationMessageSystem } from "./prompts";
+export {
+  BAKASUR_CORE_SYSTEM, SUMMARIZE_SYSTEM, notificationMessageSystem,
+  EXPLAIN_SYSTEM, ASK_SYSTEM, EXTRACT_TASKS_SYSTEM, EXTRACT_CONCEPTS_SYSTEM,
+  GENERATE_QUESTIONS_SYSTEM,
+} from "./prompts";
+export { buildPageRepresentation, PageRepresentationSchema } from "./interpret";
+export type { PageRepresentation, PageRepresentationInput } from "./interpret";

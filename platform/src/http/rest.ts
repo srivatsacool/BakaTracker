@@ -28,7 +28,7 @@ import { SyncPush } from "../domain/schemas";
 import { MAX_FILE_SIZE, NotebookInput, CreatePageInput, UpdatePageInput, ReorderPageInput, SaveSceneInput, PAGE_SCENE_MAX_BYTES, PAGE_POSITION_STEP } from "../domain/schemas";
 import type { Props } from "../auth/props";
 import { isAllowedCorsOrigin, isLocalDevOrigin } from "../auth/app-origin";
-import { handleNoteSummarize, buildAiService } from "./notes-ai";
+import { handleNoteSummarize, handleNoteExplain, handleNoteAsk, handleNoteExtractTasks, handleNoteExtractConcepts, handleNoteGenerateQuestions, buildAiService } from "./notes-ai";
 import { handleGetSettings, handlePutSettings } from "./notifications";
 import { handlePostSubscription, handleDeleteSubscription } from "./push";
 import { nowISO } from "../shared/util";
@@ -246,6 +246,35 @@ export function buildRestApp(options: RestAppOptions = {}): Hono<{ Bindings: RES
   app.post("/notes/:id/ai/summarize", async (c) => {
     const ai = options.aiService ?? buildAiService(c.env);
     return handleNoteSummarize(c, ai);
+  });
+
+  // --- Notes AI actions (v2.1 track 3C: read-only page interpretation) ------
+  // All five are READ-ONLY: ownership → bounded input → structured generation.
+  // For excalidraw pages the model sees the interpreted page representation
+  // (metadata + text only), never the raw scene JSON.
+  app.post("/notes/:id/ai/explain", async (c) => {
+    const ai = options.aiService ?? buildAiService(c.env);
+    return handleNoteExplain(c, ai);
+  });
+
+  app.post("/notes/:id/ai/ask", async (c) => {
+    const ai = options.aiService ?? buildAiService(c.env);
+    return handleNoteAsk(c, ai);
+  });
+
+  app.post("/notes/:id/ai/extract-tasks", async (c) => {
+    const ai = options.aiService ?? buildAiService(c.env);
+    return handleNoteExtractTasks(c, ai);
+  });
+
+  app.post("/notes/:id/ai/extract-concepts", async (c) => {
+    const ai = options.aiService ?? buildAiService(c.env);
+    return handleNoteExtractConcepts(c, ai);
+  });
+
+  app.post("/notes/:id/ai/generate-questions", async (c) => {
+    const ai = options.aiService ?? buildAiService(c.env);
+    return handleNoteGenerateQuestions(c, ai);
   });
 
   // --- v2.1 Notebooks + Pages (Visual Notes persistence) ---------------------
