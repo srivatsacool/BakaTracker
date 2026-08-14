@@ -17,8 +17,11 @@ test.describe('Browser E2E [push settings]', () => {
     await expect(page.getByText('Push Notifications')).toBeVisible({ timeout: 10000 });
     await expect(page.getByText('Receive proactive reminders from BakaSur')).toBeVisible();
 
-    // Status badge should show initial state.
-    await expect(page.getByText('Off').or(page.getByText('Active')).first()).toBeVisible();
+    // Status badge should show initial state. Exact match: 'Active' is a
+    // substring of 'Active Character' (sidebar) — substring matching here
+    // resolves to a hidden element and the assertion fails.
+    const badge = page.getByText('Off', { exact: true }).or(page.getByText('Active', { exact: true })).first();
+    await expect(badge).toBeVisible();
 
     // Enable/Disable button should be present.
     const toggleBtn = page.getByRole('button', { name: /Enable Push|Disable Push/ });
