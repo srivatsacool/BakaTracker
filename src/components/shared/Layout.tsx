@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Flame, ListTodo, Target, BookOpen, Compass, Cloud, CloudOff, Settings as SettingsIcon, X, Sun, Moon, ChevronLeft, ChevronRight, Download, WifiOff, LayoutGrid, Zap, Play, Shield, NotebookPen } from 'lucide-react';
 import { useStore } from '../../store/useStore';
@@ -10,9 +10,19 @@ import { authConfig } from '../../features/auth/config';
 import { useApiClient } from '../../api/authFetch';
 import { seedDemoData } from '../../services/demoMode';
 import { subscribeToPush, unsubscribeFromPush, isPushSubscribed } from '../../services/push';
+import { NOTIF_TONES, getNotificationSettings, updateNotificationSettings, type NotificationSettings, type NotifTone } from '../../services/notificationSettings';
 import { FirstRunWizard } from './FirstRunWizard';
 import { FirstRunSetup } from './FirstRunSetup';
 import { useAppTour } from '../../lib/useAppTour';
+
+const TONE_LABELS: Record<NotifTone, string> = {
+  gentle: 'Gentle',
+  motivational: 'Motivational',
+  funny: 'Funny',
+  tsundere: 'Tsundere',
+  savage: 'Savage',
+  celebratory: 'Celebratory',
+};
 
 
 export const Layout: React.FC = () => {
@@ -43,10 +53,49 @@ export const Layout: React.FC = () => {
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [pushBusy, setPushBusy] = useState(false);
 
+  // BakaSur notification settings (master opt-in, tone, quiet hours).
+  const [notifSettings, setNotifSettings] = useState<NotificationSettings | null>(null);
+  const [notifSaving, setNotifSaving] = useState(false);
+  const [notifError, setNotifError] = useState<string | null>(null);
+  const [notifSaved, setNotifSaved] = useState(false);
+  const notifSaveSeq = useRef(0);
+
+  // Derived: a fetch is in flight while the modal is open with nothing loaded
+  // yet and no load failure (guests never fetch, so they never see this).
+  const notifLoading = showSettingsModal && !isGuest && !notifSettings && !notifError;
+
   // Check push subscription status on mount.
   useEffect(() => {
     isPushSubscribed().then(setIsSubscribed);
   }, []);
+
+  // Settings modal opener — resets the BakaSur notification settings so the
+  // fetch below shows a fresh loading state on every open (and on reopen after
+  // a previous load failure, which doubles as a retry).
+  const openSettingsModal = () => {
+    setNotifSettings(null);
+    setNotifError(null);
+    setShowSettingsModal(true);
+  };
+
+  // Fetch notification settings whenever the settings modal opens — but only
+  // for authenticated users; guests have no backend account to persist
+  // preferences for (mirrors the guest guard used elsewhere in this file).
+  // setState runs only in async callbacks (react-hooks/set-state-in-effect).
+  useEffect(() => {
+    if (!showSettingsModal || isGuest || !apiClient) return;
+    let cancelled = false;
+    getNotificationSettings(apiClient)
+      .then((s) => {
+        if (!cancelled) setNotifSettings(s);
+      })
+      .catch((e) => {
+        if (!cancelled) setNotifError(`Failed to load settings — ${e instanceof Error ? e.message : 'unknown error'}`);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [showSettingsModal, isGuest, apiClient]);
 
   // PWA & Offline State
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
@@ -118,6 +167,37 @@ export const Layout: React.FC = () => {
   const handleResetColors = () => {
     setInputAccentLight('#FF90E8');
     setInputAccentDark('#FF90E8');
+  };
+
+  // BakaSur notification settings — optimistic local update, then PUT the FULL
+  // settings object (the backend rejects partial payloads, so we always spread
+  // the loaded settings and mutate only what changed). Selections survive a
+  // failed save; only the latest in-flight save may touch UI state.
+  const handleNotifChange = (patch: Partial<NotificationSettings>) => {
+    if (!notifSettings) return;
+    const next = { ...notifSettings, ...patch };
+    setNotifSettings(next);
+    handleNotifSave(next);
+  };
+
+  const handleNotifSave = async (next: NotificationSettings) => {
+    if (!apiClient) return;
+    const seq = ++notifSaveSeq.current;
+    setNotifSaving(true);
+    setNotifError(null);
+    setNotifSaved(false);
+    try {
+      const saved = await updateNotificationSettings(apiClient, next);
+      if (seq !== notifSaveSeq.current) return; // superseded by a newer save
+      setNotifSettings(saved);
+      setNotifSaved(true);
+      window.setTimeout(() => setNotifSaved(false), 2500);
+    } catch (e) {
+      if (seq !== notifSaveSeq.current) return;
+      setNotifError(`Failed to save — ${e instanceof Error ? e.message : 'unknown error'}`);
+    } finally {
+      if (seq === notifSaveSeq.current) setNotifSaving(false);
+    }
   };
 
   // Phase 3 — Demo Mode: seed the authenticated user's account through the
@@ -252,7 +332,7 @@ export const Layout: React.FC = () => {
                     setInputApiKey(settings.api_key || '');
                     setInputAccentLight(settings.accent_color_light || '#FF90E8');
                     setInputAccentDark(settings.accent_color_dark || '#FF90E8');
-                    setShowSettingsModal(true);
+                    openSettingsModal();
                   }}
                   className="p-1.5 rounded border-2 border-black bg-white hover:bg-gray-100 transition shadow-gumroad-sm"
                   title="Settings"
@@ -313,7 +393,7 @@ export const Layout: React.FC = () => {
                         setInputApiKey(settings.api_key || '');
                         setInputAccentLight(settings.accent_color_light || '#FF90E8');
                         setInputAccentDark(settings.accent_color_dark || '#FF90E8');
-                        setShowSettingsModal(true);
+                        openSettingsModal();
                       }}
                       className="p-1.5 rounded border-2 border-black bg-white hover:bg-gray-100 transition shadow-gumroad-sm"
                       title="Settings"
@@ -480,7 +560,7 @@ export const Layout: React.FC = () => {
                 setInputApiKey(settings.api_key || '');
                 setInputAccentLight(settings.accent_color_light || '#FF90E8');
                 setInputAccentDark(settings.accent_color_dark || '#FF90E8');
-                setShowSettingsModal(true);
+                openSettingsModal();
               }}
               className="p-1 rounded border border-black bg-white"
               title="Settings"
@@ -710,6 +790,91 @@ export const Layout: React.FC = () => {
                   >
                     {pushBusy ? '...' : isSubscribed ? 'Disable Push' : 'Enable Push'}
                   </button>
+                </div>
+
+                {/* BakaSur Notifications */}
+                <div className="flex flex-col gap-2 border-t border-black/10 pt-3">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-black font-mono">BakaSur Notifications</label>
+                    <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full ${notifSettings?.enabled ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                      {notifSettings?.enabled ? 'Active' : 'Off'}
+                    </span>
+                  </div>
+                  <p className="m-0 text-[10px] text-gray-500 dark:text-gray-400 leading-relaxed font-mono">
+                    Let BakaSur nudge you when habits lapse, tasks are due, or milestones are reached.
+                  </p>
+
+                  {notifLoading ? (
+                    <p className="m-0 text-[10px] font-mono text-gray-400">Loading settings…</p>
+                  ) : notifSettings ? (
+                    <>
+                      {/* Master opt-in */}
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[10px] font-bold font-mono text-gray-500">Proactive reminders</span>
+                        <button
+                          type="button"
+                          disabled={notifSaving}
+                          onClick={() => handleNotifChange({ enabled: !notifSettings.enabled })}
+                          className="px-3 py-1.5 rounded-lg border-2 border-black font-bold text-xs shadow-gumroad-sm transition hover:translate-x-[1px] hover:translate-y-[1px] disabled:opacity-50 bg-white hover:bg-gray-50"
+                        >
+                          {notifSaving ? '...' : notifSettings.enabled ? 'On' : 'Off'}
+                        </button>
+                      </div>
+
+                      {/* Personality */}
+                      <div className="flex flex-col gap-1">
+                        <span className="text-[10px] font-bold font-mono text-gray-500">BakaSur personality</span>
+                        <select
+                          value={notifSettings.tone}
+                          onChange={(e) => handleNotifChange({ tone: e.target.value as NotifTone })}
+                          className="neo-input text-xs font-mono"
+                        >
+                          {NOTIF_TONES.map((t) => (
+                            <option key={t} value={t}>{TONE_LABELS[t]}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Quiet hours */}
+                      <div className="flex flex-col gap-1.5">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={notifSettings.quiet_hours.enabled}
+                            onChange={(e) => handleNotifChange({ quiet_hours: { ...notifSettings.quiet_hours, enabled: e.target.checked } })}
+                            className="w-4 h-4 accent-accent-pink"
+                          />
+                          <span className="text-[10px] font-bold font-mono text-gray-500">Quiet hours</span>
+                        </label>
+                        {notifSettings.quiet_hours.enabled && (
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="time"
+                              value={notifSettings.quiet_hours.start}
+                              onChange={(e) => handleNotifChange({ quiet_hours: { ...notifSettings.quiet_hours, start: e.target.value } })}
+                              className="neo-input text-xs font-mono"
+                            />
+                            <span className="text-[10px] font-mono text-gray-500">to</span>
+                            <input
+                              type="time"
+                              value={notifSettings.quiet_hours.end}
+                              onChange={(e) => handleNotifChange({ quiet_hours: { ...notifSettings.quiet_hours, end: e.target.value } })}
+                              className="neo-input text-xs font-mono"
+                            />
+                          </div>
+                        )}
+                      </div>
+
+                      {notifError && (
+                        <p className="m-0 text-[10px] font-mono text-danger">{notifError}</p>
+                      )}
+                      {notifSaved && !notifError && (
+                        <p className="m-0 text-[10px] font-mono text-success">Saved ✓</p>
+                      )}
+                    </>
+                  ) : notifError ? (
+                    <p className="m-0 text-[10px] font-mono text-danger">{notifError}</p>
+                  ) : null}
                 </div>
 
                 <div className="flex flex-col gap-1 bg-bg-primary p-3 rounded-lg border border-black/10 text-[10px] leading-relaxed font-mono text-gray-600">
