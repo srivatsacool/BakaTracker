@@ -45,4 +45,10 @@ export const config = {
     baseUrl: apiBaseUrl(),
     version: "v2",
   },
+  push: {
+    // VAPID public key for Web Push subscriptions. Set via
+    // VITE_VAPID_PUBLIC_KEY env var (base64url-encoded). When absent,
+    // push notifications are silently unavailable.
+    vapidPublicKey: (import.meta.env.VITE_VAPID_PUBLIC_KEY as string) || "",
+  },
 };

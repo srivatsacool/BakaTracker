@@ -10,6 +10,9 @@ import { cloudflare } from "@cloudflare/vite-plugin";
 export default defineConfig({
   plugins: [react(), tailwindcss(), VitePWA({
     registerType: 'autoUpdate',
+    strategies: 'injectManifest',
+    srcDir: 'src',
+    filename: 'sw.ts',
     includeAssets: ['logo.png', 'avatar.png'],
     manifest: {
       name: 'BakaTracker',
