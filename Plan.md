@@ -103,6 +103,13 @@ Landing, design system, glassmorphism, typography, surfaces, navigation, dashboa
 **No production AI deployment without explicit approval.** Sequence:
 1. local tests → 2. staging/local AI validation → 3. production config generation (`npm run setup -- --with-ai`) → 4. dry-run → 5. **explicit approval** → 6. production deploy → 7. scheduled-trigger test → 8. authenticated AI smoke test → 9. notification delivery test.
 
+> **Gate log — 2026-08-14 (v2.1 feature-complete):**
+> - ✅ Step 1: platform 212/212 vitest, 9/9 Playwright e2e, tsc clean.
+> - ⏳ Step 2: requires a real browser Google OAuth login against local `wrangler dev` — user interaction; can also fold into post-deploy smokes (steps 7–9).
+> - ✅ Step 3: prod config verified v2.1-ready (AI binding + `AI_ENABLED=1` already present). Prepared locally: cron trigger `*/15 * * * *` added to `wrangler.prod.jsonc`; VAPID keypair generated (needs `wrangler secret put VAPID_PUBLIC_KEY/VAPID_PRIVATE_KEY` at step 6). Frontend Pages env needs `VITE_VAPID_PUBLIC_KEY` at build.
+> - ✅ Step 4: `wrangler deploy --config wrangler.prod.jsonc --dry-run` PASS (all bindings incl. AI resolve; 450 KiB gzip).
+> - ⏸ Steps 5–9 await explicit approval.
+
 External notification providers and any new infra require explicit approval too.
 
 ## 7. Constraints & guardrails
