@@ -18,7 +18,7 @@ Cloudflare-native replatform, live in production.
 
 ---
 
-## 🟨 Next: Version 2.1 — BakaSur + Visual Notes
+## 🟧 In Progress: Version 2.1 — BakaSur + Visual Notes
 
 Four implementation tracks (detail: `docs/phases/phase8-notes-excalidraw.md`, `docs/phases/phase9-proactive-notifications.md`):
 
@@ -26,6 +26,26 @@ Four implementation tracks (detail: `docs/phases/phase8-notes-excalidraw.md`, `d
 2. **Notes data model** — `notes` extended (`kind`, `scene`, `notebook_id`, `position`, `archived_at`) + `notebooks` table; existing text notes become pages; scene images extracted to R2; migration `0003_notes_pages.sql`; backward-compatible.
 3. **BakaSur + Notes** — worker-side page interpretation layer (bounded `PageRepresentation`, never raw scene JSON); read-only actions: summarize / explain / ask / extract_tasks / extract_concepts / generate_questions; AI never mutates a page without an explicit user action.
 4. **Proactive BakaSur → real delivery** — production pipeline (rules decide WHETHER, AI phrases HOW); **Web Push** (VAPID + injectManifest SW + per-device KV subscriptions + `@block65/webcrypto-web-push` on the worker; no external providers); personalities (`gentle | motivational | funny | tsundere | savage | celebratory`, wording only); minimal functional settings surface (opt-out, quiet hours, tone).
+
+### v2.1B Checkpoints (Visual Notes + Web Push)
+
+| Commit | Checkpoint | Status |
+|--------|-----------|--------|
+| `2e3558a` | B-1 Excalidraw editor shell + lazy route | ✅ |
+| `355c261` | B-2 Page load + scene hydration from v2.1A REST | ✅ |
+| `5a1de3b` | WS2-backend Web Push delivery (VAPID, KV subs, REST) | ✅ |
+| `79ce345` | B-3 Debounced autosave + conflict/quota/dataURL | ✅ |
+| `26fedaa` | B-4 Notebook/page chrome (full lifecycle) | ✅ |
+| `24a64f9` | B-5 Theme + mobile responsiveness | ✅ |
+| `d87ddee` | B-6 Playwright E2E persistence gate + 3 prod bug fixes | ✅ |
+| — | B-7 Documentation + roadmap bump | ⬜ |
+| — | WS2-3 Custom service worker + browser push subscription | ⬜ |
+| — | WS2-4 Push settings UI + end-to-end delivery test | ⬜ |
+
+### Production Bugs Found by B-6 E2E Gate
+1. **Autosave race:** overlapping flushes reused same `expected_revision` → spurious 409. Fixed with in-flight serialization guard.
+2. **Mount-save race:** Excalidraw mount `onChange` bursts saved empty scene, racing the first real draw save. Fixed with hydrated-scene id-set comparison.
+3. **Archive state bug:** `handleArchivePage` removed pages from state, preventing them from reappearing under "Show archived". Fixed to update `archived_at` in place.
 
 ---
 

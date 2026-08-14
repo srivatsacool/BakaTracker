@@ -77,7 +77,19 @@ The **Journey** dashboard compiles historical entries using client-side calculat
 
 ---
 
-## 6. PWA Offline & Google Sheets Sync
+## 6. Visual Notes (v2.1B)
+
+* **Excalidraw Canvas** — each page hosts an Excalidraw workspace (`@excalidraw/excalidraw` v0.18, MIT, lazy-loaded in a separate chunk). Drawing tools (rectangle, ellipse, arrow, text, etc.) and pointer events work directly on the interactive canvas.
+* **Debounced Autosave** — 1500ms idle debounce; the serialized scene is saved via `PUT /pages/:id/scene` with optimistic concurrency (`expected_revision`). A 409 conflict shows a non-destructive "Load latest" / "Keep my version" banner. A 413 shows a size warning.
+* **Scene Hydration** — `hydrateScene()` dynamically imports Excalidraw's `restore()` to deserialize stored scenes on page load. The editor bundle stays code-split.
+* **dataURL Ban** — the v2.1A contract bans dataURLs in D1 scenes (2 MiB cap). Images pasted into the canvas produce a clear "images aren't supported yet" notice rather than silently stripping content.
+* **Notebooks** — organizational containers for pages. CRUD via REST (`POST /notebooks`, `DELETE /notebooks/:id`). Pages are listed per notebook (`GET /notebooks/:id/pages`).
+* **Page Lifecycle** — create (text or excalidraw), rename (inline), archive/restore, duplicate. Archived pages appear under a toggle; archived pages remain in state with `archived_at` set.
+* **Conflict Recovery** — when a save returns 409, the user can "Load latest" (fetches server revision) or "Keep my version" (resends with the server's newer revision to win the conflict).
+
+---
+
+## 7. PWA Offline & Google Sheets Sync
 
 * **Local-First Writes:** User input triggers state updates in Zustand and writes directly to browser `localStorage`.
 * **Sync Engine Queue:** If internet connectivity is detected, the `sheetsService` sends a background POST payload to Google Apps Script. If offline, the sync status displays a warning icon and queues requests.
@@ -85,7 +97,7 @@ The **Journey** dashboard compiles historical entries using client-side calculat
 
 ---
 
-## 7. FastMCP Server Bridge
+## 8. FastMCP Server Bridge
 
 The backend serves as a Model Context Protocol endpoint, exposing BakaTracker's tools directly to LLM clients:
 * **Tool Bindings:** FastMCP maps the 22 tools (such as `log_habit`, `create_task`) directly to Python Sheets functions.
