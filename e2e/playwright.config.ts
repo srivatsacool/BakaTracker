@@ -68,6 +68,14 @@ export default defineConfig({
       env: {
         VITE_API_BASE_URL: 'http://127.0.0.1:8787',
         VITE_GOOGLE_CLIENT_ID: 'e2e-browser-test.apps.googleusercontent.com',
+        // TEST-ONLY VAPID public key for the browser's pushManager.subscribe
+        // (65-byte uncompressed P-256 point, base64url, no padding). Generated
+        // once with WebCrypto; the matching PRIVATE key is deliberately NOT
+        // committed anywhere — delivery crypto is proven deterministically by
+        // the worker-side specs (platform/test/push-rest.spec.ts), which
+        // generate fresh keys at runtime.
+        VITE_VAPID_PUBLIC_KEY:
+          'BEIZt5ufkHNfjnNklVwt1c40DphOpudQ6FIM9dMBtK3nTygFEFa_97iKKQxxxJII0dXLPIs5bbFWH4sZNoBiteg',
       },
     },
   ],

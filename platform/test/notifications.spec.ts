@@ -2,7 +2,7 @@ import { env, applyD1Migrations } from "cloudflare:test";
 import migrationSql from "../migrations/0001_init.sql?raw";
 import migrationFilesSql from "../migrations/0002_files.sql?raw";
 import { splitSqlStatements } from "../scripts/sql-split.mjs";
-import { describe, it, expect, beforeAll } from "vitest";
+import { describe, it, expect, beforeAll, vi } from "vitest";
 import { repositories } from "../src/storage/repositories";
 import { AiService } from "../src/ai";
 import { runNotificationEvaluation } from "../src/notifications/engine";
@@ -11,6 +11,9 @@ import { inQuietWindow, todayInTz, daysBetween } from "../src/notifications/cand
 import { loadHistory } from "../src/notifications/policy";
 import type { AIProvider, ChatMessage, ChatOptions } from "../src/ai/provider";
 import type { Notification, NotificationDelivery } from "../src/notifications/types";
+import { WebPushDelivery, type PushSender } from "../src/notifications/webpush";
+import { testBrowserSubscription, testVapidKeys } from "./push-keys";
+import type { PushSubscription } from "@block65/webcrypto-web-push";
 
 // Fixed wall clock: 2026-08-11 10:00 UTC. Everything is derived from this —
 // no test depends on the real clock.
@@ -388,5 +391,51 @@ describe("candidate + policy engine (integration)", () => {
     );
     await run(spy, new RecordingDelivery());
     expect(modelCalls).toBe(0);
+  });
+
+  it("WS2-4: engine → WebPushDelivery sends an encrypted push to the REST-registered endpoint", async () => {
+    // Register the device through the REAL REST route (the browser flow's
+    // POST /api/v1/push/subscription), not a direct store call.
+    const { buildRestApp, REST_PREFIX } = await import("../src/http/rest");
+    const { Hono } = await import("hono");
+    const api = new Hono();
+    api.route(REST_PREFIX, buildRestApp());
+    const sub = await testBrowserSubscription();
+    const reg = await api.request(
+      "http://localhost/api/v1/push/subscription",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-User-Sub": "u_wspush" },
+        body: JSON.stringify(sub),
+      },
+      env as any,
+    );
+    expect(reg.status).toBe(201);
+
+    await seedTask("u_wspush", "wp1", "Web push task", "2026-08-10");
+
+    // Inject the REAL delivery transport through the documented seam, with a
+    // fake sender capturing the outbound request (real library crypto).
+    const vapid = await testVapidKeys();
+    const sendMock = vi.fn(async () => new Response(null, { status: 201 }));
+    const send = sendMock as unknown as PushSender;
+    const delivery = new WebPushDelivery(env.PUSH_SUBSCRIPTIONS, vapid, send);
+
+    const summary = await run(aiServiceResponding(), delivery, NOW);
+    expect(summary.delivered).toBeGreaterThanOrEqual(1);
+
+    // One outbound push to the REST-registered endpoint, encrypted + VAPID-signed.
+    expect(send).toHaveBeenCalledTimes(1);
+    const [sentSub, payload] = sendMock.mock.calls[0] as [
+      PushSubscription,
+      { headers: Record<string, string>; body: Uint8Array },
+    ];
+    expect(sentSub.endpoint).toBe(sub.endpoint);
+    expect(payload.headers["ttl"]).toBe("86400");
+    expect(payload.headers["urgency"]).toBe("normal");
+    expect(payload.headers["authorization"]).toMatch(/^WebPush /);
+    expect(payload.headers["crypto-key"]).toContain("dh=");
+    expect(payload.headers["encryption"]).toMatch(/^salt=/);
+    expect(payload.body.byteLength).toBeGreaterThan(0); // encrypted bytes present
   });
 });

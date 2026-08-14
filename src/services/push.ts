@@ -26,6 +26,32 @@ function getApiBaseUrl(): string {
   return import.meta.env.VITE_API_BASE_URL as string;
 }
 
+/** How long to wait for an active service worker before giving up. */
+const SW_READY_TIMEOUT_MS = 5_000;
+
+/**
+ * Resolve the active service worker registration, or null when no service
+ * worker is registered within `timeoutMs`.
+ *
+ * `navigator.serviceWorker.ready` NEVER settles (and never rejects) when no
+ * SW is registered — e.g. local dev with vite-plugin-pwa devOptions disabled.
+ * Awaiting it directly hangs the caller forever; every caller here races it
+ * against a timeout so the UI can fall back to the graceful error path.
+ */
+async function readyServiceWorker(
+  timeoutMs = SW_READY_TIMEOUT_MS,
+): Promise<ServiceWorkerRegistration | null> {
+  if (!('serviceWorker' in navigator)) return null;
+  try {
+    return await Promise.race([
+      navigator.serviceWorker.ready,
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), timeoutMs)),
+    ]);
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Subscribe the current browser to Web Push notifications.
  *
@@ -46,10 +72,8 @@ export async function subscribeToPush(accessToken: string): Promise<{ success: b
   // VAPID keys must be URL-safe base64 → buffer for the browser.
   const applicationServerKey = base64UrlToBuffer(vapidKey);
 
-  let registration: ServiceWorkerRegistration;
-  try {
-    registration = await navigator.serviceWorker.ready;
-  } catch {
+  const registration = await readyServiceWorker();
+  if (!registration) {
     return { success: false, message: 'Service worker not available. Try installing the app first.' };
   }
 
@@ -116,10 +140,8 @@ export async function subscribeToPush(accessToken: string): Promise<{ success: b
 export async function unsubscribeFromPush(accessToken: string): Promise<{ success: boolean; message?: string }> {
   const savedEndpoint = localStorage.getItem('bt_push_endpoint');
 
-  let registration: ServiceWorkerRegistration;
-  try {
-    registration = await navigator.serviceWorker.ready;
-  } catch {
+  const registration = await readyServiceWorker();
+  if (!registration) {
     return { success: false, message: 'Service worker not available.' };
   }
 
@@ -155,7 +177,8 @@ export async function unsubscribeFromPush(accessToken: string): Promise<{ succes
  */
 export async function isPushSubscribed(): Promise<boolean> {
   try {
-    const registration = await navigator.serviceWorker.ready;
+    const registration = await readyServiceWorker();
+    if (!registration) return false;
     const subscription = await registration.pushManager.getSubscription();
     return subscription !== null;
   } catch {

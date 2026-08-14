@@ -23,7 +23,11 @@ test.describe('Browser E2E [push settings]', () => {
     const badge = page.getByText('Off', { exact: true }).or(page.getByText('Active', { exact: true })).first();
     await expect(badge).toBeVisible();
 
-    // Enable/Disable button should be present.
+    // Enable/Disable button should be present. The name-based locator is safe
+    // here (button is not busy yet). While a subscribe attempt is in flight
+    // the label becomes '...', so the post-click wait below re-resolves the
+    // name — the handler completes within ~5s thanks to the bounded SW-ready
+    // race in src/services/push.ts, restoring 'Enable Push'/'Disable Push'.
     const toggleBtn = page.getByRole('button', { name: /Enable Push|Disable Push/ });
     await expect(toggleBtn).toBeVisible();
 
@@ -33,6 +37,6 @@ test.describe('Browser E2E [push settings]', () => {
     await toggleBtn.click();
 
     // Wait for the action to complete (button returns from disabled state).
-    await expect(toggleBtn).not.toBeDisabled({ timeout: 15000 });
+    await expect(page.getByRole('button', { name: /Enable Push|Disable Push/ })).not.toBeDisabled({ timeout: 20000 });
   });
 });
