@@ -12,7 +12,7 @@ import { ExportLifeModal } from '../components/shared/ExportLifeModal';
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     return (
-      <div className="neo-card p-3 bg-white dark:bg-surface text-black dark:text-text-primary font-mono text-xs border-2 border-black dark:border-white shadow-gumroad-sm">
+      <div className="neo-card p-3 bg-white dark:bg-surface text-black dark:text-text-primary font-mono text-xs border border-glass-border shadow-gumroad-sm">
         <p className="font-bold border-b border-black/10 dark:border-white/10 pb-1 mb-1">{label}</p>
         {payload.map((pld: any) => (
           <p key={pld.name} className="flex justify-between gap-4">
@@ -119,11 +119,11 @@ export const Journey: React.FC = () => {
   const monthLabels = getMonthLabels();
 
   const getHeatmapColor = (score: number) => {
-    if (score === 0) return 'bg-white dark:bg-surface border-black/5 dark:border-white/5';
-    if (score < 30) return 'bg-accent-pink/20 dark:bg-accent-pink/10 text-black/40';
-    if (score < 60) return 'bg-accent-pink/50 dark:bg-accent-pink/30 text-black/60';
-    if (score < 85) return 'bg-accent-pink/80 dark:bg-accent-pink/60 text-white';
-    return 'bg-accent-pink text-white';
+    if (score === 0) return 'bg-white/5 border border-glass-border';
+    if (score < 30) return 'bg-accent-violet/20 border border-accent-violet/25';
+    if (score < 60) return 'bg-accent-violet/45 border border-accent-violet/40';
+    if (score < 85) return 'bg-accent-violet/75 border border-accent-violet/60';
+    return 'bg-accent-violet border border-accent-violet';
   };
 
   // 2. Trend Charts Data (Last 7 Days)
@@ -300,7 +300,7 @@ export const Journey: React.FC = () => {
       case 'habit': return 'bg-success/15 border-success text-success';
       case 'task': return 'bg-indigo-500/15 border-indigo-500 text-indigo-500';
       case 'journal': return 'bg-accent-pink/15 border-accent-pink text-accent-pink';
-      default: return 'bg-gray-100 dark:bg-black/35 border-black/15 text-gray-500';
+      default: return 'bg-white/8 border-glass-border text-text-muted';
     }
   };
 
@@ -327,7 +327,7 @@ export const Journey: React.FC = () => {
 
         <button
           onClick={() => setShowExportModal(true)}
-          className="neo-button bg-accent-pink text-black text-xs font-mono font-bold py-2 px-4 flex items-center gap-2 shadow-gumroad-sm cursor-pointer active:scale-95 transition"
+          className="neo-button text-xs font-mono font-bold py-2 px-4 flex items-center gap-2 cursor-pointer active:scale-95 transition"
         >
           <FileText className="w-4 h-4" />
           <span>Export Your Life Report</span>
@@ -335,16 +335,16 @@ export const Journey: React.FC = () => {
       </div>
 
       {/* Character Sheet Overview Section */}
-      <section className="neo-card p-6 bg-white dark:bg-surface text-text-primary">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center border-b-2 border-black dark:border-white pb-4 mb-4 gap-4">
+      <section className="glass-card p-6 text-text-primary">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-glass-border pb-4 mb-4 gap-4">
           <div className="flex items-center gap-4">
-            <div className="w-16 h-16 bg-accent-pink/15 border-2 border-black dark:border-white rounded-lg flex items-center justify-center text-4xl shadow-gumroad-sm shrink-0">
+            <div className="w-16 h-16 bg-accent-pink/15 border border-glass-border rounded-lg flex items-center justify-center text-4xl shadow-gumroad-sm shrink-0">
               👤
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-[10px] font-black font-mono text-gray-500 uppercase tracking-widest">Active Character</span>
-                <span className="text-[9px] font-black font-mono bg-accent-pink text-black px-2 py-0.5 rounded border border-black uppercase shadow-gumroad-sm">
+                <span className="text-[9px] font-black font-mono bg-accent-violet/15 text-violet-100 px-2 py-0.5 rounded border border-accent-violet/40 uppercase">
                   {stats.level <= 3 ? 'Novice Adventurer' : stats.level <= 7 ? 'Apprentice Builder' : stats.level <= 12 ? 'Iron Strategist' : stats.level <= 20 ? 'Master Architect' : 'Grandmaster Legend'}
                 </span>
               </div>
@@ -357,7 +357,7 @@ export const Journey: React.FC = () => {
 
           <div className="flex items-center gap-3 w-full md:w-auto">
             {/* Level progress bar */}
-            <div className="w-full md:w-64 bg-bg-primary dark:bg-black/35 h-4 rounded-full border-2 border-black dark:border-white overflow-hidden relative shadow-gumroad-sm">
+            <div className="w-full md:w-64 bg-white/6 h-4 rounded-full border border-glass-border overflow-hidden relative">
               <div 
                 className="bg-accent-pink h-full transition-all duration-300"
                 style={{ width: `${(stats.xp / settings.xp_per_level) * 100}%` }}
@@ -372,18 +372,18 @@ export const Journey: React.FC = () => {
             const statLvl = Math.floor(stat.value / 100) + 1;
             const progress = stat.value % 100;
             return (
-              <div key={stat.name} className="p-3 bg-bg-primary dark:bg-black/10 rounded-lg border-2 border-black dark:border-white shadow-gumroad-sm flex flex-col gap-1.5">
+              <div key={stat.name} className="p-3 glass-subtle rounded-xl border border-glass-border flex flex-col gap-1.5">
                 <div className="flex justify-between items-center border-b border-black/10 dark:border-white/10 pb-0.5">
                   <span className="font-black text-xs flex items-center gap-1 text-black dark:text-white">
                     <span>{stat.icon}</span>
                     <span className="truncate max-w-[90px]">{stat.name}</span>
                   </span>
-                  <span className="text-[9px] font-mono font-black bg-black text-white px-1 py-0.2 rounded border border-black shadow-gumroad-sm">
+                  <span className="text-[9px] font-mono font-black bg-accent-violet/15 text-violet-200 px-1 py-0.2 rounded border border-accent-violet/40">
                     Lvl {statLvl}
                   </span>
                 </div>
                 {/* Visual HUD bar */}
-                <div className="w-full bg-white dark:bg-black/35 h-2 rounded-full border border-black overflow-hidden relative">
+                <div className="w-full bg-white/8 h-2 rounded-full border border-glass-border overflow-hidden relative">
                   <div 
                     className={`${stat.color} h-full transition-all duration-300`}
                     style={{ width: `${progress}%` }}
@@ -402,13 +402,13 @@ export const Journey: React.FC = () => {
       <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
         
         {/* Weekly Growth Stats (2 cols) */}
-        <div className="neo-card p-5 bg-white dark:bg-surface md:col-span-2 flex flex-col gap-4 text-text-primary">
-          <div className="border-b-2 border-black dark:border-white pb-2 flex justify-between items-center">
+        <div className="glass-card p-5 md:col-span-2 flex flex-col gap-4 text-text-primary">
+          <div className="border-b border-glass-border pb-2 flex justify-between items-center">
             <h3 className="text-md font-black uppercase tracking-wider flex items-center gap-2">
               <TrendingUp className="w-4.5 h-4.5 text-accent-pink" />
               <span>Weekly Growth Recap</span>
             </h3>
-            <span className="text-xs font-mono font-black bg-black text-white px-2 py-0.5 rounded border border-black shadow-gumroad-sm">
+            <span className="text-xs font-mono font-black bg-accent-violet/15 text-violet-200 px-2 py-0.5 rounded border border-accent-violet/40">
               +{weeklyRecap.totalWeeklyXP} XP
             </span>
           </div>
@@ -417,7 +417,7 @@ export const Journey: React.FC = () => {
             {Object.entries(weeklyRecap.xpByStat).map(([stat, val]) => {
               if (stat === 'general' && val === 0) return null;
               return (
-                <div key={stat} className="p-3 bg-bg-primary dark:bg-black/10 rounded-lg border-2 border-black dark:border-white shadow-gumroad-sm text-center flex flex-col items-center justify-center">
+                <div key={stat} className="p-3 glass-subtle rounded-xl border border-glass-border text-center flex flex-col items-center justify-center">
                   <span className="text-xl leading-none">{getStatEmoji(stat)}</span>
                   <span className="text-[10px] font-black font-mono text-gray-500 uppercase mt-1 truncate max-w-full">{stat}</span>
                   <span className="text-md font-black font-mono mt-1 text-success">+{val} XP</span>
@@ -428,8 +428,8 @@ export const Journey: React.FC = () => {
         </div>
 
         {/* Weekly Wins Checklist (1 col) */}
-        <div className="neo-card p-5 bg-white dark:bg-surface flex flex-col gap-3 text-text-primary">
-          <h3 className="text-md font-black uppercase tracking-wider border-b-2 border-black dark:border-white pb-2 flex items-center gap-2">
+        <div className="glass-card p-5 flex flex-col gap-3 text-text-primary">
+          <h3 className="text-md font-black uppercase tracking-wider border-b border-glass-border pb-2 flex items-center gap-2">
             <Award className="w-4.5 h-4.5 text-warning" />
             <span>Weekly Wins</span>
           </h3>
@@ -439,7 +439,7 @@ export const Journey: React.FC = () => {
               <p className="text-xs text-gray-400 italic text-center py-6">No accomplishments logged in the last 7 days. Start checking off quests!</p>
             ) : (
               weeklyRecap.wins.map((win, idx) => (
-                <div key={idx} className="p-2 border-2 border-black dark:border-white/20 bg-bg-primary dark:bg-black/10 rounded-lg flex items-start gap-2 text-xs font-bold text-black dark:text-white shadow-gumroad-sm">
+                <div key={idx} className="p-2 border border-glass-border bg-white/4 rounded-lg flex items-start gap-2 text-xs font-bold text-text-primary">
                   <span className="text-success shrink-0">✓</span>
                   <p className="leading-tight break-words">{win}</p>
                 </div>
@@ -450,8 +450,8 @@ export const Journey: React.FC = () => {
       </section>
 
       {/* GitHub Heatmap Grid */}
-      <section id="journey-heatmap" className="neo-card p-5 bg-white dark:bg-surface text-text-primary">
-        <h3 className="text-md font-black uppercase tracking-wider border-b-2 border-black dark:border-white pb-2 mb-4 flex items-center gap-2">
+      <section id="journey-heatmap" className="glass-card p-5 text-text-primary">
+        <h3 className="text-md font-black uppercase tracking-wider border-b border-glass-border pb-2 mb-4 flex items-center gap-2">
           <Calendar className="w-4.5 h-4.5 text-accent-pink" />
           <span>Consistency Heatmap</span>
         </h3>
@@ -495,7 +495,7 @@ export const Journey: React.FC = () => {
                           onClick={() => setSelectedDate(isSelected ? null : day.date)}
                           title={`${day.date} - Score: ${day.score}%`}
                           className={`w-3.5 h-3.5 border rounded-[3px] cursor-pointer transition-all duration-150 ${getHeatmapColor(day.score)} ${
-                            isSelected ? 'ring-2 ring-black dark:ring-white scale-110' : 'hover:scale-105'
+                            isSelected ? 'ring-2 ring-accent-violet scale-110' : 'hover:scale-105'
                           }`}
                         />
                       );
@@ -508,11 +508,11 @@ export const Journey: React.FC = () => {
 
           <div className="flex items-center gap-1.5 self-end text-[10px] font-mono font-bold text-gray-400 mt-1">
             <span>Less</span>
-            <div className="w-3 h-3 bg-white dark:bg-surface border border-black/5 dark:border-white/5 rounded-[2px]" />
-            <div className="w-3 h-3 bg-accent-pink/20 rounded-[2px]" />
-            <div className="w-3 h-3 bg-accent-pink/50 rounded-[2px]" />
-            <div className="w-3 h-3 bg-accent-pink/80 rounded-[2px]" />
-            <div className="w-3 h-3 bg-accent-pink rounded-[2px]" />
+            <div className="w-3 h-3 bg-white/5 border border-glass-border rounded-[2px]" />
+            <div className="w-3 h-3 bg-accent-violet/20 border border-accent-violet/25 rounded-[2px]" />
+            <div className="w-3 h-3 bg-accent-violet/45 border border-accent-violet/40 rounded-[2px]" />
+            <div className="w-3 h-3 bg-accent-violet/75 border border-accent-violet/60 rounded-[2px]" />
+            <div className="w-3 h-3 bg-accent-violet border border-accent-violet rounded-[2px]" />
             <span>More</span>
           </div>
         </div>
@@ -520,7 +520,7 @@ export const Journey: React.FC = () => {
 
       {/* Selected Day Reflection card */}
       {dayDetails && (
-        <section className="neo-card p-5 bg-white dark:bg-surface border-2 border-black dark:border-white animate-fade-in flex flex-col gap-4 text-text-primary">
+        <section className="glass-card p-5 border border-glass-border animate-fade-in flex flex-col gap-4 text-text-primary">
           <div className="flex justify-between items-center border-b border-black/10 dark:border-white/10 pb-2">
             <div>
               <h3 className="text-md font-black">
@@ -530,14 +530,14 @@ export const Journey: React.FC = () => {
             </div>
             <div className="flex items-center gap-2">
               <span className="text-xs font-bold font-mono text-gray-500">Day Score:</span>
-              <span className={`text-xs font-black font-mono px-2 py-0.5 rounded border border-black ${
-                dayDetails.score >= 80 ? 'bg-success text-white' : dayDetails.score >= 40 ? 'bg-warning text-black' : 'bg-danger text-white'
+              <span className={`text-xs font-black font-mono px-2 py-0.5 rounded border border-glass-border ${
+                dayDetails.score >= 80 ? 'bg-success/20 text-success' : dayDetails.score >= 40 ? 'bg-warning/20 text-warning' : 'bg-danger/20 text-danger'
               }`}>
                 {dayDetails.score}%
               </span>
               <button 
                 onClick={() => setSelectedDate(null)}
-                className="text-xs font-bold font-mono border border-black dark:border-white px-2 py-0.5 rounded hover:bg-gray-100 dark:hover:bg-gray-800 transition shadow-gumroad-sm bg-white dark:bg-surface shrink-0 cursor-pointer"
+                className="text-xs font-bold font-mono border border-glass-border px-2 py-0.5 rounded hover:bg-white/10 transition bg-white/5 shrink-0 cursor-pointer"
               >
                 Close
               </button>
@@ -576,9 +576,9 @@ export const Journey: React.FC = () => {
                     }
 
                     return (
-                      <div key={h.id} className="flex justify-between items-center text-xs p-1.5 bg-bg-primary dark:bg-black/20 rounded border border-black/5 dark:border-white/5 text-black dark:text-white">
+                      <div key={h.id} className="flex justify-between items-center text-xs p-1.5 glass-subtle rounded border border-glass-border text-text-primary">
                         <span className="font-bold">{h.icon} {h.name}</span>
-                        <span className={`font-mono font-bold px-1.5 py-0.2 rounded text-[10px] ${isDone ? 'bg-success/20 text-success' : 'bg-gray-100 dark:bg-black/45 text-gray-500 dark:text-gray-400'}`}>
+                        <span className={`font-mono font-bold px-1.5 py-0.2 rounded text-[10px] ${isDone ? 'bg-success/20 text-success' : 'bg-white/8 text-text-muted'}`}>
                           {valDisplay}
                         </span>
                       </div>
@@ -599,10 +599,10 @@ export const Journey: React.FC = () => {
                 ) : (
                   <div className="flex flex-col gap-1.5 max-h-24 overflow-y-auto pr-1">
                     {dayDetails.completedTasks.map(t => (
-                      <div key={t.id} className="flex items-center gap-2 text-xs font-bold p-1.5 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-900 rounded text-green-700 dark:text-green-400">
+                      <div key={t.id} className="flex items-center gap-2 text-xs font-bold p-1.5 bg-success/10 border border-success/30 rounded text-success">
                         <span>✓</span>
                         <span className="truncate">{t.title}</span>
-                        <span className="ml-auto text-[9px] font-mono bg-green-100 dark:bg-green-900 px-1 py-0.2 rounded">+{t.xp} XP</span>
+                        <span className="ml-auto text-[9px] font-mono bg-success/20 px-1 py-0.2 rounded">+{t.xp} XP</span>
                       </div>
                     ))}
                   </div>
@@ -615,7 +615,7 @@ export const Journey: React.FC = () => {
                   <span>Journal Reflections</span>
                 </h4>
                 {dayDetails.journalEntry ? (
-                  <div className="p-3 bg-accent-pink/5 border border-black/10 dark:border-white/10 rounded flex flex-col gap-2">
+                  <div className="p-3 glass-subtle rounded border border-glass-border flex flex-col gap-2">
                     {dayDetails.journalEntry.mood && (
                       <div className="text-xs font-bold">
                         Mood rating: <span className="text-sm">{dayDetails.journalEntry.mood}</span>
@@ -640,8 +640,8 @@ export const Journey: React.FC = () => {
       )}
 
       {/* Activity Timeline Section */}
-      <section className="neo-card p-5 bg-white dark:bg-surface text-text-primary">
-        <h3 className="text-md font-black uppercase tracking-wider border-b-2 border-black dark:border-white pb-2 mb-4 flex items-center gap-2">
+      <section className="glass-card p-5 text-text-primary">
+        <h3 className="text-md font-black uppercase tracking-wider border-b border-glass-border pb-2 mb-4 flex items-center gap-2">
           <Clock className="w-4.5 h-4.5 text-accent-pink" />
           <span>Activity Timeline</span>
         </h3>
@@ -654,19 +654,19 @@ export const Journey: React.FC = () => {
               <div key={evt.id} className="flex gap-4 relative items-start">
                 {/* Timeline connector line */}
                 {idx !== sortedRecentEvents.length - 1 && (
-                  <div className="absolute top-7 left-3.5 -bottom-5 w-[2px] bg-black/10 dark:bg-white/10" />
+                  <div className="absolute top-7 left-3.5 -bottom-5 w-[2px] bg-white/10" />
                 )}
                 
                 {/* Icon Circle */}
-                <div className="w-8 h-8 rounded-full border-2 border-black dark:border-white bg-bg-primary dark:bg-black/35 flex items-center justify-center shrink-0 shadow-gumroad-sm font-mono text-sm">
+                <div className="w-8 h-8 rounded-full border border-glass-border bg-white/6 flex items-center justify-center shrink-0 font-mono text-sm">
                   {getStatEmoji(evt.stat)}
                 </div>
 
                 {/* Event details block */}
-                <div className="flex-1 p-3 bg-bg-primary dark:bg-black/10 border-2 border-black dark:border-white/20 rounded-lg flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-gumroad-sm">
+                <div className="flex-1 p-3 glass-subtle rounded-xl border border-glass-border flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className={`text-[9px] font-black font-mono px-2 py-0.5 rounded border border-black/10 dark:border-white/10 ${getSourceBadge(evt.source)}`}>
+                      <span className={`text-[9px] font-black font-mono px-2 py-0.5 rounded border ${getSourceBadge(evt.source)}`}>
                         {evt.source.toUpperCase()}
                       </span>
                       <span className="text-xs font-mono font-bold text-gray-500">
@@ -689,7 +689,7 @@ export const Journey: React.FC = () => {
       {/* Recharts Trends */}
       <section className="grid grid-cols-1 md:grid-cols-2 gap-6 text-text-primary">
         {/* Habit Completion Chart */}
-        <div className="neo-card p-4 bg-white dark:bg-surface flex flex-col gap-2 min-w-0">
+        <div className="glass-card p-4 flex flex-col gap-2 min-w-0">
           <h4 className="font-bold text-sm border-b border-black/5 dark:border-white/5 pb-1 flex items-center gap-1">
             <Flame className="w-4 h-4 text-accent-pink" />
             <span>Habit Completion Rate (%)</span>
@@ -708,7 +708,7 @@ export const Journey: React.FC = () => {
         </div>
 
         {/* Sleep Hours Chart */}
-        <div className="neo-card p-4 bg-white dark:bg-surface flex flex-col gap-2 min-w-0">
+        <div className="glass-card p-4 flex flex-col gap-2 min-w-0">
           <h4 className="font-bold text-sm border-b border-black/5 dark:border-white/5 pb-1 flex items-center gap-1">
             <Moon className="w-4 h-4 text-success" />
             <span>Sleep Hours</span>
@@ -727,7 +727,7 @@ export const Journey: React.FC = () => {
         </div>
 
         {/* Mood Trend Chart */}
-        <div className="neo-card p-4 bg-white dark:bg-surface flex flex-col gap-2 min-w-0">
+        <div className="glass-card p-4 flex flex-col gap-2 min-w-0">
           <h4 className="font-bold text-sm border-b border-black/5 dark:border-white/5 pb-1 flex items-center gap-1">
             <span>😊</span>
             <span>Mood Rating (1-3)</span>
@@ -746,7 +746,7 @@ export const Journey: React.FC = () => {
         </div>
 
         {/* Screen Time Hours Chart */}
-        <div className="neo-card p-4 bg-white dark:bg-surface flex flex-col gap-2">
+        <div className="glass-card p-4 flex flex-col gap-2 min-w-0">
           <h4 className="font-bold text-sm border-b border-black/5 dark:border-white/5 pb-1 flex items-center gap-1">
             <BarChart2 className="w-4 h-4 text-danger" />
             <span>Screen Time (hours)</span>
@@ -766,15 +766,15 @@ export const Journey: React.FC = () => {
       </section>
 
       {/* Insights Widget */}
-      <section className="neo-card p-5 bg-white dark:bg-surface text-text-primary">
-        <h3 className="text-md font-black uppercase tracking-wider border-b-2 border-black dark:border-white pb-2 mb-4 flex items-center gap-2">
+      <section className="glass-card p-5 text-text-primary">
+        <h3 className="text-md font-black uppercase tracking-wider border-b border-glass-border pb-2 mb-4 flex items-center gap-2">
           <Lightbulb className="w-4.5 h-4.5 text-warning" />
           <span>Consistency Insights</span>
         </h3>
         
         <div className="flex flex-col gap-3">
           {insightsList.map((insight, idx) => (
-            <div key={idx} className="p-3 bg-bg-primary dark:bg-black/10 rounded-lg border border-black/10 dark:border-white/10 flex items-start gap-2 text-xs leading-relaxed font-bold text-black dark:text-white shadow-gumroad-sm">
+            <div key={idx} className="p-3 glass-subtle rounded-xl border border-glass-border flex items-start gap-2 text-xs leading-relaxed font-bold text-text-primary">
               <span className="text-amber-500">💡</span>
               <p>{insight}</p>
             </div>
