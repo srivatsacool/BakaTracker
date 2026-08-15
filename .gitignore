@@ -92,3 +92,6 @@ playwright/.cache/
 
 # Extra / archive of unrelated, legacy, or throwaway files (not shipped)
 extra/
+
+# Impeccable live-mode local state (config, sessions, journal)
+.impeccable/

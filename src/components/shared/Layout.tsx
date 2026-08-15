@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { Flame, ListTodo, Target, BookOpen, Compass, Cloud, CloudOff, Settings as SettingsIcon, X, Sun, Moon, ChevronLeft, ChevronRight, Download, WifiOff, LayoutGrid, Zap, Play, Shield, NotebookPen } from 'lucide-react';
+import { Flame, ListTodo, Target, BookOpen, Compass, Settings as SettingsIcon, X, Sun, Moon, ChevronLeft, ChevronRight, Download, LayoutGrid, Zap, Play, Shield, NotebookPen } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import { calculateDailyScore, getTodayDateString } from '../../lib/utils';
 import { OnboardingBanner } from './OnboardingBanner';
@@ -14,7 +14,7 @@ import { NOTIF_TONES, getNotificationSettings, updateNotificationSettings, type 
 import { FirstRunWizard } from './FirstRunWizard';
 import { FirstRunSetup } from './FirstRunSetup';
 import { useAppTour } from '../../lib/useAppTour';
-import { BakaSurRail, ContextBar } from '../shell';
+import { BakaSurRail, ContextBar, SyncStatus, OfflineBanner } from '../shell';
 
 const TONE_LABELS: Record<NotifTone, string> = {
   gentle: 'Gentle',
@@ -30,7 +30,7 @@ export const Layout: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { startTour } = useAppTour(navigate);
-  const { stats, settings, syncStatus, syncError, habits, habitLogs, tasks, journal, syncWithSheets, theme, toggleTheme, setAccentColors, loadDemoData, clearDataByDays } = useStore();
+  const { stats, settings, habits, habitLogs, tasks, journal, theme, toggleTheme, setAccentColors, loadDemoData, clearDataByDays } = useStore();
   const { user, login, getAccessToken } = useAuth();
     const apiClient = useApiClient();
     const init = useStore((s) => s.init);
@@ -336,24 +336,7 @@ export const Layout: React.FC = () => {
                 </span>
                 
                 {/* Sync indicator */}
-                {!isGuest ? (
-                  <button 
-                    onClick={() => syncWithSheets()} 
-                    title={syncStatus === 'loading' ? 'Syncing...' : syncError ? `Sync error: ${syncError}` : 'Synced to your Worker (click to sync)'}
-                    className={`p-1.5 rounded border backdrop-blur-xl transition border-white/15 hover:border-violet-400/40 ${syncStatus === 'loading' ? 'animate-spin' : ''}`}
-                    style={{ background: 'rgba(255,255,255,0.06)' }}
-                  >
-                    <Cloud className={`w-3.5 h-3.5 ${syncStatus === 'error' ? 'text-danger' : 'text-success'}`} />
-                  </button>
-                ) : (
-                  <div
-                    title="Local-Only Mode"
-                    className="p-1.5 rounded border border-white/10 backdrop-blur-xl"
-                    style={{ background: 'rgba(255,255,255,0.04)' }}
-                  >
-                    <CloudOff className="w-3.5 h-3.5 text-warning" />
-                  </div>
-                )}
+                <SyncStatus compact />
                 
                 {/* Theme Toggle */}
                 <button
@@ -424,24 +407,7 @@ export const Layout: React.FC = () => {
                       {theme === 'light' ? <Moon className="w-3.5 h-3.5 text-white" /> : <Sun className="w-3.5 h-3.5 text-white" />}
                     </button>
 
-                    {!isGuest ? (
-                      <button 
-                        onClick={() => syncWithSheets()} 
-                        title={syncStatus === 'loading' ? 'Syncing...' : syncError ? `Sync error: ${syncError}` : 'Synced to your Worker'}
-                        className={`p-1.5 rounded border border-white/15 backdrop-blur-xl transition hover:border-violet-400/40 ${syncStatus === 'loading' ? 'animate-spin' : ''}`}
-                        style={{ background: 'rgba(255,255,255,0.06)' }}
-                      >
-                        <Cloud className={`w-3.5 h-3.5 ${syncStatus === 'error' ? 'text-danger' : 'text-success'}`} />
-                      </button>
-                    ) : (
-                      <div
-                        title="Local-Only Mode"
-                        className="p-1.5 rounded border border-white/10 backdrop-blur-xl"
-                        style={{ background: 'rgba(255,255,255,0.04)' }}
-                      >
-                        <CloudOff className="w-3.5 h-3.5 text-warning" />
-                      </div>
-                    )}
+                    <SyncStatus />
                     
                     {/* Settings Trigger */}
                     <button
@@ -733,19 +699,7 @@ export const Layout: React.FC = () => {
         </header>
 
         {/* Offline Banner */}
-        {isOffline && (
-          <div
-            className="p-2 text-center font-mono font-bold text-xs flex items-center justify-center gap-2 z-40 border-b"
-            style={{
-              background: 'rgba(245, 158, 11, 0.1)',
-              borderColor: 'rgba(245, 158, 11, 0.3)',
-              color: '#FDE68A',
-            }}
-          >
-            <WifiOff className="w-4 h-4 shrink-0" />
-            <span>Offline Mode — All changes saved locally and will sync when reconnected!</span>
-          </div>
-        )}
+        {isOffline && <OfflineBanner />}
 
         {/* Scrollable Container */}
         <main className={`flex-1 ${isEditorRoute ? 'overflow-hidden p-0 min-h-0' : 'overflow-y-auto pb-24 p-4'}`}>
@@ -802,19 +756,7 @@ export const Layout: React.FC = () => {
 
       {/* Desktop Main Content Container */}
       <main className={`hidden md:block flex-1 h-screen ${isEditorRoute ? 'overflow-hidden p-0' : 'overflow-y-auto p-8'} bg-transparent`}>
-        {isOffline && (
-          <div
-            className="rounded-xl p-3 text-center font-mono font-bold text-xs flex items-center justify-center gap-2 mb-6 border"
-            style={{
-              background: 'rgba(245, 158, 11, 0.1)',
-              borderColor: 'rgba(245, 158, 11, 0.3)',
-              color: '#FDE68A',
-            }}
-          >
-            <WifiOff className="w-4 h-4 shrink-0" />
-            <span>Offline Mode — Running in local-first mode. All progress is saved on your device!</span>
-          </div>
-        )}
+        {isOffline && <OfflineBanner />}
         {!isEditorRoute && (
           <ContextBar
             isOffline={isOffline}

@@ -372,6 +372,34 @@ src/
 
 ## Version History
 
+### v3.1 — Premium Glass Refinement (2026-08-16, user-pinned)
+- **Pinned direction (PRODUCT.md):** modern sleek glassmorphism, premium-tooling craft
+  bar (Linear · Vercel · Arc). Direction contract lives as the first comment in
+  `dist/index.html` (seed 510ebf7d).
+- **Sync State System — the backend made visible:** `SyncStatus` pill
+  (`src/components/shell/SyncStatus.tsx`) with five designed states — synced
+  (emerald), syncing (violet, spinner), offline (amber), error (danger, click to
+  retry), local-only (muted, guest). Used in the sidebar (compact + full) and the
+  ContextBar chip (`context-status` classes preserved). `OfflineBanner` replaces
+  the two legacy inline banners.
+- **Browser surfaces themed:** selection (violet), scrollbars (glass hairline),
+  caret (violet), `:focus-visible` violet outline, `text-wrap: balance/pretty`,
+  tabular numerals on all mono.
+- **Motion grammar:** `--ease-glass` (expo-out), `--duration-glass` 160ms /
+  `--duration-glass-slow` 320ms; glass surfaces transition border/shadow/
+  transform/background only.
+- **Light chips → glass-alpha equivalents:** `bg-red-50/blue-50/amber-50/
+  green-50/green-100/purple-100/pink-100/amber-100` remapped to hue-preserving
+  10-12% alpha tints; paired `text-*-600/700/800` → light 300/400-scale tints.
+  Eisenhower quadrant color-coding survives (hue kept, contrast gained).
+- **Documented gaps closed:** `.glass-surface` rule added; PageWorkspace banner
+  classes covered (`border-amber-400/red-400` → glass-alpha).
+- **A11y additive:** Today quest rows are keyboard-activatable (`role=button`,
+  Enter/Space, `aria-pressed`); Notes hover-reveal actions now visible on
+  `focus-within`/`focus-visible`.
+- Gates: `npm run build` ✓ · `test:pages` 10/10 ✓ · `tsc --noEmit` ✓ · headless
+  probe clean on all 7 routes (sync pill present everywhere).
+
 ### v3.0 — Dark Glassmorphism (Current)
 - Implemented LightTunnel WebGL background
 - Complete glassmorphism design system

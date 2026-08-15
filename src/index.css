@@ -1083,3 +1083,135 @@ main input, main textarea, main select { color-scheme: dark; }
   .app-shell-frame nav.fixed.bottom-0 { padding-bottom: calc(0.5rem + env(safe-area-inset-bottom)); }
   .context-bar + .neo-card, .context-bar + .glass-card { margin-top: 0; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   PREMIUM GLASS REFINEMENT (2026-08-16) — user-pinned: modern sleek glassmorphism,
+   premium-tooling craft bar (Linear · Vercel · Arc).
+   Hairline borders, restrained accent, mono numerals, themed browser surfaces.
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* One motion grammar: expo-out, short for micro, longer for surfaces */
+  --ease-glass: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-glass-in: cubic-bezier(0.4, 0, 0.2, 1);
+  --duration-glass: 160ms;
+  --duration-glass-slow: 320ms;
+}
+
+/* The parts we did not draw still carry the design */
+::selection { background: rgba(168, 85, 247, 0.35); color: #fff; }
+html { scrollbar-color: rgba(255, 255, 255, 0.16) rgba(255, 255, 255, 0.02); }
+::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.14); border-radius: 8px; border: 2px solid transparent; background-clip: padding-box; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.26); border: 2px solid transparent; background-clip: padding-box; }
+input, textarea, select { caret-color: var(--accent-violet); }
+a, button, [role="button"], input, textarea, select { -webkit-tap-highlight-color: transparent; }
+
+/* Keyboard focus: hairline violet outline, additive (never fights input focus styles) */
+a:focus-visible, button:focus-visible, [role="button"]:focus-visible, [tabindex]:focus-visible {
+  outline: 2px solid rgba(168, 85, 247, 0.65);
+  outline-offset: 2px;
+}
+
+/* Typography: balanced headings, pretty paragraphs, tabular stats */
+h1, h2, h3, h4 { text-wrap: balance; }
+p { text-wrap: pretty; }
+.font-mono, code, kbd { font-variant-numeric: tabular-nums; }
+
+/* Glass surfaces: refined, one grammar */
+.glass-card, .glass, .neo-card {
+  transition:
+    border-color var(--duration-glass) var(--ease-glass),
+    box-shadow var(--duration-glass-slow) var(--ease-glass),
+    transform var(--duration-glass) var(--ease-glass),
+    background var(--duration-glass) var(--ease-glass);
+}
+
+/* Documented gap: .glass-surface had no rule anywhere */
+.glass-surface {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.01) 100%);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+}
+
+/* Light chips → glass-alpha tints (hue preserved, dark-glass equivalents).
+   Eisenhower quadrant tints are intentional color-coding: alpha keeps the hue,
+   tinted text keeps contrast on the void. */
+.bg-red-50 { background-color: rgba(239, 68, 68, 0.10) !important; }
+.bg-blue-50 { background-color: rgba(59, 130, 246, 0.10) !important; }
+.bg-amber-50 { background-color: rgba(245, 158, 11, 0.10) !important; }
+.bg-green-50, .bg-green-100 { background-color: rgba(16, 185, 129, 0.10) !important; }
+.bg-purple-100 { background-color: rgba(168, 85, 247, 0.12) !important; }
+.bg-pink-100 { background-color: rgba(236, 72, 153, 0.12) !important; }
+.bg-amber-100 { background-color: rgba(245, 158, 11, 0.12) !important; }
+
+.text-red-600, .text-red-700, .text-red-800 { color: #fca5a5 !important; }
+.text-orange-800 { color: #fdba74 !important; }
+.text-blue-600, .text-blue-700, .text-blue-800 { color: #93c5fd !important; }
+.text-amber-600, .text-amber-700, .text-amber-800 { color: #fcd34d !important; }
+.text-green-600, .text-green-700, .text-green-800, .text-emerald-800 { color: #6ee7b7 !important; }
+.text-purple-700, .text-purple-800 { color: #d8b4fe !important; }
+.text-pink-700, .text-pink-800 { color: #f9a8d4 !important; }
+
+/* Bright solid borders → glass-alpha (PageWorkspace banners etc.) */
+.border-amber-400 { border-color: rgba(245, 158, 11, 0.45) !important; }
+.border-red-400 { border-color: rgba(239, 68, 68, 0.45) !important; }
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   SYNC STATE SYSTEM — the backend made visible (2026-08-16)
+   Four designed states + local-only guest mode. One pill grammar, everywhere.
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+.sync-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--glass-border);
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: var(--text-secondary);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: default;
+  transition:
+    border-color var(--duration-glass) var(--ease-glass),
+    background var(--duration-glass) var(--ease-glass),
+    color var(--duration-glass) var(--ease-glass);
+}
+.sync-status svg { width: 12px; height: 12px; flex: 0 0 auto; }
+.sync-status-compact { padding: 6px; border-radius: 10px; }
+
+.sync-status.is-synced { color: #6ee7b7; border-color: rgba(16, 185, 129, 0.35); background: rgba(16, 185, 129, 0.08); }
+.sync-status.is-syncing { color: #c4b5fd; border-color: rgba(168, 85, 247, 0.4); background: rgba(168, 85, 247, 0.1); }
+.sync-status.is-offline { color: #fcd34d; border-color: rgba(245, 158, 11, 0.35); background: rgba(245, 158, 11, 0.08); }
+.sync-status.is-error { color: #fca5a5; border-color: rgba(239, 68, 68, 0.45); background: rgba(239, 68, 68, 0.09); cursor: pointer; }
+.sync-status.is-error:hover { border-color: rgba(239, 68, 68, 0.65); background: rgba(239, 68, 68, 0.15); }
+.sync-status-local { color: var(--text-muted); }
+
+/* Offline banner — the local-first promise, stated */
+.offline-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 12px 16px 0;
+  padding: 10px 14px;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  border-radius: 12px;
+  background: rgba(245, 158, 11, 0.08);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  color: #fde68a;
+}
+.offline-banner-icon { width: 14px; height: 14px; flex: 0 0 auto; margin-top: 1px; }
+.offline-banner p { margin: 0; font-size: 0.72rem; line-height: 1.5; }
+.offline-banner strong { color: #fcd34d; font-weight: 700; }
+@media (max-width: 767px) {
+  .offline-banner { margin: 8px 12px 0; }
+}

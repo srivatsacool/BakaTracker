@@ -261,7 +261,7 @@ export const Notes: React.FC = () => {
             {isBusy ? (
               <Loader2 className="h-4 w-4 shrink-0 animate-spin text-accent-pink" />
             ) : (
-              <span className="flex shrink-0 items-center gap-0.5 sm:opacity-0 sm:transition sm:group-hover:opacity-100">
+              <span className="flex shrink-0 items-center gap-0.5 sm:opacity-0 sm:transition sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 sm:group-focus-visible:opacity-100">
                 <button
                   type="button"
                   aria-label="Rename page"

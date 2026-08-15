@@ -176,6 +176,19 @@ export const Today: React.FC = () => {
                         triggerFloatingXP(e, task.xp, task.area);
                       }
                     }}
+                    role="button"
+                    tabIndex={0}
+                    aria-pressed={isCompleted}
+                    aria-label={`${task.title} — ${isCompleted ? 'mark as to do' : 'complete quest'}`}
+                    onKeyDown={(e) => {
+                      if (e.key !== 'Enter' && e.key !== ' ') return;
+                      e.preventDefault();
+                      const nextStatus = isCompleted ? 'todo' : 'done';
+                      moveTask(task.id, nextStatus);
+                      if (nextStatus === 'done') {
+                        triggerFloatingXP(null, task.xp, task.area);
+                      }
+                    }}
                     className={`p-3 border-2 rounded-lg flex items-center gap-3 cursor-pointer select-none transition-all ${
                       isCompleted 
                         ? 'border-success bg-success/5 dark:bg-success/5 opacity-65 line-through' 

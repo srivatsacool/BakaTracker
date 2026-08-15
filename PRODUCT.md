@@ -38,6 +38,10 @@ Open-source, local-first life RPG planner with MCP integration for AI assistants
 - Voice: Casual, playful, slightly irreverent
 - Logo: `/logo.png` (must be preserved)
 - Tagline: "Track your life without turning it into a project"
+- Visual direction (pinned 2026-08-16, user-pinned — beats the roll): **modern sleek
+  glassmorphism**, dark-glass world raised to premium-tooling craft (Linear · Vercel · Arc
+  bar): hairline borders, restrained one-accent discipline, mono numerals for stats,
+  LightTunnel WebGL behind frosted glass. The daily check-in stays a 30-second ceremony.
 
 ## Evidence on Hand
 

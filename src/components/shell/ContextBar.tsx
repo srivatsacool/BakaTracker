@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { CalendarDays, Clock3, Cloud, CloudOff, Moon, Sun, Target, Zap } from 'lucide-react';
+import { CalendarDays, Check, Clock3, CloudOff, Moon, RefreshCw, Sun, Target, Zap, WifiOff } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import { useAuth } from '../../features/auth';
 import { calculateDailyScore, getTodayDateString } from '../../lib/utils';
@@ -15,7 +15,7 @@ export const ContextBar: React.FC<ContextBarProps> = ({
   onToggleAssistant,
   assistantCollapsed,
 }) => {
-  const { stats, settings, habits, habitLogs, tasks, journal, theme, toggleTheme, syncStatus } = useStore();
+  const { stats, settings, habits, habitLogs, tasks, journal, theme, toggleTheme, syncStatus, syncError, syncWithSheets } = useStore();
   const { user } = useAuth();
   const [now, setNow] = useState(() => new Date());
 
@@ -35,8 +35,31 @@ export const ContextBar: React.FC<ContextBarProps> = ({
   );
   const xpProgress = Math.min(100, Math.max(0, (stats.xp / Math.max(1, settings.xp_per_level)) * 100));
   const pendingQuests = tasks.filter(task => task.today && task.status !== 'done').length;
-  const syncLabel = isOffline ? 'Offline' : syncStatus === 'loading' ? 'Syncing' : 'Local-first';
   const isGuest = user?.provider === 'guest';
+  const syncState = isGuest
+    ? 'local'
+    : isOffline
+      ? 'offline'
+      : syncStatus === 'loading'
+        ? 'syncing'
+        : syncStatus === 'error'
+          ? 'error'
+          : 'synced';
+
+  const syncMeta = {
+    local: { label: 'Local only', Icon: CloudOff, cls: 'is-local' },
+    offline: { label: 'Offline', Icon: WifiOff, cls: 'is-warning' },
+    syncing: { label: 'Syncing…', Icon: RefreshCw, cls: 'is-syncing' },
+    error: { label: 'Sync failed · Retry', Icon: CloudOff, cls: 'is-error' },
+    synced: { label: 'Synced', Icon: Check, cls: 'is-success' },
+  }[syncState];
+  const { label, Icon, cls } = syncMeta;
+  const syncTitle =
+    syncState === 'error'
+      ? `Sync failed — ${syncError ?? 'unknown error'}. Click to retry.`
+      : syncState === 'offline'
+        ? 'You are offline — changes are saved locally and will sync when you are back online.'
+        : label;
 
   return (
     <header className="context-bar" aria-label="Current life context">
@@ -64,10 +87,23 @@ export const ContextBar: React.FC<ContextBarProps> = ({
       </div>
 
       <div className="context-actions">
-        <span className={`context-status ${isOffline ? 'is-warning' : 'is-success'}`} title={syncLabel}>
-          {isOffline ? <CloudOff aria-hidden="true" /> : <Cloud aria-hidden="true" />}
-          <span>{syncLabel}</span>
-        </span>
+        {syncState === 'error' ? (
+          <button
+            type="button"
+            className={`context-status ${cls}`}
+            onClick={() => syncWithSheets()}
+            title={syncTitle}
+            aria-label={syncTitle}
+          >
+            <Icon aria-hidden="true" />
+            <span>{label}</span>
+          </button>
+        ) : (
+          <span className={`context-status ${cls}`} title={syncTitle} aria-label={syncTitle}>
+            <Icon className={syncState === 'syncing' ? 'animate-spin' : ''} aria-hidden="true" />
+            <span>{label}</span>
+          </span>
+        )}
         {isGuest && <span className="context-demo">Demo</span>}
         <div className="context-xp" aria-label={`Level ${stats.level}, ${Math.round(xpProgress)} percent to next level`}>
           <span>LVL {stats.level}</span>
