@@ -4,6 +4,36 @@ All notable changes to BakaTracker will be documented in this file.
 
 ---
 
+## [2.0.0] — 2026-08-15 — v2 Release
+
+### Added
+* **Cloudflare-native v2 release.** The React PWA now talks REST-only to a
+  Cloudflare Worker (`platform/`); Google Sheets / Apps Script / Cloud Run /
+  Auth0 are gone (archived under `extra/`).
+* **Tool Registry:** single business-logic layer in `platform/src/tools/`
+  shared by REST, MCP, and cron — no duplicated logic per transport.
+* **Google OAuth** via `workers-oauth-provider` (authorization code + PKCE),
+  replacing Auth0 JWT / static bearer auth. Owner-scoped data by `sub`.
+* **D1 storage** (SQLite + FTS) for notes/habits/tasks/journal/stats, **R2**
+  for binaries, **KV** for OAuth + notification state; op-log sync
+  (`/sync/push`, `/sync/pull`) replaces whole-state Sheets sync.
+* **Dark glassmorphism design system** (LightTunnel WebGL background, glass
+  primitives, ContextBar, BakaSurRail) — see `DESIGN.md`.
+* **BakaSur AI** in-app assistant + notes AI actions (summarize/explain/ask/
+  extract-tasks/extract-concepts/generate-questions) via Workers AI with
+  Gemini fallback.
+* **Web Push notifications** with opt-out, personality, and quiet hours.
+* **Visual Notes** notebooks with Excalidraw-style pages (duplicate, archive,
+  reorder, scene save).
+* **Production gates:** `test:pages` asserts SPA fallback, no-localhost, and
+  PWA artifacts in `dist/`; `setup.mjs` one-command provisioning.
+
+### Removed
+* Legacy Python `backend/`, `google-apps-script.js`, `docs/`, and `Plan.md`
+  archived to gitignored `extra/` (kept on disk, out of the v2 build).
+
+---
+
 ## [2.1.0] — 2026-08-11
 
 ### Added
@@ -12,7 +42,7 @@ All notable changes to BakaTracker will be documented in this file.
 * **Notes AI action:** `POST /api/v1/notes/:id/ai/summarize` (ownership-scoped, bounded input, graceful 502/503 on AI failure; note never mutated). UI deferred to v2.1.
 * **Proactive BakaSur foundation:** `scheduled` handler + cron `*/15 * * * *` running the deterministic candidates → policy → AI message → delivery pipeline; user-scoped settings/state in existing `OAUTH_KV` (`baka:notif:*:{sub}`); REST `GET/PUT /api/v1/notifications/settings`; delivery transport intentionally stubbed (log only).
 * **Tests:** 36 new tests (`ai-notes.spec.ts`, `notifications.spec.ts`) — zero live inference, fake providers only. Suite: 81/81.
-* **Docs:** `docs/ai/notifications.md`, `docs/ai/implementation.md`; `architecture.md` updated to shipped reality.
+* **Docs:** `docs/ai/notifications.md`, `docs/ai/implementation.md` (now archived under `extra/docs/ai/`); `architecture.md` updated to shipped reality.
 
 ### Notes
 * Production deployment of the AI-enabled Worker requires explicit approval (deploy gate). No Vectorize, no AI Gateway, no delivery transport, no OAuth/DNS/Pages changes in this phase.

@@ -29,7 +29,7 @@ Open-source, local-first life RPG planner with MCP integration for AI assistants
 
 - **Features:** Habits (5 tracker types), Kanban tasks, Eisenhower matrix, Today focus board, Journal, Journey analytics, Visual Notes (Excalidraw), RPG leveling system
 - **Stack:** React 19 + Vite + Tailwind CSS v4 + TypeScript + Cloudflare Workers/D1/R2/KV
-- **Auth:** Auth0 OAuth (optional; works offline as guest)
+- **Auth:** Google OAuth (via the Worker's own OAuth provider; optional — works offline as guest)
 - **Constraints:** Cloudflare free tier, PWA with service worker, must remain offline-capable
 
 ## Brand Commitments
