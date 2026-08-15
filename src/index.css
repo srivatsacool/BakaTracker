@@ -1068,7 +1068,7 @@ main input, main textarea, main select { color-scheme: dark; }
 @media (max-width: 767px) {
   .app-canvas { padding: 0; }
   .app-shell-frame,
-  .app-shell-frame.assistant-collapsed { display: block; min-height: 100vh; width: 100%; border-radius: 0; border-inline: 0; }
+  .app-shell-frame.assistant-collapsed { display: block; min-height: 100vh; width: 100%; border-radius: 0; border-inline: 0; backdrop-filter: none; -webkit-backdrop-filter: none; }
   .app-shell-frame > aside:not(.assistant-rail),
   .app-shell-frame > main { height: auto !important; min-height: 100vh; max-height: none; }
   .context-bar { position: relative; top: auto; margin: -16px -16px 16px; padding: 10px 12px; overflow: hidden; }
