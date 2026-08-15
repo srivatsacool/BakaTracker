@@ -29,6 +29,7 @@ import { MAX_FILE_SIZE, NotebookInput, CreatePageInput, UpdatePageInput, Reorder
 import type { Props } from "../auth/props";
 import { isAllowedCorsOrigin, isLocalDevOrigin } from "../auth/app-origin";
 import { handleNoteSummarize, handleNoteExplain, handleNoteAsk, handleNoteExtractTasks, handleNoteExtractConcepts, handleNoteGenerateQuestions, buildAiService } from "./notes-ai";
+import { handleAssistantChat } from "./assistant";
 import { handleGetSettings, handlePutSettings } from "./notifications";
 import { handlePostSubscription, handleDeleteSubscription } from "./push";
 import { nowISO } from "../shared/util";
@@ -275,6 +276,14 @@ export function buildRestApp(options: RestAppOptions = {}): Hono<{ Bindings: RES
   app.post("/notes/:id/ai/generate-questions", async (c) => {
     const ai = options.aiService ?? buildAiService(c.env);
     return handleNoteGenerateQuestions(c, ai);
+  });
+
+  // --- v2.2: BakaSur global chat ---------------------------------------------
+  // The UI has called this endpoint since the frontend completion plan; the
+  // contract lands here now. Same injected-AiService pattern as notes AI.
+  app.post("/assistant/chat", async (c) => {
+    const ai = options.aiService ?? buildAiService(c.env);
+    return handleAssistantChat(c, ai);
   });
 
   // --- v2.1 Notebooks + Pages (Visual Notes persistence) ---------------------

@@ -34,7 +34,11 @@ export { BAKASUR_ALLOWED_TOOLS, BAKASUR_DENIED_TOOLS, assertBakasurAllowed } fro
 export {
   BAKASUR_CORE_SYSTEM, SUMMARIZE_SYSTEM, notificationMessageSystem,
   EXPLAIN_SYSTEM, ASK_SYSTEM, EXTRACT_TASKS_SYSTEM, EXTRACT_CONCEPTS_SYSTEM,
-  GENERATE_QUESTIONS_SYSTEM,
+  GENERATE_QUESTIONS_SYSTEM, CHAT_SYSTEM,
 } from "./prompts";
 export { buildPageRepresentation, PageRepresentationSchema } from "./interpret";
 export type { PageRepresentation, PageRepresentationInput } from "./interpret";
+export {
+  ChatMessageSchema, ChatContextSchema, ChatInputSchema, ChatResultSchema,
+} from "./service";
+export type { ChatMessageInput, ChatContextInput, ChatInput, ChatResult } from "./service";

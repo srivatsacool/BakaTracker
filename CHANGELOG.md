@@ -4,6 +4,24 @@ All notable changes to BakaTracker will be documented in this file.
 
 ---
 
+## [2.2.0] — 2026-08-16 — BakaSur Chat + Premium Glass
+
+### Added
+* **BakaSur global chat endpoint lands on the Worker** — `POST /api/v1/assistant/chat`
+  (`platform/src/http/assistant.ts`), the contract the UI has been calling since the
+  frontend completion plan. Validated body (`message` 1-2000 chars, `history` ≤ 10
+  turns, optional page `context`), bounded transcript → 413, `CHAT_SYSTEM` prompt
+  (fixed, never interpolated), zod fail-closed reply, full AiError taxonomy
+  (400/401/413/502/503). 7 new vitest specs (`platform/test/assistant-chat.spec.ts`).
+* **Chat continuity** — the BakaSur rail now sends the last 6 turns as history.
+* **v3.1 premium glass refinement (user-pinned)** — modern sleek glassmorphism at
+  premium-tooling craft: SyncStatus pill (synced/syncing/offline/error/local-only,
+  error click-to-retry), OfflineBanner, themed browser surfaces (violet selection/
+  caret, glass scrollbars, focus rings), expo-out motion grammar, light chips →
+  glass-alpha tints, `.glass-surface` rule, keyboard-activatable Today quest rows.
+
+---
+
 ## [2.0.0] — 2026-08-15 — v2 Release
 
 ### Added

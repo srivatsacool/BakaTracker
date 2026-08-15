@@ -48,11 +48,19 @@ if (migrationFiles.length === 0) {
 }
 
 // Parse CREATE TABLE / CREATE INDEX names out of the migration SQL.
-const SCHEMA_RE = /CREATE\s+(?:TABLE|INDEX)(?:\s+IF\s+NOT\s+EXISTS)?\s+[`"']?([a-zA-Z_][a-zA-Z0-9_]*)[`"']?/gi;
+// Comments are stripped FIRST: a prose comment like "CREATE INDEX uses
+// IF NOT EXISTS" must never count as a schema object (0003 had exactly
+// that, silently adding a phantom index named `uses` to the expectations).
+const SCHEMA_RE = /^\s*CREATE\s+(?:TABLE|INDEX)(?:\s+IF\s+NOT\s+EXISTS)?\s+[`"' ]?([a-zA-Z_][a-zA-Z0-9_]*)/gim;
 const expected = { tables: new Set(), indexes: new Set() };
 for (const file of migrationFiles) {
   const sql = readFileSync(join(MIGRATIONS_DIR, file), "utf8");
-  for (const m of sql.matchAll(SCHEMA_RE)) {
+  const withoutComments = sql
+    .replace(/\/\*[\s\S]*?\*\//g, "") // block comments
+    .split("\n")
+    .map((line) => line.replace(/--.*$/, "")) // line comments
+    .join("\n");
+  for (const m of withoutComments.matchAll(SCHEMA_RE)) {
     const kind = /INDEX/i.test(m[0]) ? "indexes" : "tables";
     expected[kind].add(m[1].toLowerCase());
   }

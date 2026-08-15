@@ -306,3 +306,37 @@ function sanitizeProviderError(e: unknown): string {
     .replace(/(api[_-]?key|secret|token|password|authorization)\s*[:=]\s*\S+/gi, "<redacted>")
     .replace(/Bearer\s+\S+/gi, "Bearer <redacted>");
 }
+
+// --- v2.2: BakaSur global chat (REST `/assistant/chat`) ----------------------
+// The UI already calls this endpoint; the contract lands here. History is
+// bounded (10 turns max) and every string is capped — the transcript is
+// rebuilt server-side and the whole thing is validated fail-closed.
+
+/** One transcript turn the client may send back for continuity. */
+export const ChatMessageSchema = z.object({
+  role: z.enum(["user", "assistant"]),
+  content: z.string().min(1).max(2_000),
+});
+export type ChatMessageInput = z.infer<typeof ChatMessageSchema>;
+
+/** Optional page context the UI attaches (route/date) — informational only. */
+export const ChatContextSchema = z.object({
+  route: z.string().max(200).optional(),
+  route_name: z.string().max(200).optional(),
+  date: z.string().max(50).optional(),
+});
+export type ChatContextInput = z.infer<typeof ChatContextSchema>;
+
+/** POST body contract for `/assistant/chat`. */
+export const ChatInputSchema = z.object({
+  message: z.string().min(1).max(2_000),
+  history: z.array(ChatMessageSchema).max(10).default([]),
+  context: ChatContextSchema.optional(),
+});
+export type ChatInput = z.infer<typeof ChatInputSchema>;
+
+/** Structured reply — the model answers as BakaSur, validated fail-closed. */
+export const ChatResultSchema = z.object({
+  reply: z.string().min(1).max(4_000),
+});
+export type ChatResult = z.infer<typeof ChatResultSchema>;

@@ -154,7 +154,9 @@ test("CLI idempotency: second migrations apply is a no-op", () => {
     assert.equal(second.code, 0, "second apply must not error");
     assert.match(second.stdout, /No migrations to apply|not require/i);
 
-    // d1_migrations still exactly the 2 expected rows
+    // d1_migrations still exactly the expected rows (keep this list in sync
+    // with the migration set — it broke once when 0003 landed and the
+    // fixture was not updated)
     const q = wrangler([
       "d1", "execute", DB, "--local", "--persist-to", dir,
       "--command", "SELECT name FROM d1_migrations ORDER BY id", "--json",
@@ -162,7 +164,7 @@ test("CLI idempotency: second migrations apply is a no-op", () => {
     assert.equal(q.code, 0);
     const rows = JSON.parse(q.stdout.slice(q.stdout.indexOf("[")));
     const names = rows[0].results.map((r) => r.name);
-    assert.deepEqual(names, ["0001_init.sql", "0002_files.sql"]);
+    assert.deepEqual(names, ["0001_init.sql", "0002_files.sql", "0003_notes_pages.sql"]);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

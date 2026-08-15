@@ -94,9 +94,13 @@ export const BakaSurRail: React.FC<BakaSurRailProps> = ({ collapsed, onToggle })
         await new Promise(resolve => window.setTimeout(resolve, 320));
         setMessages(prev => [...prev, { id: Date.now() + 1, role: 'assistant', ...reply }]);
       } else if (apiClient) {
+        const history = messages
+          .filter(m => !(m.role === 'assistant' && m.source?.startsWith('Unavailable')))
+          .slice(-6)
+          .map(m => ({ role: m.role, content: m.content }));
         const response = await apiClient.post<{ ok: boolean; result?: { answer?: string; reply?: string; source?: string }; message?: string }>(
           '/api/v1/assistant/chat',
-          { message: question, context: { route: location.pathname, route_name: routeName, date: getTodayDateString() } },
+          { message: question, history, context: { route: location.pathname, route_name: routeName, date: getTodayDateString() } },
         );
         const answer = response.result?.reply || response.result?.answer;
         if (!answer) throw new Error(response.message || 'BakaSur returned no answer.');
