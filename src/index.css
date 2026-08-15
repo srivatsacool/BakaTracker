@@ -500,6 +500,58 @@ body {
   color: var(--text-muted) !important;
 }
 
+/* Black text → primary (legacy light-mode hardcodes) */
+.text-black {
+  color: var(--text-primary) !important;
+}
+
+.text-black\/40,
+.text-black\/50,
+.text-black\/60,
+.text-black\/70 {
+  color: var(--text-secondary) !important;
+}
+
+/* Black borders → glass border */
+.border-black {
+  border-color: var(--glass-border) !important;
+}
+
+.border-black\/5,
+.border-black\/10,
+.border-black\/15,
+.border-black\/20,
+.border-black\/30 {
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* Black backgrounds → glass surface (legacy light-mode panels) */
+.bg-black {
+  background-color: var(--bg-deep) !important;
+}
+
+.bg-black\/10,
+.bg-black\/20,
+.bg-black\/25,
+.bg-black\/35,
+.bg-black\/45,
+.bg-black\/70 {
+  background-color: rgba(255, 255, 255, 0.04) !important;
+}
+
+/* Gray surfaces → glass (hover fills, chips, tabs) */
+.bg-gray-50,
+.bg-gray-100,
+.bg-gray-400,
+.bg-gray-500,
+.hover\:bg-gray-50:hover,
+.hover\:bg-gray-100:hover,
+.hover\:bg-gray-800:hover,
+.dark\:bg-gray-700,
+.dark\:bg-gray-800 {
+  background-color: var(--glass-bg-strong) !important;
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════════
    INTRO.JS / TOUR STYLES (dark glass)
    ═══════════════════════════════════════════════════════════════════════════════ */

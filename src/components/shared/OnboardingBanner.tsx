@@ -58,20 +58,20 @@ export const OnboardingBanner: React.FC = () => {
   };
 
   return (
-    <div className="neo-card p-5 bg-gradient-to-r from-accent-pink/20 via-white to-accent-pink/10 dark:from-accent-pink/15 dark:via-surface dark:to-surface border-2 border-black dark:border-white mb-6 relative overflow-hidden shadow-gumroad">
-      <div className="flex justify-between items-start border-b-2 border-black dark:border-white pb-3 mb-3">
+    <div className="neo-card p-5 bg-gradient-to-r from-accent-pink/20 via-surface to-accent-pink/10 border-glass-border mb-6 relative overflow-hidden shadow-gumroad">
+      <div className="flex justify-between items-start border-b border-glass-border pb-3 mb-3">
         <div className="flex items-center gap-2.5">
-          <div className="p-2 bg-black text-accent-pink rounded-lg border border-black shadow-gumroad-sm">
+          <div className="p-2 bg-glass-bg-strong text-accent-pink rounded-lg border border-glass-border shadow-gumroad-sm">
             <Sparkles className="w-5 h-5 animate-spin" style={{ animationDuration: '4s' }} />
           </div>
           <div>
-            <h3 className="font-black text-lg leading-none flex items-center gap-2 text-black dark:text-white">
+            <h3 className="font-black text-lg leading-none flex items-center gap-2 text-text-primary">
               <span>Adventurer Onboarding Quest</span>
-              <span className="text-xs font-mono font-bold bg-black text-accent-pink px-2 py-0.5 rounded border border-black shadow-gumroad-sm">
+              <span className="text-xs font-mono font-bold bg-glass-bg-strong text-accent-pink px-2 py-0.5 rounded border border-glass-border shadow-gumroad-sm">
                 {completedCount}/5 Quests Cleared
               </span>
             </h3>
-            <p className="text-xs text-gray-600 dark:text-gray-400 font-mono mt-1 font-medium">
+            <p className="text-xs text-text-secondary font-mono mt-1 font-medium">
               Master the core progression loop to level up your life.
             </p>
           </div>
