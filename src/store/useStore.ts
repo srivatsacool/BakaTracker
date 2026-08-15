@@ -225,7 +225,7 @@ export const useStore = create<BakaState>((set, get) => ({
   settings: { sheets_url: '', xp_per_level: 100, accent_color_light: '#FF90E8', accent_color_dark: '#FF90E8', api_key: '' },
   currentQuote: DEFAULT_QUOTES[0],
   stats: { level: 1, xp: 0, discipline: 0, health: 0, knowledge: 0, creativity: 0, career: 0 },
-  theme: 'light',
+  theme: 'dark',
   syncStatus: 'idle',
   syncError: null,
   character: [],
@@ -264,8 +264,10 @@ export const useStore = create<BakaState>((set, get) => ({
       // call sites forget to pass it (v1 legacy sync calls).
       if (apiClient) apiClientHolder = apiClient;
 
-      // 0. Load theme
-    const savedTheme = (localStorage.getItem('bt_theme') as 'light' | 'dark') || 'light';
+      // 0. Load theme — the app is dark glass by design; default to dark when
+      // no preference is stored, and honor an explicit light choice (the
+      // legacy light theme is fully remapped to glass via the compat layer).
+    const savedTheme = (localStorage.getItem('bt_theme') as 'light' | 'dark') || 'dark';
     if (savedTheme === 'dark') {
       document.documentElement.classList.add('dark');
     } else {

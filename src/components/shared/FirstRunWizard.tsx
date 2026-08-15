@@ -308,7 +308,7 @@ export const FirstRunWizard: React.FC = () => {
                   Take the App Tour
                 </p>
                 <p className="text-xs text-gray-500 font-mono">
-                  A quick 2-minute guided tour will walk you through every feature of BakaTracker — Habits, Tasks, Eisenhower Matrix, Journal, Journey stats, and Sheets sync.
+                  A quick 2-minute guided tour will walk you through every feature of BakaTracker — Habits, Tasks, Eisenhower Matrix, Journal, Journey stats, and cloud sync.
                 </p>
               </div>
 
