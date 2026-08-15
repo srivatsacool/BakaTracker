@@ -689,12 +689,12 @@ export const Journey: React.FC = () => {
       {/* Recharts Trends */}
       <section className="grid grid-cols-1 md:grid-cols-2 gap-6 text-text-primary">
         {/* Habit Completion Chart */}
-        <div className="neo-card p-4 bg-white dark:bg-surface flex flex-col gap-2">
+        <div className="neo-card p-4 bg-white dark:bg-surface flex flex-col gap-2 min-w-0">
           <h4 className="font-bold text-sm border-b border-black/5 dark:border-white/5 pb-1 flex items-center gap-1">
             <Flame className="w-4 h-4 text-accent-pink" />
             <span>Habit Completion Rate (%)</span>
           </h4>
-          <div className="h-48 mt-2 rounded p-1 bg-[linear-gradient(to_right,#e5e5e5_1px,transparent_1px),linear-gradient(to_bottom,#e5e5e5_1px,transparent_1px)] bg-[size:16px_16px] dark:bg-[linear-gradient(to_right,#3d3c38_1px,transparent_1px),linear-gradient(to_bottom,#3d3c38_1px,transparent_1px)]">
+          <div className="h-48 min-h-48 mt-2 rounded p-1 bg-[linear-gradient(to_right,#e5e5e5_1px,transparent_1px),linear-gradient(to_bottom,#e5e5e5_1px,transparent_1px)] bg-[size:16px_16px] dark:bg-[linear-gradient(to_right,#3d3c38_1px,transparent_1px),linear-gradient(to_bottom,#3d3c38_1px,transparent_1px)]">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#888888" strokeOpacity={0.2} vertical={false} />
@@ -708,12 +708,12 @@ export const Journey: React.FC = () => {
         </div>
 
         {/* Sleep Hours Chart */}
-        <div className="neo-card p-4 bg-white dark:bg-surface flex flex-col gap-2">
+        <div className="neo-card p-4 bg-white dark:bg-surface flex flex-col gap-2 min-w-0">
           <h4 className="font-bold text-sm border-b border-black/5 dark:border-white/5 pb-1 flex items-center gap-1">
             <Moon className="w-4 h-4 text-success" />
             <span>Sleep Hours</span>
           </h4>
-          <div className="h-48 mt-2 rounded p-1 bg-[linear-gradient(to_right,#e5e5e5_1px,transparent_1px),linear-gradient(to_bottom,#e5e5e5_1px,transparent_1px)] bg-[size:16px_16px] dark:bg-[linear-gradient(to_right,#3d3c38_1px,transparent_1px),linear-gradient(to_bottom,#3d3c38_1px,transparent_1px)]">
+          <div className="h-48 min-h-48 mt-2 rounded p-1 bg-[linear-gradient(to_right,#e5e5e5_1px,transparent_1px),linear-gradient(to_bottom,#e5e5e5_1px,transparent_1px)] bg-[size:16px_16px] dark:bg-[linear-gradient(to_right,#3d3c38_1px,transparent_1px),linear-gradient(to_bottom,#3d3c38_1px,transparent_1px)]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#888888" strokeOpacity={0.2} vertical={false} />
@@ -727,19 +727,19 @@ export const Journey: React.FC = () => {
         </div>
 
         {/* Mood Trend Chart */}
-        <div className="neo-card p-4 bg-white dark:bg-surface flex flex-col gap-2">
+        <div className="neo-card p-4 bg-white dark:bg-surface flex flex-col gap-2 min-w-0">
           <h4 className="font-bold text-sm border-b border-black/5 dark:border-white/5 pb-1 flex items-center gap-1">
             <span>😊</span>
             <span>Mood Rating (1-3)</span>
           </h4>
-          <div className="h-48 mt-2 rounded p-1 bg-[linear-gradient(to_right,#e5e5e5_1px,transparent_1px),linear-gradient(to_bottom,#e5e5e5_1px,transparent_1px)] bg-[size:16px_16px] dark:bg-[linear-gradient(to_right,#3d3c38_1px,transparent_1px),linear-gradient(to_bottom,#3d3c38_1px,transparent_1px)]">
+          <div className="h-48 min-h-48 mt-2 rounded p-1 bg-[linear-gradient(to_right,#e5e5e5_1px,transparent_1px),linear-gradient(to_bottom,#e5e5e5_1px,transparent_1px)] bg-[size:16px_16px] dark:bg-[linear-gradient(to_right,#3d3c38_1px,transparent_1px),linear-gradient(to_bottom,#3d3c38_1px,transparent_1px)]">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#888888" strokeOpacity={0.2} vertical={false} />
                 <XAxis dataKey="name" tick={{ fontSize: 10, fontFamily: 'monospace', fill: 'var(--color-text-primary)' }} />
                 <YAxis domain={[1, 3]} ticks={[1, 2, 3]} tickFormatter={(v) => v === 3 ? '🙂' : v === 2 ? '😐' : v === 1 ? '😞' : ''} tick={{ fontSize: 11, fill: 'var(--color-text-primary)' }} />
                 <Tooltip content={<CustomTooltip />} />
-                <Line type="step" dataKey="mood" name="Mood" stroke="#F59E0B" strokeWidth={3} dot={{ stroke: '#000000', strokeWidth: 2, r: 4 }} />
+                <Line type="monotone" dataKey="mood" name="Mood" stroke={activeAccent} strokeWidth={3} dot={{ r: 3, fill: activeAccent, strokeWidth: 0 }} />
               </LineChart>
             </ResponsiveContainer>
           </div>

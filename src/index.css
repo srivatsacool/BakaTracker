@@ -1029,7 +1029,7 @@ body {
 .assistant-prompts button:disabled { opacity: 0.45; cursor: not-allowed; }
 .assistant-error { margin: 0 14px 10px; color: #fca5a5; font: 0.64rem/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; }
 .assistant-composer { gap: 7px; margin: 0 12px 14px; padding: 6px; border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 13px; background: rgba(0, 0, 0, 0.2); }
-.assistant-composer input { min-width: 0; flex: 1; padding: 8px; border: 0; outline: none; color: #f8fafc; background: transparent; font-size: 0.75rem; }
+.assistant-composer input { min-width: 0; flex: 1; padding: 8px; border: 0; outline: none; color: #f8fafc; background: transparent; font-size: 1rem; }
 .assistant-composer input::placeholder { color: #64748b; }
 .assistant-composer button { display: grid; place-items: center; width: 30px; height: 30px; border: 1px solid rgba(168, 85, 247, 0.5); border-radius: 9px; color: #fff; background: rgba(168, 85, 247, 0.32); cursor: pointer; }
 .assistant-composer button:disabled { opacity: 0.35; cursor: not-allowed; }

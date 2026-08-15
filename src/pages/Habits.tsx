@@ -376,6 +376,7 @@ export const Habits: React.FC = () => {
                 onChange={e => setNewHabitName(e.target.value)}
                 placeholder="e.g. Code portfolio"
                 className="neo-input"
+                maxLength={200}
                 required
               />
             </div>

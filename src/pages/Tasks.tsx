@@ -108,6 +108,7 @@ export const Tasks: React.FC = () => {
                 onChange={e => setTitle(e.target.value)}
                 placeholder="e.g. Update resume"
                 className="neo-input"
+                maxLength={200}
                 required
               />
             </div>
