@@ -89,3 +89,6 @@ playwright/.cache/
 .dev.vars*
 !.dev.vars.example
 !.env.example
+
+# Extra / archive of unrelated, legacy, or throwaway files (not shipped)
+extra/

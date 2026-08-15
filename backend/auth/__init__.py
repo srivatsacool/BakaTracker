@@ -1,1 +1,0 @@
-# API Platform Auth Package
