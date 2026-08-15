@@ -18,8 +18,8 @@ export default defineConfig({
       name: 'BakaTracker',
       short_name: 'BakaTracker',
       description: 'ADHD-friendly minimalist life RPG planner',
-      theme_color: '#F8F5F0',
-      background_color: '#F8F5F0',
+      theme_color: '#050308',
+      background_color: '#050308',
       display: 'standalone',
       orientation: 'portrait',
       icons: [

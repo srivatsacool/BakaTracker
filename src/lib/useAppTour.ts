@@ -107,7 +107,7 @@ export const useAppTour = (navigate: (path: string) => void) => {
         {
           element: document.querySelector('#settings-btn') as HTMLElement || document.body,
           title: '⚙️ Settings & Sync',
-          intro: 'In <strong>Settings</strong> you can: connect <strong>Google Sheets</strong> for cloud backup, customise your accent colour, load demo data, or replay this tour anytime. All data syncs automatically once connected. You\'re all set — go build those habits! 🚀',
+          intro: 'In <strong>Settings</strong> you can tune the glass theme, configure BakaSur notifications, load demo data, or replay this tour. Your day remains local-first, with account sync available when your Worker is configured. You\'re all set — go build those habits! 🚀',
           position: 'left',
         },
       ],

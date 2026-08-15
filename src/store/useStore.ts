@@ -1029,7 +1029,7 @@ export const useStore = create<BakaState>((set, get) => ({
     // Add Tasks (with quadrant via direct store injection after addTask)
     await addTask('Review weekly goals', 'Plan and review your objectives for the week', 'career', 15, false);
     await addTask('Plan this month', 'Set monthly targets for all life areas', 'career', 20, false);
-    await addTask('Set up Google Sheets sync', 'Deploy the Apps Script and connect BakaTracker to your Sheet', 'career', 25, true);
+    await addTask('Review operations report', 'Turn the latest notes into a clear report outline', 'career', 25, true);
     await addTask('Start morning routine', 'Design a 30-minute morning routine including exercise and reflection', 'health', 20, true);
     await addTask("Write today's journal", 'Daily reflection and highlight entry', 'personal', 10, true);
     await addTask('Complete app onboarding', 'Finish the BakaTracker setup and first tour', 'personal', 15, false);
@@ -1043,7 +1043,7 @@ export const useStore = create<BakaState>((set, get) => ({
     if (doneTask) await get().moveTask(doneTask.id, 'done');
 
     // Assign quadrants
-    const q_do = findTask('Set up Google Sheets sync');
+    const q_do = findTask('Review operations report');
     const q_do2 = findTask('Complete app onboarding');
     const q_sched = findTask('Start morning routine');
     const q_sched2 = findTask("Write today's journal");

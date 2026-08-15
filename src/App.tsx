@@ -13,6 +13,7 @@ import { Notes } from './pages/Notes';
 import { PageWorkspace } from './pages/PageWorkspace';
 import { ProtectedRoute, useAuth } from './features/auth';
 import { useApiClient } from './api/authFetch';
+import AppBackground from './components/background/AppBackground';
 
 function App() {
   const init = useStore(state => state.init);
@@ -20,12 +21,10 @@ function App() {
   const apiClient = useApiClient();
 
   useEffect(() => {
-    // Initial local cache load
     init();
   }, [init]);
 
   useEffect(() => {
-    // Trigger remote fetch once authenticated (skip for guest/demo mode)
     if (!isLoading && isAuthenticated && user?.provider !== 'guest') {
       init(apiClient);
     }
@@ -33,11 +32,12 @@ function App() {
 
   return (
     <BrowserRouter>
-      <Routes>
-        {/* Public Landing & Login page */}
-        <Route path="/" element={<Landing />} />
+      {/* LightTunnel animated background — fixed, behind everything */}
+      <AppBackground />
 
-        {/* Protected Dashboard/App Pages */}
+      {/* App content — floats above the tunnel */}
+      <Routes>
+        <Route path="/" element={<Landing />} />
         <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
           <Route path="/journey" element={<Journey />} />
           <Route path="/habits" element={<Habits />} />
@@ -48,8 +48,6 @@ function App() {
           <Route path="/notes" element={<Notes />} />
           <Route path="/notes/:pageId" element={<PageWorkspace />} />
         </Route>
-
-        {/* Fallback redirect */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>

@@ -14,6 +14,7 @@ import { NOTIF_TONES, getNotificationSettings, updateNotificationSettings, type 
 import { FirstRunWizard } from './FirstRunWizard';
 import { FirstRunSetup } from './FirstRunSetup';
 import { useAppTour } from '../../lib/useAppTour';
+import { BakaSurRail, ContextBar } from '../shell';
 
 const TONE_LABELS: Record<NotifTone, string> = {
   gentle: 'Gentle',
@@ -29,7 +30,7 @@ export const Layout: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { startTour } = useAppTour(navigate);
-  const { stats, settings, syncStatus, syncError, habits, habitLogs, tasks, journal, syncWithSheets, setSheetsUrl, setApiKey, theme, toggleTheme, setAccentColors, loadDemoData, clearDataByDays } = useStore();
+  const { stats, settings, syncStatus, syncError, habits, habitLogs, tasks, journal, syncWithSheets, theme, toggleTheme, setAccentColors, loadDemoData, clearDataByDays } = useStore();
   const { user, login, getAccessToken } = useAuth();
     const apiClient = useApiClient();
     const init = useStore((s) => s.init);
@@ -40,12 +41,13 @@ export const Layout: React.FC = () => {
   const dailyScore = calculateDailyScore(todayStr, habits, habitLogs, tasks, journal);
 
   const [showSettingsModal, setShowSettingsModal] = useState(false);
-  const [inputUrl, setInputUrl] = useState(settings.sheets_url);
-  const [inputApiKey, setInputApiKey] = useState(settings.api_key || '');
-  const [inputAccentLight, setInputAccentLight] = useState(settings.accent_color_light || '#FF90E8');
-  const [inputAccentDark, setInputAccentDark] = useState(settings.accent_color_dark || '#FF90E8');
+  const [inputAccentLight, setInputAccentLight] = useState(settings.accent_color_light || '#A855F7');
+  const [inputAccentDark, setInputAccentDark] = useState(settings.accent_color_dark || '#06B6D4');
   const [isCollapsed, setIsCollapsed] = useState(() => {
     return localStorage.getItem('bt_sidebar_collapsed') === 'true';
+  });
+  const [isAssistantCollapsed, setIsAssistantCollapsed] = useState(() => {
+    return localStorage.getItem('bt_assistant_collapsed') === 'true';
   });
 
   const [clearDays, setClearDays] = useState<number | 'all'>(7);
@@ -142,6 +144,12 @@ export const Layout: React.FC = () => {
     localStorage.setItem('bt_sidebar_collapsed', String(next));
   };
 
+  const handleToggleAssistant = () => {
+    const next = !isAssistantCollapsed;
+    setIsAssistantCollapsed(next);
+    localStorage.setItem('bt_assistant_collapsed', String(next));
+  };
+
   const navItems = [
     { path: '/habits', name: 'Habits', icon: Flame },
     { path: '/tasks', name: 'Tasks', icon: ListTodo },
@@ -156,10 +164,8 @@ export const Layout: React.FC = () => {
   // Excalidraw canvas (no padded main, no mobile bottom nav overlap).
   const isEditorRoute = /^\/notes\/[^/]+/.test(location.pathname);
 
-  const handleSaveSettings = async (e: React.FormEvent) => {
+  const handleSaveSettings = (e: React.FormEvent) => {
     e.preventDefault();
-    await setSheetsUrl(inputUrl);
-    await setApiKey(inputApiKey);
     setAccentColors(inputAccentLight, inputAccentDark);
     setShowSettingsModal(false);
   };
@@ -268,49 +274,83 @@ export const Layout: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-bg-primary text-text-primary flex flex-col md:flex-row">
+    <div className="min-h-screen bg-transparent text-text-primary flex flex-col md:flex-row app-canvas">
+      <div className={`app-shell-frame ${isAssistantCollapsed ? 'assistant-collapsed' : ''}`}>
       {/* Desktop Sidebar */}
-      <aside className={`hidden md:flex flex-col ${isCollapsed ? 'w-20' : 'w-64'} bg-surface border-r-4 border-black p-4 transition-all duration-300 shrink-0 justify-between relative`}>
-        {/* Toggle Sidebar Collapse Button (Desktop Only) */}
+      <aside
+        className={`hidden md:flex flex-col ${isCollapsed ? 'w-20' : 'w-64'} p-4 transition-all duration-300 shrink-0 justify-between relative backdrop-blur-xl border-r`}
+        style={{
+          background: 'linear-gradient(180deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 100%)',
+          borderColor: 'rgba(255,255,255,0.08)',
+        }}
+      >
+        {/* Toggle Sidebar Collapse Button */}
         <button
           onClick={handleToggleCollapse}
-          className="absolute top-4 -right-3.5 bg-accent-pink border-2 border-black rounded-full p-1 shadow-gumroad-sm hover:translate-x-[1px] hover:translate-y-[1px] transition hidden md:block z-10 cursor-pointer"
+          className="absolute top-4 -right-3.5 rounded-full p-1 backdrop-blur-xl transition hidden md:block z-10 cursor-pointer border border-white/20 hover:border-violet-400/40"
+          style={{
+            background: 'rgba(168, 85, 247, 0.2)',
+            boxShadow: '0 0 16px rgba(168, 85, 247, 0.3)',
+          }}
           title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
         >
-          {isCollapsed ? <ChevronRight className="w-4 h-4 text-black dark:text-text-primary" /> : <ChevronLeft className="w-4 h-4 text-black dark:text-text-primary" />}
+          {isCollapsed ? <ChevronRight className="w-4 h-4 text-white" /> : <ChevronLeft className="w-4 h-4 text-white" />}
         </button>
 
         <div className="flex flex-col gap-6">
           {/* Logo / Title */}
           <div id="sidebar-logo" className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'} transition-all`}>
-            <img src="/logo.png" alt="BakaTracker Logo" className="w-10 h-10 border-2 border-black rounded-lg shadow-gumroad-sm object-cover" />
+            <div className="relative">
+              <img src="/logo.png" alt="BakaTracker Logo" className="w-10 h-10 rounded-xl border border-white/20 shadow-lg object-cover backdrop-blur-sm" />
+            </div>
             {!isCollapsed && (
               <div className="transition-all duration-300">
-                <h1 className="text-xl font-bold tracking-tight m-0 leading-none">BakaTracker</h1>
-                <span className="text-[10px] text-gray-500 font-mono">Life RPG</span>
+                <h1 className="text-xl font-bold tracking-tight m-0 leading-none text-gradient">BakaTracker</h1>
+                <span className="text-[10px] font-mono text-slate-400">Life RPG</span>
               </div>
             )}
           </div>
 
           {/* User Character Stats Card */}
-          <div id="sidebar-level-bar" className={`neo-card ${isCollapsed ? 'p-2 items-center' : 'p-4'} bg-accent-pink/10 flex flex-col gap-3 transition-all`}>
+          <div
+            id="sidebar-level-bar"
+            className={`rounded-2xl backdrop-blur-xl border ${isCollapsed ? 'p-2 items-center flex flex-col gap-2.5' : 'p-4 flex flex-col gap-3'} transition-all`}
+            style={{
+              background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.1) 0%, rgba(6, 182, 212, 0.05) 100%)',
+              borderColor: 'rgba(168, 85, 247, 0.2)',
+              boxShadow: '0 4px 20px rgba(168, 85, 247, 0.15), inset 0 1px 0 rgba(255,255,255,0.05)',
+            }}
+          >
             {isCollapsed ? (
               <div className="flex flex-col items-center gap-2.5">
-                <span className="font-bold font-mono text-xs bg-black text-white px-1.5 py-0.5 rounded border border-black shadow-gumroad-sm" title={`Level ${stats.level}`}>
+                <span
+                  className="font-bold font-mono text-xs px-1.5 py-0.5 rounded border text-white"
+                  style={{
+                    background: 'rgba(168, 85, 247, 0.2)',
+                    borderColor: 'rgba(168, 85, 247, 0.4)',
+                    boxShadow: '0 0 12px rgba(168, 85, 247, 0.3)',
+                  }}
+                  title={`Level ${stats.level}`}
+                >
                   L{stats.level}
                 </span>
                 
                 {/* Sync indicator */}
-                {settings.sheets_url ? (
+                {!isGuest ? (
                   <button 
                     onClick={() => syncWithSheets()} 
-                    title={syncStatus === 'loading' ? 'Syncing...' : syncError ? `Sync Error: ${syncError}` : 'Connected to Sheets (Click to Sync)'}
-                    className={`p-1.5 rounded border-2 border-black bg-white hover:bg-gray-100 transition shadow-gumroad-sm ${syncStatus === 'loading' ? 'animate-spin' : ''}`}
+                    title={syncStatus === 'loading' ? 'Syncing...' : syncError ? `Sync error: ${syncError}` : 'Synced to your Worker (click to sync)'}
+                    className={`p-1.5 rounded border backdrop-blur-xl transition border-white/15 hover:border-violet-400/40 ${syncStatus === 'loading' ? 'animate-spin' : ''}`}
+                    style={{ background: 'rgba(255,255,255,0.06)' }}
                   >
                     <Cloud className={`w-3.5 h-3.5 ${syncStatus === 'error' ? 'text-danger' : 'text-success'}`} />
                   </button>
                 ) : (
-                  <div title="Local-Only Mode" className="p-1.5 rounded border-2 border-black bg-white shadow-gumroad-sm">
+                  <div
+                    title="Local-Only Mode"
+                    className="p-1.5 rounded border border-white/10 backdrop-blur-xl"
+                    style={{ background: 'rgba(255,255,255,0.04)' }}
+                  >
                     <CloudOff className="w-3.5 h-3.5 text-warning" />
                   </div>
                 )}
@@ -318,36 +358,41 @@ export const Layout: React.FC = () => {
                 {/* Theme Toggle */}
                 <button
                   onClick={() => toggleTheme()}
-                  className="p-1.5 rounded border-2 border-black bg-white hover:bg-gray-100 transition shadow-gumroad-sm"
+                  className="p-1.5 rounded border border-white/15 backdrop-blur-xl transition hover:border-violet-400/40"
+                  style={{ background: 'rgba(255,255,255,0.06)' }}
                   title={`Switch to ${theme === 'light' ? 'Dark' : 'Light'} Mode`}
                 >
-                  {theme === 'light' ? <Moon className="w-3.5 h-3.5 text-black dark:text-text-primary" /> : <Sun className="w-3.5 h-3.5 text-black dark:text-text-primary" />}
+                  {theme === 'light' ? <Moon className="w-3.5 h-3.5 text-white" /> : <Sun className="w-3.5 h-3.5 text-white" />}
                 </button>
                 
                 {/* Settings Toggle */}
                 <button
                   id="settings-btn-collapsed"
                   onClick={() => {
-                    setInputUrl(settings.sheets_url);
-                    setInputApiKey(settings.api_key || '');
-                    setInputAccentLight(settings.accent_color_light || '#FF90E8');
-                    setInputAccentDark(settings.accent_color_dark || '#FF90E8');
+                    setInputAccentLight(settings.accent_color_light || '#A855F7');
+                    setInputAccentDark(settings.accent_color_dark || '#06B6D4');
                     openSettingsModal();
                   }}
-                  className="p-1.5 rounded border-2 border-black bg-white hover:bg-gray-100 transition shadow-gumroad-sm"
+                  className="p-1.5 rounded border border-white/15 backdrop-blur-xl transition hover:border-violet-400/40"
+                  style={{ background: 'rgba(255,255,255,0.06)' }}
                   title="Settings"
                 >
-                  <SettingsIcon className="w-3.5 h-3.5 text-black dark:text-text-primary" />
+                  <SettingsIcon className="w-3.5 h-3.5 text-white" />
                 </button>
 
                 {/* User Menu / Sign In */}
                 {isGuest ? (
                   <button
                     onClick={() => login()}
-                    className="p-1.5 rounded border-2 border-black bg-accent-pink hover:bg-accent-pink/90 transition shadow-gumroad-sm cursor-pointer"
+                    className="p-1.5 rounded border transition cursor-pointer hover:scale-105"
+                    style={{
+                      background: 'linear-gradient(135deg, #A855F7 0%, #8B5CF6 100%)',
+                      borderColor: 'rgba(255,255,255,0.25)',
+                      boxShadow: '0 0 16px rgba(168, 85, 247, 0.4)',
+                    }}
                     title="Sign In to save your data"
                   >
-                    <Shield className="w-3.5 h-3.5 text-black dark:text-text-primary" />
+                    <Shield className="w-3.5 h-3.5 text-white" />
                   </button>
                 ) : (
                   <UserMenu />
@@ -358,29 +403,42 @@ export const Layout: React.FC = () => {
               // Expanded Stats Card layout
               <>
                 <div className="flex justify-between items-center">
-                  <span className="font-bold font-mono text-sm bg-black text-white px-2 py-0.5 rounded border border-black shadow-gumroad-sm">
+                  <span
+                    className="font-bold font-mono text-sm px-2 py-0.5 rounded border text-white"
+                    style={{
+                      background: 'rgba(168, 85, 247, 0.2)',
+                      borderColor: 'rgba(168, 85, 247, 0.4)',
+                      boxShadow: '0 0 12px rgba(168, 85, 247, 0.3)',
+                    }}
+                  >
                     LVL {stats.level}
                   </span>
                   <div className="flex items-center gap-1.5">
                     {/* Theme Toggle */}
                     <button
                       onClick={() => toggleTheme()}
-                      className="p-1.5 rounded border-2 border-black bg-white hover:bg-gray-100 transition shadow-gumroad-sm"
+                      className="p-1.5 rounded border border-white/15 backdrop-blur-xl transition hover:border-violet-400/40"
+                      style={{ background: 'rgba(255,255,255,0.06)' }}
                       title={`Switch to ${theme === 'light' ? 'Dark' : 'Light'} Mode`}
                     >
-                      {theme === 'light' ? <Moon className="w-3.5 h-3.5 text-black dark:text-text-primary" /> : <Sun className="w-3.5 h-3.5 text-black dark:text-text-primary" />}
+                      {theme === 'light' ? <Moon className="w-3.5 h-3.5 text-white" /> : <Sun className="w-3.5 h-3.5 text-white" />}
                     </button>
 
-                    {settings.sheets_url ? (
+                    {!isGuest ? (
                       <button 
                         onClick={() => syncWithSheets()} 
-                        title={syncStatus === 'loading' ? 'Syncing...' : syncError ? `Sync Error: ${syncError}` : 'Connected to Google Sheets'}
-                        className={`p-1.5 rounded border-2 border-black bg-white hover:bg-gray-100 transition shadow-gumroad-sm ${syncStatus === 'loading' ? 'animate-spin' : ''}`}
+                        title={syncStatus === 'loading' ? 'Syncing...' : syncError ? `Sync error: ${syncError}` : 'Synced to your Worker'}
+                        className={`p-1.5 rounded border border-white/15 backdrop-blur-xl transition hover:border-violet-400/40 ${syncStatus === 'loading' ? 'animate-spin' : ''}`}
+                        style={{ background: 'rgba(255,255,255,0.06)' }}
                       >
                         <Cloud className={`w-3.5 h-3.5 ${syncStatus === 'error' ? 'text-danger' : 'text-success'}`} />
                       </button>
                     ) : (
-                      <div title="Local-Only Mode" className="p-1.5 rounded border-2 border-black bg-white shadow-gumroad-sm">
+                      <div
+                        title="Local-Only Mode"
+                        className="p-1.5 rounded border border-white/10 backdrop-blur-xl"
+                        style={{ background: 'rgba(255,255,255,0.04)' }}
+                      >
                         <CloudOff className="w-3.5 h-3.5 text-warning" />
                       </div>
                     )}
@@ -389,26 +447,30 @@ export const Layout: React.FC = () => {
                     <button
                       id="settings-btn"
                       onClick={() => {
-                        setInputUrl(settings.sheets_url);
-                        setInputApiKey(settings.api_key || '');
-                        setInputAccentLight(settings.accent_color_light || '#FF90E8');
-                        setInputAccentDark(settings.accent_color_dark || '#FF90E8');
+                        setInputAccentLight(settings.accent_color_light || '#A855F7');
+                        setInputAccentDark(settings.accent_color_dark || '#06B6D4');
                         openSettingsModal();
                       }}
-                      className="p-1.5 rounded border-2 border-black bg-white hover:bg-gray-100 transition shadow-gumroad-sm"
+                      className="p-1.5 rounded border border-white/15 backdrop-blur-xl transition hover:border-violet-400/40"
+                      style={{ background: 'rgba(255,255,255,0.06)' }}
                       title="Settings"
                     >
-                      <SettingsIcon className="w-3.5 h-3.5 text-black dark:text-text-primary" />
+                      <SettingsIcon className="w-3.5 h-3.5 text-white" />
                     </button>
 
                     {/* User Menu / Sign In */}
                     {isGuest ? (
                       <button
                         onClick={() => login()}
-                        className="p-1.5 rounded border-2 border-black bg-accent-pink hover:bg-accent-pink/90 transition shadow-gumroad-sm cursor-pointer"
+                        className="p-1.5 rounded border transition cursor-pointer hover:scale-105"
+                        style={{
+                          background: 'linear-gradient(135deg, #A855F7 0%, #8B5CF6 100%)',
+                          borderColor: 'rgba(255,255,255,0.25)',
+                          boxShadow: '0 0 16px rgba(168, 85, 247, 0.4)',
+                        }}
                         title="Sign In to save your data"
-                        >
-                        <Shield className="w-3.5 h-3.5 text-black dark:text-text-primary" />
+                      >
+                        <Shield className="w-3.5 h-3.5 text-white" />
                       </button>
                     ) : (
                       <UserMenu />
@@ -418,25 +480,55 @@ export const Layout: React.FC = () => {
                 </div>
 
                 {/* XP Bar */}
-                <div className="flex flex-col gap-1">
+                <div className="flex flex-col gap-1.5">
                   <div className="flex justify-between text-xs font-mono font-bold">
-                    <span>XP</span>
-                    <span>{stats.xp} / {settings.xp_per_level}</span>
+                    <span className="text-slate-300">XP</span>
+                    <span className="text-violet-300">{stats.xp} / {settings.xp_per_level}</span>
                   </div>
-                  <div className="w-full bg-white h-4 rounded-full border-2 border-black overflow-hidden relative">
+                  <div
+                    className="w-full h-2.5 rounded-full overflow-hidden relative"
+                    style={{
+                      background: 'rgba(255,255,255,0.08)',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                    }}
+                  >
                     <div 
-                      className="bg-accent-pink h-full border-r-2 border-black transition-all duration-300"
-                      style={{ width: `${(stats.xp / settings.xp_per_level) * 100}%` }}
+                      className="h-full transition-all duration-300"
+                      style={{
+                        width: `${(stats.xp / settings.xp_per_level) * 100}%`,
+                        background: 'linear-gradient(90deg, #A855F7 0%, #06B6D4 100%)',
+                        boxShadow: '0 0 12px rgba(168, 85, 247, 0.6)',
+                      }}
                     />
                   </div>
                 </div>
 
                 {/* Day Progress indicator */}
-                <div id="sidebar-day-progress" className="flex justify-between items-center mt-1 pt-2 border-t border-black/10">
-                  <span className="text-xs font-bold font-mono">Day Progress:</span>
-                  <span className={`text-sm font-black font-mono px-2 py-0.5 rounded border border-black ${
-                    dailyScore >= 80 ? 'bg-success text-white' : dailyScore >= 40 ? 'bg-warning text-black' : 'bg-danger text-white'
-                  }`}>
+                <div id="sidebar-day-progress" className="flex justify-between items-center mt-1 pt-2" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+                  <span className="text-xs font-bold font-mono text-slate-400">Day Progress:</span>
+                  <span
+                    className={`text-sm font-black font-mono px-2.5 py-0.5 rounded-full border ${
+                      dailyScore >= 80
+                        ? 'text-emerald-300'
+                        : dailyScore >= 40
+                          ? 'text-amber-300'
+                          : 'text-red-300'
+                    }`}
+                    style={{
+                      background:
+                        dailyScore >= 80
+                          ? 'rgba(16, 185, 129, 0.15)'
+                          : dailyScore >= 40
+                            ? 'rgba(245, 158, 11, 0.15)'
+                            : 'rgba(239, 68, 68, 0.15)',
+                      borderColor:
+                        dailyScore >= 80
+                          ? 'rgba(16, 185, 129, 0.4)'
+                          : dailyScore >= 40
+                            ? 'rgba(245, 158, 11, 0.4)'
+                            : 'rgba(239, 68, 68, 0.4)',
+                    }}
+                  >
                     {dailyScore}%
                   </span>
                 </div>
@@ -446,16 +538,29 @@ export const Layout: React.FC = () => {
 
           {/* Demo Mode Banner (sidebar) */}
           {isGuest && !isCollapsed && (
-            <div className="neo-card px-3 py-2.5 bg-warning/10 border-2 border-warning rounded-lg flex items-center gap-2.5">
-              <div className="p-1 bg-warning rounded border border-black">
-                <Zap className="w-3 h-3 text-black" />
+            <div
+              className="px-3 py-2.5 rounded-xl flex items-center gap-2.5 border"
+              style={{
+                background: 'rgba(245, 158, 11, 0.08)',
+                borderColor: 'rgba(245, 158, 11, 0.3)',
+                boxShadow: '0 0 20px rgba(245, 158, 11, 0.1)',
+              }}
+            >
+              <div
+                className="p-1 rounded-lg border"
+                style={{
+                  background: 'rgba(245, 158, 11, 0.25)',
+                  borderColor: 'rgba(245, 158, 11, 0.5)',
+                }}
+              >
+                <Zap className="w-3 h-3 text-amber-300" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-black text-[10px] leading-tight text-black uppercase">Demo Mode</p>
-                <p className="font-mono text-[9px] text-gray-600 leading-tight mt-0.5">
+                <p className="font-black text-[10px] leading-tight text-amber-200 uppercase">Demo Mode</p>
+                <p className="font-mono text-[9px] text-slate-400 leading-tight mt-0.5">
                   Exploring with sample data.
                   {isAuthConfigured ? (
-                    <button onClick={() => login()} className="ml-1 underline font-bold hover:text-accent-pink cursor-pointer">
+                    <button onClick={() => login()} className="ml-1 underline font-bold hover:text-violet-300 cursor-pointer">
                       Sign in to sync
                     </button>
                   ) : (
@@ -478,13 +583,21 @@ export const Layout: React.FC = () => {
                   to={item.path}
                   id={itemId}
                   title={item.name}
-                  className={`flex items-center ${isCollapsed ? 'justify-center px-2' : 'gap-3 px-4'} py-3 rounded-lg border-2 font-bold transition-all ${
+                  className={`flex items-center ${isCollapsed ? 'justify-center px-2' : 'gap-3 px-4'} py-3 rounded-xl border font-bold transition-all backdrop-blur-xl ${
                     isActive
-                      ? 'bg-accent-pink text-black border-black shadow-gumroad-sm translate-x-[2px] translate-y-[2px]'
-                      : 'bg-surface border-transparent text-gray-700 hover:text-black hover:border-black hover:shadow-gumroad-sm hover:translate-x-[1px] hover:translate-y-[1px]'
+                      ? 'text-white border-violet-400/50'
+                      : 'border-transparent text-slate-400 hover:text-white hover:border-white/15'
                   }`}
+                  style={{
+                    background: isActive
+                      ? 'linear-gradient(135deg, rgba(168, 85, 247, 0.3) 0%, rgba(6, 182, 212, 0.15) 100%)'
+                      : 'rgba(255,255,255,0.02)',
+                    boxShadow: isActive
+                      ? '0 0 20px rgba(168, 85, 247, 0.3), inset 0 1px 0 rgba(255,255,255,0.1)'
+                      : 'none',
+                  }}
                 >
-                  <Icon className="w-5 h-5 shrink-0" />
+                  <Icon className={`w-5 h-5 shrink-0 ${isActive ? 'text-violet-300' : ''}`} />
                   {!isCollapsed && <span>{item.name}</span>}
                 </Link>
               );
@@ -494,10 +607,14 @@ export const Layout: React.FC = () => {
             {deferredPrompt && (
               <button
                 onClick={handleInstallPWA}
-                className={`flex items-center ${isCollapsed ? 'justify-center px-2' : 'gap-3 px-4'} py-3 rounded-lg border-2 border-black font-bold bg-accent-pink text-black shadow-gumroad-sm hover:translate-x-[1px] hover:translate-y-[1px] transition-all cursor-pointer animate-pulse mt-2`}
+                className={`flex items-center ${isCollapsed ? 'justify-center px-2' : 'gap-3 px-4'} py-3 rounded-xl border font-bold text-white backdrop-blur-xl transition-all cursor-pointer mt-2 border-violet-400/40`}
+                style={{
+                  background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.25) 0%, rgba(6, 182, 212, 0.15) 100%)',
+                  boxShadow: '0 0 20px rgba(168, 85, 247, 0.3), inset 0 1px 0 rgba(255,255,255,0.1)',
+                }}
                 title="Install BakaTracker Desktop App"
               >
-                <Download className="w-5 h-5 shrink-0 text-black" />
+                <Download className="w-5 h-5 shrink-0 text-violet-300" />
                 {!isCollapsed && <span>Install App</span>}
               </button>
             )}
@@ -506,9 +623,12 @@ export const Layout: React.FC = () => {
 
         {/* Footer */}
         {!isCollapsed && (
-          <div className="text-center text-[11px] font-mono text-gray-500 mt-auto pt-4 border-t border-black/10 transition-all duration-300">
+          <div
+            className="text-center text-[11px] font-mono text-slate-500 mt-auto pt-4 transition-all duration-300"
+            style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}
+          >
             <p>BakaTracker v2.0</p>
-            <p className="font-bold mt-1 text-black dark:text-white">Made by build.srivatsa</p>
+            <p className="font-bold mt-1 text-slate-300">Made by build.srivatsa</p>
           </div>
         )}
       </aside>
@@ -516,21 +636,43 @@ export const Layout: React.FC = () => {
       {/* Mobile Header & Bottom Navigation */}
       <div className={`md:hidden flex flex-col w-full ${isEditorRoute ? 'h-screen overflow-hidden' : 'min-h-screen'}`}>
         {/* Mobile Header */}
-        <header className="bg-surface border-b-4 border-black p-4 flex items-center justify-between sticky top-0 z-50">
+        <header
+          className="p-4 flex items-center justify-between sticky top-0 z-50 backdrop-blur-xl border-b"
+          style={{
+            background: 'rgba(255,255,255,0.03)',
+            borderColor: 'rgba(255,255,255,0.08)',
+          }}
+        >
           <div className="flex items-center gap-2">
-            <img src="/logo.png" alt="BakaTracker Logo" className="w-8 h-8 border border-black rounded shadow-gumroad-sm object-cover" />
-            <h1 className="text-lg font-black tracking-tight leading-none m-0">BakaTracker</h1>
+            <img src="/logo.png" alt="BakaTracker Logo" className="w-8 h-8 rounded-lg border border-white/20 shadow-lg object-cover" />
+            <h1 className="text-lg font-black tracking-tight leading-none m-0 text-gradient">BakaTracker</h1>
           </div>
 
           {/* Character Quick Info */}
           <div className="flex items-center gap-2">
-            <span className="font-mono text-xs font-bold bg-black text-white px-1.5 py-0.5 rounded border border-black">
+            <span
+              className="font-mono text-xs font-bold px-1.5 py-0.5 rounded border text-white"
+              style={{
+                background: 'rgba(168, 85, 247, 0.2)',
+                borderColor: 'rgba(168, 85, 247, 0.4)',
+              }}
+            >
               LVL {stats.level}
             </span>
-            <div className="w-16 bg-white h-2.5 rounded-full border border-black overflow-hidden relative">
+            <div
+              className="w-16 h-2 rounded-full overflow-hidden relative"
+              style={{
+                background: 'rgba(255,255,255,0.08)',
+                border: '1px solid rgba(255,255,255,0.1)',
+              }}
+            >
               <div 
-                className="bg-accent-pink h-full transition-all duration-300"
-                style={{ width: `${(stats.xp / settings.xp_per_level) * 100}%` }}
+                className="h-full transition-all duration-300"
+                style={{
+                  width: `${(stats.xp / settings.xp_per_level) * 100}%`,
+                  background: 'linear-gradient(90deg, #A855F7 0%, #06B6D4 100%)',
+                  boxShadow: '0 0 8px rgba(168, 85, 247, 0.6)',
+                }}
               />
             </div>
 
@@ -538,44 +680,51 @@ export const Layout: React.FC = () => {
             {deferredPrompt && (
               <button
                 onClick={handleInstallPWA}
-                className="p-1 rounded border-2 border-black bg-accent-pink text-black hover:bg-white transition shadow-sm animate-pulse"
+                className="p-1 rounded border transition cursor-pointer border-violet-400/40"
+                style={{
+                  background: 'rgba(168, 85, 247, 0.2)',
+                }}
                 title="Install BakaTracker App"
               >
-                <Download className="w-3.5 h-3.5" />
+                <Download className="w-3.5 h-3.5 text-violet-300" />
               </button>
             )}
 
             {/* Mobile Theme Toggle */}
             <button
               onClick={() => toggleTheme()}
-              className="p-1 rounded border border-black bg-white hover:bg-gray-100 transition shadow-sm"
+              className="p-1 rounded border backdrop-blur-xl transition border-white/15 hover:border-violet-400/40"
+              style={{ background: 'rgba(255,255,255,0.06)' }}
               title={`Switch to ${theme === 'light' ? 'Dark' : 'Light'} Mode`}
             >
-              {theme === 'light' ? <Moon className="w-3.5 h-3.5 text-black dark:text-text-primary" /> : <Sun className="w-3.5 h-3.5 text-black dark:text-text-primary" />}
+              {theme === 'light' ? <Moon className="w-3.5 h-3.5 text-white" /> : <Sun className="w-3.5 h-3.5 text-white" />}
             </button>
 
             <button
               onClick={() => {
-                setInputUrl(settings.sheets_url);
-                setInputApiKey(settings.api_key || '');
-                setInputAccentLight(settings.accent_color_light || '#FF90E8');
-                setInputAccentDark(settings.accent_color_dark || '#FF90E8');
+                setInputAccentLight(settings.accent_color_light || '#A855F7');
+                setInputAccentDark(settings.accent_color_dark || '#06B6D4');
                 openSettingsModal();
               }}
-              className="p-1 rounded border border-black bg-white"
+              className="p-1 rounded border backdrop-blur-xl border-white/15 hover:border-violet-400/40"
+              style={{ background: 'rgba(255,255,255,0.06)' }}
               title="Settings"
             >
-              <SettingsIcon className="w-3.5 h-3.5 text-black dark:text-text-primary" />
+              <SettingsIcon className="w-3.5 h-3.5 text-white" />
             </button>
 
             {/* User Menu / Sign In */}
             {isGuest ? (
               <button
                 onClick={() => login()}
-                className="p-1 rounded border-2 border-black bg-accent-pink hover:bg-accent-pink/90 transition shadow-sm cursor-pointer"
+                className="p-1 rounded border transition cursor-pointer"
+                style={{
+                  background: 'linear-gradient(135deg, #A855F7 0%, #8B5CF6 100%)',
+                  borderColor: 'rgba(255,255,255,0.25)',
+                }}
                 title="Sign In to save your data"
-                >
-                <Shield className="w-3.5 h-3.5 text-black dark:text-text-primary" />
+              >
+                <Shield className="w-3.5 h-3.5 text-white" />
               </button>
             ) : (
               <UserMenu />
@@ -585,7 +734,14 @@ export const Layout: React.FC = () => {
 
         {/* Offline Banner */}
         {isOffline && (
-          <div className="bg-warning text-black border-b-2 border-black p-2 text-center font-mono font-bold text-xs flex items-center justify-center gap-2 z-40">
+          <div
+            className="p-2 text-center font-mono font-bold text-xs flex items-center justify-center gap-2 z-40 border-b"
+            style={{
+              background: 'rgba(245, 158, 11, 0.1)',
+              borderColor: 'rgba(245, 158, 11, 0.3)',
+              color: '#FDE68A',
+            }}
+          >
             <WifiOff className="w-4 h-4 shrink-0" />
             <span>Offline Mode — All changes saved locally and will sync when reconnected!</span>
           </div>
@@ -593,13 +749,27 @@ export const Layout: React.FC = () => {
 
         {/* Scrollable Container */}
         <main className={`flex-1 ${isEditorRoute ? 'overflow-hidden p-0 min-h-0' : 'overflow-y-auto pb-24 p-4'}`}>
+          {!isEditorRoute && (
+            <ContextBar
+              isOffline={isOffline}
+              onToggleAssistant={handleToggleAssistant}
+              assistantCollapsed={isAssistantCollapsed}
+            />
+          )}
           <OnboardingBanner />
           <Outlet />
         </main>
 
         {/* Mobile Navigation Bar (hidden on editor routes so it doesn't overlap the canvas) */}
         {!isEditorRoute && (
-          <nav className="fixed bottom-0 left-0 right-0 bg-surface border-t-4 border-black py-2 px-2 flex justify-around items-center z-50 shadow-[0_-4px_10px_rgba(0,0,0,0.05)]">
+          <nav
+            className="fixed bottom-0 left-0 right-0 py-2 px-2 flex justify-around items-center z-50 backdrop-blur-xl border-t"
+            style={{
+              background: 'rgba(255,255,255,0.03)',
+              borderColor: 'rgba(255,255,255,0.08)',
+              boxShadow: '0 -4px 20px rgba(0,0,0,0.3)',
+            }}
+          >
           {navItems.map(item => {
             const isActive = location.pathname === item.path || (item.path === '/habits' && location.pathname === '/');
             const Icon = item.icon;
@@ -607,9 +777,19 @@ export const Layout: React.FC = () => {
               <Link
                 key={item.path}
                 to={item.path}
-                className={`flex flex-col items-center justify-center min-h-[48px] min-w-[48px] px-3 py-1.5 rounded-lg transition-all active:scale-95 ${
-                  isActive ? 'text-accent-pink bg-black border-2 border-black shadow-gumroad-sm' : 'text-gray-600 hover:text-black'
+                className={`flex flex-col items-center justify-center min-h-[48px] min-w-[48px] px-3 py-1.5 rounded-xl transition-all active:scale-95 backdrop-blur-xl border ${
+                  isActive
+                    ? 'text-violet-300 border-violet-400/50'
+                    : 'text-slate-500 hover:text-white border-transparent hover:border-white/15'
                 }`}
+                style={{
+                  background: isActive
+                    ? 'linear-gradient(135deg, rgba(168, 85, 247, 0.3) 0%, rgba(6, 182, 212, 0.15) 100%)'
+                    : 'transparent',
+                  boxShadow: isActive
+                    ? '0 0 16px rgba(168, 85, 247, 0.3)'
+                    : 'none',
+                }}
               >
                 <Icon className="w-5 h-5" />
                 <span className="text-[10px] font-bold font-mono mt-0.5">{item.name}</span>
@@ -621,69 +801,75 @@ export const Layout: React.FC = () => {
       </div>
 
       {/* Desktop Main Content Container */}
-      <main className={`hidden md:block flex-1 h-screen ${isEditorRoute ? 'overflow-hidden p-0' : 'overflow-y-auto p-8'} bg-bg-primary`}>
+      <main className={`hidden md:block flex-1 h-screen ${isEditorRoute ? 'overflow-hidden p-0' : 'overflow-y-auto p-8'} bg-transparent`}>
         {isOffline && (
-          <div className="bg-warning text-black border-2 border-black rounded-lg p-3 text-center font-mono font-bold text-xs flex items-center justify-center gap-2 mb-6 shadow-gumroad-sm">
+          <div
+            className="rounded-xl p-3 text-center font-mono font-bold text-xs flex items-center justify-center gap-2 mb-6 border"
+            style={{
+              background: 'rgba(245, 158, 11, 0.1)',
+              borderColor: 'rgba(245, 158, 11, 0.3)',
+              color: '#FDE68A',
+            }}
+          >
             <WifiOff className="w-4 h-4 shrink-0" />
             <span>Offline Mode — Running in local-first mode. All progress is saved on your device!</span>
           </div>
         )}
+        {!isEditorRoute && (
+          <ContextBar
+            isOffline={isOffline}
+            onToggleAssistant={handleToggleAssistant}
+            assistantCollapsed={isAssistantCollapsed}
+          />
+        )}
         <OnboardingBanner />
         <Outlet />
       </main>
+      <BakaSurRail collapsed={isAssistantCollapsed} onToggle={handleToggleAssistant} />
+      </div>
 
       {/* Settings Modal (Bottom Sheet on Mobile) */}
       {showSettingsModal && (
-        <div className="fixed inset-0 z-[999] flex items-center justify-center max-sm:items-end bg-black/60 p-0 sm:p-4 animate-fade-in">
-          <div className="neo-card p-6 bg-white dark:bg-surface w-full max-w-md flex flex-col gap-4 text-black dark:text-white max-sm:rounded-b-none max-sm:rounded-t-2xl max-h-[90vh] overflow-y-auto shadow-gumroad-lg">
-            <div className="flex justify-between items-center border-b-2 border-black dark:border-white pb-2">
-              <h3 className="text-lg font-black flex items-center gap-2">
-                <SettingsIcon className="w-5 h-5 text-accent-pink" />
-                <span className="dark:text-white">BakaTracker Settings</span>
+        <div className="fixed inset-0 z-[999] flex items-center justify-center max-sm:items-end p-0 sm:p-4 animate-fade-in"
+          style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }}
+        >
+          <div
+            className="glass-strong p-6 w-full max-w-md flex flex-col gap-4 text-white max-sm:rounded-b-none max-sm:rounded-t-2xl max-h-[90vh] overflow-y-auto"
+            style={{
+              background: 'rgba(20, 10, 40, 0.9)',
+              backdropFilter: 'blur(32px) saturate(200%)',
+              border: '1px solid rgba(255,255,255,0.12)',
+              boxShadow: '0 12px 48px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.08)',
+            }}
+          >
+            <div className="flex justify-between items-center pb-2" style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+              <h3 className="text-lg font-bold flex items-center gap-2">
+                <SettingsIcon className="w-5 h-5 text-violet-400" />
+                <span>BakaTracker Settings</span>
               </h3>
               <button
                 onClick={() => setShowSettingsModal(false)}
-                className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800 transition border border-transparent hover:border-black cursor-pointer"
+                className="p-1 rounded backdrop-blur-xl transition border border-white/10 hover:border-violet-400/40 cursor-pointer"
+                style={{ background: 'rgba(255,255,255,0.06)' }}
               >
-                <X className="w-5 h-5" />
+                <X className="w-5 h-5 text-white" />
               </button>
             </div>
 
-            <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed font-mono">
-              BakaTracker runs in local-first mode by default. Connect your Google Sheet via Google Apps Script to back up and sync your data.
+            <p className="text-xs text-slate-400 leading-relaxed font-mono">
+              Your workspace is local-first. Sign in only when you want to sync this journey to your own BakaTracker Worker; the visual system and daily actions remain available offline.
             </p>
 
             <form onSubmit={handleSaveSettings} className="flex flex-col gap-4">
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-bold font-mono">Google Apps Script URL</label>
-                <input
-                  type="url"
-                  placeholder="https://script.google.com/macros/s/.../exec"
-                  value={inputUrl}
-                  onChange={e => setInputUrl(e.target.value)}
-                  className="neo-input text-xs"
-                />
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-bold font-mono">API Authorization Key (Optional)</label>
-                <input
-                  type="password"
-                  placeholder="Enter API Key to secure your Google Sheet data"
-                  value={inputApiKey}
-                  onChange={e => setInputApiKey(e.target.value)}
-                  className="neo-input text-xs"
-                />
-              </div>
-
               {/* Accent Color Config Pickers */}
-              <div className="flex flex-col gap-3 border-t border-black/10 pt-3">
+              <div className="flex flex-col gap-3 pt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
                 <div className="flex justify-between items-center">
-                  <label className="text-xs font-black font-mono">Theme Accent Colors</label>
+                  <label className="text-xs font-black font-mono text-slate-300">Theme Accent Colors</label>
                   <button
                     type="button"
                     onClick={handleResetColors}
-                    className="text-[10px] font-mono font-bold border border-black px-1.5 py-0.5 rounded bg-white hover:bg-gray-100 transition shadow-gumroad-sm cursor-pointer"
+                    className="text-[10px] font-mono font-bold border border-white/15 px-2 py-0.5 rounded backdrop-blur-xl transition hover:border-violet-400/40 cursor-pointer"
+                    style={{ background: 'rgba(255,255,255,0.06)' }}
                   >
                     Reset Defaults
                   </button>
@@ -691,13 +877,14 @@ export const Layout: React.FC = () => {
 
                 {/* Light Mode Accent */}
                 <div className="flex flex-col gap-1">
-                  <span className="text-[10px] font-bold font-mono text-gray-500">Light Mode Accent</span>
+                  <span className="text-[10px] font-bold font-mono text-slate-400">Light Mode Accent</span>
                   <div className="flex items-center gap-2">
                     <input
                       type="color"
                       value={inputAccentLight}
                       onChange={e => setInputAccentLight(e.target.value)}
-                      className="w-8 h-8 border-2 border-black rounded cursor-pointer shadow-gumroad-sm bg-transparent shrink-0"
+                      className="w-8 h-8 rounded border border-white/20 cursor-pointer shrink-0"
+                      style={{ background: 'transparent' }}
                     />
                     <input
                       type="text"
@@ -715,7 +902,7 @@ export const Layout: React.FC = () => {
                           key={c}
                           type="button"
                           onClick={() => setInputAccentLight(c)}
-                          className="w-4.5 h-4.5 rounded-full border border-black cursor-pointer shadow-gumroad-sm shrink-0 transition hover:scale-110"
+                          className="w-4.5 h-4.5 rounded-full border border-white/20 cursor-pointer shrink-0 transition hover:scale-110"
                           style={{ backgroundColor: c }}
                         />
                       ))}
@@ -725,13 +912,14 @@ export const Layout: React.FC = () => {
 
                 {/* Dark Mode Accent */}
                 <div className="flex flex-col gap-1 mt-1">
-                  <span className="text-[10px] font-bold font-mono text-gray-500">Dark Mode Accent</span>
+                  <span className="text-[10px] font-bold font-mono text-slate-400">Dark Mode Accent</span>
                   <div className="flex items-center gap-2">
                     <input
                       type="color"
                       value={inputAccentDark}
                       onChange={e => setInputAccentDark(e.target.value)}
-                      className="w-8 h-8 border-2 border-black rounded cursor-pointer shadow-gumroad-sm bg-transparent shrink-0"
+                      className="w-8 h-8 rounded border border-white/20 cursor-pointer shrink-0"
+                      style={{ background: 'transparent' }}
                     />
                     <input
                       type="text"
@@ -749,7 +937,7 @@ export const Layout: React.FC = () => {
                           key={c}
                           type="button"
                           onClick={() => setInputAccentDark(c)}
-                          className="w-4.5 h-4.5 rounded-full border border-black cursor-pointer shadow-gumroad-sm shrink-0 transition hover:scale-110"
+                          className="w-4.5 h-4.5 rounded-full border border-white/20 cursor-pointer shrink-0 transition hover:scale-110"
                           style={{ backgroundColor: c }}
                         />
                       ))}
@@ -759,14 +947,28 @@ export const Layout: React.FC = () => {
               </div>
 
                 {/* Push Notifications */}
-                <div className="flex flex-col gap-2 border-t border-black/10 pt-3">
+                <div className="flex flex-col gap-2 pt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
                   <div className="flex items-center justify-between">
-                    <label className="text-xs font-black font-mono">Push Notifications</label>
-                    <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full ${isSubscribed ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                    <label className="text-xs font-black font-mono text-slate-300">Push Notifications</label>
+                    <span
+                      className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border ${
+                        isSubscribed
+                          ? 'text-emerald-300'
+                          : 'text-slate-500'
+                      }`}
+                      style={{
+                        background: isSubscribed
+                          ? 'rgba(16, 185, 129, 0.15)'
+                          : 'rgba(255,255,255,0.04)',
+                        borderColor: isSubscribed
+                          ? 'rgba(16, 185, 129, 0.4)'
+                          : 'rgba(255,255,255,0.1)',
+                      }}
+                    >
                       {isSubscribed ? 'Active' : 'Off'}
                     </span>
                   </div>
-                  <p className="m-0 text-[10px] text-gray-500 dark:text-gray-400 leading-relaxed font-mono">
+                  <p className="m-0 text-[10px] text-slate-400 leading-relaxed font-mono">
                     Receive proactive reminders from BakaSur when habits lapse, tasks are due, or milestones are reached.
                   </p>
                   <button
@@ -786,36 +988,52 @@ export const Layout: React.FC = () => {
                       }
                       setPushBusy(false);
                     }}
-                    className="self-start px-3 py-1.5 rounded-lg border-2 border-black font-bold text-xs shadow-gumroad-sm transition hover:translate-x-[1px] hover:translate-y-[1px] disabled:opacity-50 bg-white hover:bg-gray-50"
+                    className="self-start px-3 py-1.5 rounded-lg border font-bold text-xs transition disabled:opacity-50 backdrop-blur-xl border-white/15 hover:border-violet-400/40"
+                    style={{ background: 'rgba(255,255,255,0.06)' }}
                   >
                     {pushBusy ? '...' : isSubscribed ? 'Disable Push' : 'Enable Push'}
                   </button>
                 </div>
 
                 {/* BakaSur Notifications */}
-                <div className="flex flex-col gap-2 border-t border-black/10 pt-3">
+                <div className="flex flex-col gap-2 pt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
                   <div className="flex items-center justify-between">
-                    <label className="text-xs font-black font-mono">BakaSur Notifications</label>
-                    <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full ${notifSettings?.enabled ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                    <label className="text-xs font-black font-mono text-slate-300">BakaSur Notifications</label>
+                    <span
+                      className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border ${
+                        notifSettings?.enabled
+                          ? 'text-emerald-300'
+                          : 'text-slate-500'
+                      }`}
+                      style={{
+                        background: notifSettings?.enabled
+                          ? 'rgba(16, 185, 129, 0.15)'
+                          : 'rgba(255,255,255,0.04)',
+                        borderColor: notifSettings?.enabled
+                          ? 'rgba(16, 185, 129, 0.4)'
+                          : 'rgba(255,255,255,0.1)',
+                      }}
+                    >
                       {notifSettings?.enabled ? 'Active' : 'Off'}
                     </span>
                   </div>
-                  <p className="m-0 text-[10px] text-gray-500 dark:text-gray-400 leading-relaxed font-mono">
+                  <p className="m-0 text-[10px] text-slate-400 leading-relaxed font-mono">
                     Let BakaSur nudge you when habits lapse, tasks are due, or milestones are reached.
                   </p>
 
                   {notifLoading ? (
-                    <p className="m-0 text-[10px] font-mono text-gray-400">Loading settings…</p>
+                    <p className="m-0 text-[10px] font-mono text-slate-400">Loading settings…</p>
                   ) : notifSettings ? (
                     <>
                       {/* Master opt-in */}
                       <div className="flex items-center justify-between gap-2">
-                        <span className="text-[10px] font-bold font-mono text-gray-500">Proactive reminders</span>
+                        <span className="text-[10px] font-bold font-mono text-slate-400">Proactive reminders</span>
                         <button
                           type="button"
                           disabled={notifSaving}
                           onClick={() => handleNotifChange({ enabled: !notifSettings.enabled })}
-                          className="px-3 py-1.5 rounded-lg border-2 border-black font-bold text-xs shadow-gumroad-sm transition hover:translate-x-[1px] hover:translate-y-[1px] disabled:opacity-50 bg-white hover:bg-gray-50"
+                          className="px-3 py-1.5 rounded-lg border font-bold text-xs transition disabled:opacity-50 backdrop-blur-xl border-white/15 hover:border-violet-400/40"
+                          style={{ background: 'rgba(255,255,255,0.06)' }}
                         >
                           {notifSaving ? '...' : notifSettings.enabled ? 'On' : 'Off'}
                         </button>
@@ -823,7 +1041,7 @@ export const Layout: React.FC = () => {
 
                       {/* Personality */}
                       <div className="flex flex-col gap-1">
-                        <span className="text-[10px] font-bold font-mono text-gray-500">BakaSur personality</span>
+                        <span className="text-[10px] font-bold font-mono text-slate-400">BakaSur personality</span>
                         <select
                           value={notifSettings.tone}
                           onChange={(e) => handleNotifChange({ tone: e.target.value as NotifTone })}
@@ -844,7 +1062,7 @@ export const Layout: React.FC = () => {
                             onChange={(e) => handleNotifChange({ quiet_hours: { ...notifSettings.quiet_hours, enabled: e.target.checked } })}
                             className="w-4 h-4 accent-accent-pink"
                           />
-                          <span className="text-[10px] font-bold font-mono text-gray-500">Quiet hours</span>
+                          <span className="text-[10px] font-bold font-mono text-slate-400">Quiet hours</span>
                         </label>
                         {notifSettings.quiet_hours.enabled && (
                           <div className="flex items-center gap-2">
@@ -854,7 +1072,7 @@ export const Layout: React.FC = () => {
                               onChange={(e) => handleNotifChange({ quiet_hours: { ...notifSettings.quiet_hours, start: e.target.value } })}
                               className="neo-input text-xs font-mono"
                             />
-                            <span className="text-[10px] font-mono text-gray-500">to</span>
+                            <span className="text-[10px] font-mono text-slate-500">to</span>
                             <input
                               type="time"
                               value={notifSettings.quiet_hours.end}
@@ -877,47 +1095,44 @@ export const Layout: React.FC = () => {
                   ) : null}
                 </div>
 
-                <div className="flex flex-col gap-1 bg-bg-primary p-3 rounded-lg border border-black/10 text-[10px] leading-relaxed font-mono text-gray-600">
-                <span className="font-bold text-black uppercase">How to set up:</span>
-                <ol className="list-decimal list-inside flex flex-col gap-0.5">
-                  <li>Deploy the script from <b>google-apps-script.js</b> in your Google Sheets Apps Script.</li>
-                  <li>Select "Execute as Me" and "Who has access: Anyone".</li>
-                  <li>Paste the generated Web App URL above.</li>
-                </ol>
-              </div>
-
-              <div className="flex justify-end gap-3 mt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowSettingsModal(false)}
-                  className="px-4 py-2 border-2 border-black font-bold rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition text-sm"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="neo-button bg-success text-white text-sm"
-                >
-                  Save & Sync
-                </button>
-              </div>
+                <div className="flex justify-end gap-3 mt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowSettingsModal(false)}
+                    className="px-4 py-2 border border-white/15 font-bold rounded-lg backdrop-blur-xl transition text-sm hover:border-violet-400/40"
+                    style={{ background: 'rgba(255,255,255,0.06)' }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="neo-button text-sm"
+                    style={{ background: 'linear-gradient(135deg, #7C3AED 0%, #0891B2 100%)' }}
+                  >
+                    Save preferences
+                  </button>
+                </div>
             </form>
 
             {/* Data Management Section */}
-            <div className="border-t-2 border-black pt-4 flex flex-col gap-4 mt-2">
-              <h4 className="text-sm font-black uppercase font-mono tracking-wider">Data Management</h4>
+            <div className="pt-4 flex flex-col gap-4 mt-2" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+              <h4 className="text-sm font-black uppercase font-mono tracking-wider text-slate-300">Data Management</h4>
               
               <div className="flex flex-col gap-2">
                               <button
                                 type="button"
                                 onClick={handleLoadDemoData}
                                 disabled={demoBusy || isGuest}
-                                className="w-full neo-button bg-black text-accent-pink flex items-center justify-center gap-2 text-xs py-2 disabled:opacity-50"
+                                className="w-full neo-button flex items-center justify-center gap-2 text-xs py-2 disabled:opacity-50"
+                                style={{
+                                  background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.3) 0%, rgba(6, 182, 212, 0.2) 100%)',
+                                  border: '1px solid rgba(168, 85, 247, 0.4)',
+                                }}
                               >
-                                <Zap className="w-4 h-4" />
+                                <Zap className="w-4 h-4 text-violet-300" />
                                 <span>{demoBusy ? 'Loading Demo Data...' : 'Load Demo Data'}</span>
                               </button>
-                              <p className="text-[10px] text-gray-400 font-mono text-center">
+                              <p className="text-[10px] text-slate-500 font-mono text-center">
                                 Adds sample habits, tasks, journal entries and a note to your current account (via the Worker). Idempotent — safe to press again.
                               </p>
                               {demoResult && (
@@ -932,19 +1147,20 @@ export const Layout: React.FC = () => {
                                   setShowSettingsModal(false);
                                   setTimeout(() => startTour(), 300);
                                 }}
-                                className="w-full px-4 py-2 border-2 border-black rounded-lg font-bold text-xs hover:bg-gray-50 dark:hover:bg-gray-800 transition flex items-center justify-center gap-2"
+                                className="w-full px-4 py-2 rounded-lg border border-white/15 font-bold text-xs backdrop-blur-xl transition flex items-center justify-center gap-2 hover:border-violet-400/40"
+                                style={{ background: 'rgba(255,255,255,0.06)' }}
                               >
-                                <Play className="w-4 h-4 text-accent-pink" />
+                                <Play className="w-4 h-4 text-violet-300" />
                                 <span>Replay App Tour 🚀</span>
                               </button>
                             </div>
 
               {/* Danger Zone */}
-              <div className="border-t border-black/10 pt-3 flex flex-col gap-3">
-                <span className="text-xs font-black text-red-600 uppercase font-mono">⚠️ Danger Zone</span>
+              <div className="pt-3 flex flex-col gap-3" style={{ borderTop: '1px solid rgba(239, 68, 68, 0.2)' }}>
+                <span className="text-xs font-black text-red-400 uppercase font-mono">⚠️ Danger Zone</span>
                 
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-bold font-mono">Clear Data Duration</label>
+                  <label className="text-xs font-bold font-mono text-slate-300">Clear Data Duration</label>
                   <select
                     value={clearDays}
                     onChange={e => setClearDays(e.target.value === 'all' ? 'all' : Number(e.target.value))}
@@ -958,8 +1174,8 @@ export const Layout: React.FC = () => {
                 </div>
 
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-bold font-mono">
-                    Type <code className="bg-red-50 dark:bg-red-950/20 text-red-600 px-1 rounded font-bold">delete my data</code> to confirm:
+                  <label className="text-xs font-bold font-mono text-slate-300">
+                    Type <code className="bg-red-500/10 text-red-400 px-1 rounded border border-red-500/20 font-bold">delete my data</code> to confirm:
                   </label>
                   <input
                     type="text"
@@ -984,7 +1200,8 @@ export const Layout: React.FC = () => {
                       setShowSettingsModal(false);
                     }
                   }}
-                  className="w-full neo-button bg-danger text-white text-xs py-2 disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="w-full neo-button text-xs py-2 disabled:opacity-40 disabled:cursor-not-allowed"
+                  style={{ background: 'linear-gradient(135deg, #EF4444 0%, #DC2626 100%)' }}
                 >
                   <span>{resetBusy ? 'Clearing…' : 'Clear Selected Data'}</span>
                 </button>

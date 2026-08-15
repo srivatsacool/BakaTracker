@@ -1,300 +1,245 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../features/auth';
 import { authConfig } from '../features/auth/config';
 import {
-  Flame, ListTodo, Target, BookOpen, Compass, LayoutGrid,
-  Zap, Sparkles, ChevronRight, Shield,
-  Smartphone, CloudOff, Gamepad2, Star, Code
+  ArrowRight,
+  BookOpen,
+  Bot,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  CircleDot,
+  CloudOff,
+  Compass,
+  Flame,
+  LayoutGrid,
+  ListTodo,
+  LockKeyhole,
+  NotebookPen,
+  Play,
+  Shield,
+  Sparkles,
+  Target,
+  TrendingUp,
 } from 'lucide-react';
+import './Landing.css';
 
-const GithubIcon: React.FC<{ className?: string }> = ({ className }) => (
-  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+const GithubIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" {...props}>
     <path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4" />
     <path d="M9 18c-4.51 2-5-2-7-2" />
   </svg>
 );
 
-const features = [
+const walkthrough = [
   {
-    icon: Flame,
-    title: 'Habits Tracker',
-    desc: 'Log daily behaviors with Checkbox, Counter, Numeric, Mood & Energy trackers. See streaks and earn XP.',
-    color: '#FF5C5C',
-    route: '/habits',
-  },
-  {
-    icon: ListTodo,
-    title: 'Kanban Backlog',
-    desc: 'Organize tasks across a 4-column board — Backlog → Todo → Doing → Done.',
-    color: '#3B82F6',
-    route: '/tasks',
-  },
-  {
-    icon: LayoutGrid,
-    title: 'Eisenhower Matrix',
-    desc: 'Prioritize tasks by urgency and importance: Do, Schedule, Delegate, or Delete.',
-    color: '#8B5CF6',
-    route: '/eisenhower',
-  },
-  {
+    id: 'today',
+    label: 'Run the day',
+    title: 'Start with one clear next move.',
+    description: 'Today gathers your starred quests, habits, score, and focus state into one calm command surface.',
     icon: Target,
-    title: 'Today Focus Board',
-    desc: 'Star tasks for the day and enter Spotlight Focus Mode to eliminate distractions.',
-    color: '#FFBE3C',
-    route: '/today',
+    accent: '#c4b5fd',
   },
   {
+    id: 'habits',
+    label: 'Build consistency',
+    title: 'Small check-ins become visible progress.',
+    description: 'Checkboxes, counters, mood, energy, and numeric logs all feed the same XP and character system.',
+    icon: Flame,
+    accent: '#f9a8d4',
+  },
+  {
+    id: 'tasks',
+    label: 'Plan the work',
+    title: 'Turn the backlog into finishable quests.',
+    description: 'Move work through Backlog, Todo, Doing, and Done without turning planning into another project.',
+    icon: ListTodo,
+    accent: '#67e8f9',
+  },
+  {
+    id: 'reflect',
+    label: 'Reflect quickly',
+    title: 'End the day with one honest sentence.',
+    description: 'Journal highlights, mood, and energy create a memory of the day instead of another empty archive.',
     icon: BookOpen,
-    title: 'Highlight Journal',
-    desc: 'Record a daily win plus bullet journal entries. Track your mood over time.',
-    color: '#22C55E',
-    route: '/journal',
+    accent: '#86efac',
   },
   {
+    id: 'journey',
+    label: 'See the journey',
+    title: 'Progress becomes a story you can read.',
+    description: 'Journey turns your activity into levels, attributes, heatmaps, trends, and useful insights.',
     icon: Compass,
-    title: 'Journey Analytics',
-    desc: 'View consistency heatmaps, weekly XP charts, RPG character stats, and auto-generated insights.',
-    color: '#FF90E8',
-    route: '/journey',
+    accent: '#fcd34d',
   },
 ];
 
-const techBadges = [
-  { icon: Gamepad2, label: 'RPG Leveling', sub: '5 attributes · titles · XP system' },
-  { icon: CloudOff, label: 'Local-First', sub: 'Works offline. No server needed.' },
-  { icon: Shield, label: 'MCP-Powered', sub: 'AI assistants can read/write your data' },
-  { icon: Smartphone, label: 'PWA Ready', sub: 'Install as a desktop/mobile app' },
-  { icon: Star, label: 'Zero Cost', sub: 'D1 database · no per-seat fees' },
-  { icon: Code, label: 'Open Source', sub: 'MIT · Self-host · Contribute' },
+const features = [
+  { icon: Target, title: 'Today focus', text: 'A small execution surface for the quests that matter now.', accent: '#c4b5fd' },
+  { icon: Flame, title: 'Habits', text: 'Fast daily tracking across five interaction types and five life attributes.', accent: '#f9a8d4' },
+  { icon: ListTodo, title: 'Task planner', text: 'A four-column Kanban backlog with areas, due dates, XP, and today stars.', accent: '#67e8f9' },
+  { icon: LayoutGrid, title: 'Priority matrix', text: 'Sort work by urgency and importance when everything feels loud.', accent: '#fcd34d' },
+  { icon: BookOpen, title: 'Journal', text: 'Highlight-first reflection with mood, energy, and quote context.', accent: '#86efac' },
+  { icon: TrendingUp, title: 'Journey', text: 'Character progression, heatmaps, charts, and consistency insights.', accent: '#f0abfc' },
+  { icon: NotebookPen, title: 'Visual notes', text: 'Notebooks and Excalidraw pages for thinking, diagrams, and ideas.', accent: '#93c5fd' },
+  { icon: Bot, title: 'BakaSur', text: 'A global assistant surface for reasoning over your own life ledger.', accent: '#a5b4fc' },
+];
+
+const demoTasks = [
+  { title: 'Finish operations report', meta: 'Career · +30 XP', state: 'Doing', accent: '#c4b5fd' },
+  { title: 'Read 20 pages', meta: 'Knowledge · +10 XP', state: 'Today', accent: '#67e8f9' },
+  { title: 'Plan tomorrow’s focus', meta: 'Personal · +15 XP', state: 'Todo', accent: '#fcd34d' },
+];
+
+const demoHabits = [
+  { label: 'Morning workout', value: '5 / 7', accent: '#f9a8d4' },
+  { label: 'Read pages', value: '20', accent: '#67e8f9' },
+  { label: 'Energy', value: 'High', accent: '#86efac' },
 ];
 
 export const Landing: React.FC = () => {
   const { isAuthenticated, isLoading, login, user } = useAuth();
   const navigate = useNavigate();
+  const [activeStep, setActiveStep] = useState(0);
 
-  // If already authenticated (real auth), go straight to app
   useEffect(() => {
     if (!isLoading && isAuthenticated && user?.provider !== 'guest') {
       navigate('/journey', { replace: true });
     }
   }, [isAuthenticated, isLoading, navigate, user]);
 
-  const handleExploreDemo = () => {
-    // Set demo mode flag so AuthProvider treats us as guest
+  const isAuthConfigured = Boolean(authConfig.domain && authConfig.clientId);
+  const activeWalkthrough = walkthrough[activeStep];
+  const ActiveIcon = activeWalkthrough.icon;
+  const nextStep = () => setActiveStep(current => (current + 1) % walkthrough.length);
+  const previousStep = () => setActiveStep(current => (current - 1 + walkthrough.length) % walkthrough.length);
+
+  const launchDemo = () => {
     localStorage.setItem('bt_demo_mode', 'true');
-    // Full page load to re-mount AuthProvider with demo mode
-    window.location.href = '/habits';
+    // AuthProvider reads demo mode at boot, so use a full navigation intentionally.
+    window.location.assign('/today');
   };
 
-  const handleSignIn = () => {
+  const launchLogin = () => {
     localStorage.removeItem('bt_demo_mode');
     login();
   };
 
-  const isAuthConfigured = Boolean(authConfig.domain && authConfig.clientId);
+  const heroStats = useMemo(() => [
+    { label: 'Daily score', value: '78%', accent: '#c4b5fd' },
+    { label: 'Quests left', value: '3', accent: '#67e8f9' },
+    { label: 'XP earned', value: '+185', accent: '#fcd34d' },
+  ], []);
 
   return (
-    <div className="min-h-screen bg-bg-primary text-text-primary font-sans overflow-x-hidden">
-      {/* ─── HERO ─── */}
-      <section className="relative px-4 py-12 md:py-20 md:px-8 max-w-6xl mx-auto flex flex-col items-center text-center gap-6">
-        {/* Logo */}
-        <div className="relative">
-          <img
-            src="/logo.png"
-            alt="BakaTracker Logo"
-            className="w-24 h-24 md:w-28 md:h-28 border-4 border-black rounded-2xl shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] object-cover"
-          />
-          <div className="absolute -top-2 -right-2 bg-accent-pink border-2 border-black rounded-full p-1.5 shadow-[2px_2px_0px_rgba(0,0,0,1)]">
-            <Sparkles className="w-4 h-4 text-black" />
-          </div>
-        </div>
-
-        {/* Title */}
-        <div>
-          <h1 className="text-4xl md:text-6xl font-black uppercase tracking-tight leading-none">
-            BakaTracker
-          </h1>
-          <p className="mt-2 font-mono text-sm md:text-base text-gray-500 uppercase tracking-widest">
-            Gamified Life RPG Planner
-          </p>
-        </div>
-
-        <p className="max-w-lg font-mono text-sm md:text-base leading-relaxed text-gray-600 dark:text-gray-400">
-          Gamify your habits, tasks, and daily journal highlights. 
-          A minimalist, self-hostable personal life operating system 
-          powered by a Cloudflare D1 database and the Model Context Protocol.
-        </p>
-
-        {/* CTAs */}
-        <div className="flex flex-col sm:flex-row gap-3 w-full max-w-md mt-2">
-          <button
-            onClick={handleExploreDemo}
-            className="flex-1 flex items-center justify-center gap-2 bg-accent-pink hover:bg-accent-pink/90 text-black border-3 border-black rounded-xl py-3.5 font-black text-sm shadow-[5px_5px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[1px] hover:translate-y-[1px] active:translate-x-[2px] active:translate-y-[2px] transition-all cursor-pointer"
-          >
-            <Zap className="w-5 h-5" />
-            <span>EXPLORE DEMO</span>
-            <ChevronRight className="w-4 h-4" />
+    <div className="landing-page">
+      <header className="landing-nav">
+        <a href="#top" className="landing-brand" aria-label="BakaTracker home">
+          <img src="/logo.png" alt="BakaTracker" />
+          <span><b>BakaTracker</b><small>Personal life OS</small></span>
+        </a>
+        <nav className="landing-links" aria-label="Landing page navigation">
+          <a href="#how-it-works">How it works</a>
+          <a href="#features">Features</a>
+          <a href="#ownership">Ownership</a>
+        </nav>
+        <div className="landing-nav-actions">
+          <button type="button" className="landing-text-button" onClick={launchLogin} disabled={!isAuthConfigured}>
+            {isAuthConfigured ? 'Sign in' : 'Sign in unavailable'}
           </button>
+          <button type="button" className="landing-mini-cta" onClick={launchDemo}><Play aria-hidden="true" /> Demo</button>
+        </div>
+      </header>
 
-          {isAuthConfigured ? (
-            <button
-              onClick={handleSignIn}
-              className="flex-1 flex items-center justify-center gap-2 bg-black hover:bg-gray-900 text-white border-3 border-black rounded-xl py-3.5 font-black text-sm shadow-[5px_5px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[1px] hover:translate-y-[1px] active:translate-x-[2px] active:translate-y-[2px] transition-all cursor-pointer"
-            >
-              <Shield className="w-5 h-5" />
-              <span>SIGN IN</span>
-            </button>
-          ) : (
-            <div className="flex-1 flex items-center justify-center gap-2 bg-gray-100 dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 rounded-xl py-3.5 font-mono text-xs text-gray-400 cursor-not-allowed">
-              <Shield className="w-4 h-4" />
-              <span>Auth not configured</span>
+      <main id="top">
+        <section className="landing-hero-section">
+          <div className="landing-hero-copy">
+            <div className="landing-status-line"><span className="status-pulse" /> Local-first life RPG · open source · ready for today</div>
+            <h1>Your life, rendered as a quest log.</h1>
+            <p className="landing-hero-lede">
+              BakaTracker turns habits, tasks, reflection, visual notes, and progress into one calm operating system—so showing up feels lighter than organizing your life.
+            </p>
+            <div className="landing-hero-actions">
+              <button type="button" className="landing-primary-cta" onClick={launchDemo}><Play aria-hidden="true" /> Explore the live demo <ArrowRight aria-hidden="true" /></button>
+              <button type="button" className="landing-secondary-cta" onClick={launchLogin} disabled={!isAuthConfigured}><Shield aria-hidden="true" /> {isAuthConfigured ? 'Sign in to save your journey' : 'Configure sign-in to continue'}</button>
             </div>
-          )}
-        </div>
+            <div className="landing-proof-row">
+              <span><CloudOff aria-hidden="true" /> Works locally first</span>
+              <span><LockKeyhole aria-hidden="true" /> Your data stays yours</span>
+              <span><Sparkles aria-hidden="true" /> AI-ready by design</span>
+            </div>
+          </div>
 
-        {!isAuthConfigured && (
-          <p className="text-[10px] font-mono text-gray-400 dark:text-gray-500 max-w-sm">
-            Set <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded text-[10px]">VITE_API_BASE_URL</code> &{' '}
-            <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded text-[10px]">VITE_GOOGLE_CLIENT_ID</code> in your{' '}
-            <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded text-[10px]">.env</code> to enable Sign In.
-          </p>
-        )}
-
-        {/* Scroll hint */}
-        <div className="mt-4 text-gray-400 animate-bounce">
-          <ChevronRight className="w-6 h-6 rotate-90" />
-        </div>
-      </section>
-
-      {/* ─── FEATURES GRID ─── */}
-      <section className="px-4 py-12 md:py-16 md:px-8 max-w-6xl mx-auto">
-        <div className="text-center mb-10">
-          <h2 className="text-2xl md:text-3xl font-black uppercase tracking-tight">
-            Everything You Need
-          </h2>
-          <p className="font-mono text-sm text-gray-500 mt-1">
-            Six integrated tools to track your life, gamified.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5">
-          {features.map((f) => {
-            const Icon = f.icon;
-            return (
-              <div
-                key={f.title}
-                className="neo-card p-5 bg-white dark:bg-surface border-2 border-black rounded-xl shadow-[5px_5px_0px_0px_rgba(0,0,0,1)] flex flex-col gap-3 hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] transition-all"
-              >
-                <div
-                  className="w-10 h-10 rounded-lg border-2 border-black flex items-center justify-center shadow-[2px_2px_0px_rgba(0,0,0,1)]"
-                  style={{ backgroundColor: f.color + '20' }}
-                >
-                  <Icon className="w-5 h-5" style={{ color: f.color }} />
+          <div className="landing-hero-demo" aria-label="BakaTracker interactive product preview">
+            <div className="preview-window-bar">
+              <span className="preview-dots"><i /><i /><i /></span>
+              <span className="preview-route">today / command-deck</span>
+              <span className="preview-live"><span /> live demo</span>
+            </div>
+            <div className="preview-app-grid">
+              <aside className="preview-side-rail">
+                <img src="/logo.png" alt="" />
+                <span className="preview-side-active"><Target aria-hidden="true" /></span>
+                <span><ListTodo aria-hidden="true" /></span>
+                <span><Flame aria-hidden="true" /></span>
+                <span><NotebookPen aria-hidden="true" /></span>
+                <span><Compass aria-hidden="true" /></span>
+              </aside>
+              <div className="preview-workspace">
+                <div className="preview-context"><span>Thursday · Aug 15</span><b>09:42</b><em>Level 14</em></div>
+                <div className="preview-heading"><div><small>Today focus</small><h2>Make the next move obvious.</h2></div><span className="preview-score">78%</span></div>
+                <div className="preview-stats">
+                  {heroStats.map(stat => <div key={stat.label} className="preview-stat"><small>{stat.label}</small><strong style={{ color: stat.accent }}>{stat.value}</strong></div>)}
                 </div>
-                <div>
-                  <h3 className="font-black text-sm">{f.title}</h3>
-                  <p className="font-mono text-xs text-gray-500 mt-1 leading-relaxed">{f.desc}</p>
+                <div className="preview-panels">
+                  <div className="preview-panel preview-task-panel"><div className="preview-panel-title"><span>Priority quests</span><small>view all</small></div>{demoTasks.map(task => <div className="preview-task" key={task.title}><span className="preview-task-mark" style={{ background: task.accent }} /><div><b>{task.title}</b><small>{task.meta}</small></div><em>{task.state}</em></div>)}</div>
+                  <div className="preview-panel"><div className="preview-panel-title"><span>Habits</span><small>today</small></div>{demoHabits.map(habit => <div className="preview-habit" key={habit.label}><span style={{ background: habit.accent }} /><b>{habit.label}</b><em>{habit.value}</em></div>)}</div>
                 </div>
               </div>
-            );
-          })}
-        </div>
-      </section>
+              <aside className="preview-ai-panel"><div className="preview-ai-title"><span className="preview-ai-orb"><i /></span><div><b>BakaSur</b><small>global assistant</small></div></div><p>“You have three quests left. Start with the operations report while your energy is high.”</p><span className="preview-source">Today · demo data</span><div className="preview-ai-input">Ask BakaSur… <ArrowRight aria-hidden="true" /></div></aside>
+            </div>
+          </div>
+        </section>
 
-      {/* ─── TECH & ARCHITECTURE ─── */}
-      <section className="px-4 py-12 md:py-16 md:px-8 bg-black/5 dark:bg-white/5 border-y-2 border-black/10 dark:border-white/10">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-10">
-            <h2 className="text-2xl md:text-3xl font-black uppercase tracking-tight">
-              Built Different
-            </h2>
-            <p className="font-mono text-sm text-gray-500 mt-1">
-              Local-first, zero-cost, AI-ready architecture.
-            </p>
+        <section className="landing-section landing-loop-section" id="how-it-works">
+          <div className="section-heading-row"><div><span className="section-kicker">The daily loop</span><h2>One system, from first check-in to weekly review.</h2></div><p>BakaTracker keeps the pieces connected without making you maintain a complicated productivity machine.</p></div>
+          <div className="loop-grid">
+            {[
+              { title: 'Capture', text: 'Log the habit, task, thought, or sketch that is actually in front of you.', icon: CircleDot, color: '#c4b5fd' },
+              { title: 'Commit', text: 'Choose a small number of quests for today so the board stays actionable.', icon: Target, color: '#67e8f9' },
+              { title: 'Check in', text: 'Complete the next step, earn XP, and let consistency—not perfection—compound.', icon: Check, color: '#86efac' },
+              { title: 'Understand', text: 'Use Journey and BakaSur to see patterns, recover context, and plan better.', icon: TrendingUp, color: '#fcd34d' },
+            ].map(step => { const Icon = step.icon; return <article className="loop-card" key={step.title}><span className="loop-icon" style={{ color: step.color, borderColor: `${step.color}55`, background: `${step.color}14` }}><Icon aria-hidden="true" /></span><h3>{step.title}</h3><p>{step.text}</p></article>; })}
           </div>
+        </section>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-            {techBadges.map((b) => {
-              const Icon = b.icon;
-              return (
-                <div
-                  key={b.label}
-                  className="flex flex-col items-center text-center gap-2 p-4 bg-white dark:bg-surface border-2 border-black rounded-xl shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]"
-                >
-                  <Icon className="w-6 h-6 text-accent-pink" />
-                  <div>
-                    <p className="font-black text-[11px] leading-tight">{b.label}</p>
-                    <p className="font-mono text-[9px] text-gray-500 mt-0.5">{b.sub}</p>
-                  </div>
-                </div>
-              );
-            })}
+        <section className="landing-section" id="features">
+          <div className="section-heading-row"><div><span className="section-kicker">The toolkit</span><h2>Everything important lives in one orbit.</h2></div><p>Each surface has one job. Together they make a lightweight personal operating system.</p></div>
+          <div className="feature-map">
+            {features.map(feature => { const Icon = feature.icon; return <article className="feature-map-item" key={feature.title}><span className="feature-map-icon" style={{ color: feature.accent, borderColor: `${feature.accent}44`, background: `${feature.accent}12` }}><Icon aria-hidden="true" /></span><div><h3>{feature.title}</h3><p>{feature.text}</p></div><ArrowRight className="feature-map-arrow" aria-hidden="true" /></article>; })}
           </div>
+        </section>
 
-          {/* Architecture Diagram */}
-          <div className="mt-8 p-5 bg-accent-pink/5 border-2 border-black rounded-xl shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] font-mono text-xs leading-relaxed">
-            <p className="font-black text-sm mb-2 flex items-center gap-2">
-              <Flame className="w-4 h-4 text-accent-pink" />
-              Architecture
-            </p>
-            <pre className="text-gray-600 dark:text-gray-400 overflow-x-auto">
-{`React PWA  ←→  Cloudflare Worker (OAuth + MCP + REST)  ←→  D1 (free)
-         ↕                              ↕
-   LocalStorage                  AI Assistants (Cursor, Claude, ChatGPT)
-  (offline-first)                via JSON-RPC / MCP protocol`}
-            </pre>
+        <section className="landing-section walkthrough-section">
+          <div className="walkthrough-shell">
+            <div className="walkthrough-intro"><span className="section-kicker">Walk through the real app</span><h2>See the loop before you sign in.</h2><p>Use the seeded demo to click through the same core surfaces a new user meets on day one.</p><button type="button" className="landing-primary-cta" onClick={launchDemo}>Open the live demo <ArrowRight aria-hidden="true" /></button></div>
+            <div className="walkthrough-stage">
+              <div className="walkthrough-stage-header"><span><ActiveIcon aria-hidden="true" style={{ color: activeWalkthrough.accent }} /> {activeWalkthrough.label}</span><span>{activeStep + 1} / {walkthrough.length}</span></div>
+              <div className="walkthrough-stage-body"><h3>{activeWalkthrough.title}</h3><p>{activeWalkthrough.description}</p><div className="walkthrough-visual"><div className="walkthrough-visual-line" style={{ background: activeWalkthrough.accent }} /><div><b>{activeStep === 0 ? '3 quests waiting' : activeStep === 1 ? '6 habits in motion' : activeStep === 2 ? '4 columns, one board' : activeStep === 3 ? 'One sentence is enough' : 'Level 14 · Pathfinder'}</b><span>{activeStep === 0 ? 'Focus · tasks · score' : activeStep === 1 ? 'Streaks · counters · XP' : activeStep === 2 ? 'Backlog · Doing · Done' : activeStep === 3 ? 'Mood · energy · memory' : 'Heatmap · stats · insights'}</span></div></div></div>
+              <div className="walkthrough-controls"><button type="button" className="icon-button" onClick={previousStep} aria-label="Previous walkthrough step"><ChevronLeft aria-hidden="true" /></button><div className="walkthrough-dots">{walkthrough.map((step, index) => <button type="button" key={step.id} className={index === activeStep ? 'is-active' : ''} onClick={() => setActiveStep(index)} aria-label={`Open ${step.label}`} />)}</div><button type="button" className="icon-button" onClick={nextStep} aria-label="Next walkthrough step"><ChevronRight aria-hidden="true" /></button></div>
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* ─── OPEN SOURCE CTA ─── */}
-      <section className="px-4 py-12 md:py-16 md:px-8 max-w-4xl mx-auto text-center">
-        <div className="neo-card p-8 bg-white dark:bg-surface border-4 border-black rounded-2xl shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] flex flex-col gap-5 items-center">
-          <div className="p-3 bg-accent-pink/20 border-2 border-black rounded-full shadow-[3px_3px_0px_rgba(0,0,0,1)]">
-            <GithubIcon className="w-8 h-8" />
-          </div>
-          <div>
-            <h2 className="text-2xl md:text-3xl font-black uppercase tracking-tight">
-              Open Source
-            </h2>
-            <p className="font-mono text-sm text-gray-500 mt-2 max-w-md mx-auto">
-              BakaTracker is MIT-licensed. Self-host it, fork it, contribute — 
-              your data stays yours.
-            </p>
-          </div>
-          <div className="flex flex-col sm:flex-row gap-3">
-            <a
-              href="https://github.com/srivatsacool/BakaTracker"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-2 bg-black hover:bg-gray-900 text-white border-3 border-black rounded-xl py-3 px-6 font-black text-sm shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[1px] hover:translate-y-[1px] transition-all"
-            >
-              <GithubIcon className="w-5 h-5" />
-              <span>VIEW ON GITHUB</span>
-            </a>
-            <button
-              onClick={handleExploreDemo}
-              className="flex items-center gap-2 bg-accent-pink hover:bg-accent-pink/90 text-black border-3 border-black rounded-xl py-3 px-6 font-black text-sm shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[1px] hover:translate-y-[1px] transition-all cursor-pointer"
-            >
-              <Zap className="w-5 h-5" />
-              <span>TRY THE DEMO</span>
-            </button>
-          </div>
-        </div>
-      </section>
+        <section className="landing-section ownership-section" id="ownership">
+          <div className="ownership-copy"><span className="section-kicker">Built around ownership</span><h2>Your life ledger should belong to you.</h2><p>BakaTracker is designed to be self-hostable, local-first, and open source. The frontend talks to the REST layer; AI and MCP stay behind controlled application boundaries.</p><div className="ownership-list"><span><Check aria-hidden="true" /> Local-first daily interaction</span><span><Check aria-hidden="true" /> Cloudflare Worker + D1/R2/KV architecture</span><span><Check aria-hidden="true" /> Controlled AI actions with explicit boundaries</span><span><Check aria-hidden="true" /> MIT-licensed and self-hostable</span></div></div><div className="ownership-card"><LockKeyhole aria-hidden="true" /><strong>Your instance. Your data. Your pace.</strong><span>No subscription wall. No productivity guilt. Just a clear place to continue.</span><a href="https://github.com/srivatsacool/BakaTracker" target="_blank" rel="noreferrer"><GithubIcon aria-hidden="true" /> View the repository <ArrowRight aria-hidden="true" /></a></div>
+        </section>
 
-      {/* ─── FOOTER ─── */}
-      <footer className="border-t-2 border-black/10 dark:border-white/10 px-4 py-6 text-center">
-        <p className="font-mono text-xs text-gray-500">
-          Built with{' '}
-          <span className="text-accent-pink">♥</span> by{' '}
-          <a href="https://github.com/srivatsacool" target="_blank" rel="noopener noreferrer" className="font-bold text-black dark:text-white hover:text-accent-pink transition">
-            build.srivatsa
-          </a>
-          {' '}· v1.0.1 · MIT License
-        </p>
-      </footer>
+        <section className="landing-final-cta"><img src="/logo.png" alt="BakaTracker" /><h2>Start with one small quest.</h2><p>Open the live demo, walk the system, and decide if it earns a place in your day.</p><div className="landing-hero-actions"><button type="button" className="landing-primary-cta" onClick={launchDemo}><Play aria-hidden="true" /> Explore the demo</button><button type="button" className="landing-secondary-cta" onClick={launchLogin} disabled={!isAuthConfigured}><Shield aria-hidden="true" /> {isAuthConfigured ? 'Sign in' : 'Sign-in unavailable'}</button></div></section>
+      </main>
+
+      <footer className="landing-footer"><span>Built with care by build.srivatsa</span><span>·</span><a href="https://github.com/srivatsacool/BakaTracker" target="_blank" rel="noreferrer"><GithubIcon aria-hidden="true" /> Open source on GitHub</a></footer>
     </div>
   );
 };
