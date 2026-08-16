@@ -7,25 +7,19 @@ import {
 } from 'lucide-react';
 
 /**
- * Phase 3 — First-run setup for a fresh authenticated (Google) user.
+ * First-run setup for a fresh authenticated (Google) user.
  *
  * A brand-new account has an empty D1: instead of dropping the user into an
  * empty app, show a one-click persona picker. Choosing a persona seeds starter
  * habits, tasks and a journal entry DIRECTLY through the Worker's REST tools
  * (POST /api/v1/tools/create_habit|create_task|journal_today) under the
  * authenticated sub. "Skip" leaves the account empty.
- *
- * Seeding is done via the Tool Registry REST transport (single business logic,
- * many thin transports) — same tools MCP/AI clients would use.
  */
 
 type PersonaId = 'builder' | 'student' | 'mindful' | 'skip';
 
 // Canonical v2 priority: int 0-5, default 0 (platform/src/domain/schemas.ts
-// TaskPriority = z.number().int().min(0).max(5).default(0)). The schema
-// defines no low/medium/high semantics, so onboarding personas map human
-// labels to the natural ordinal positions on that scale:
-//   1 = low, 2 = medium, 3 = high  (0 stays reserved for 'unset').
+// TaskPriority = z.number().int().min(0).max(5).default(0)).
 const PRIORITY: Record<'low' | 'medium' | 'high', number> = { low: 1, medium: 2, high: 3 };
 
 interface Persona {
@@ -45,7 +39,7 @@ const PERSONAS: Persona[] = [
     title: 'Builder',
     tagline: 'Gym, reading, sleep — build the classics.',
     icon: Dumbbell,
-    color: '#FF5C5C',
+    color: 'var(--arcade-red)',
     habits: [
       { name: 'Morning Workout', target: 1, period: 'day' },
       { name: 'Read 10 Pages', target: 10, period: 'day' },
@@ -62,7 +56,7 @@ const PERSONAS: Persona[] = [
     title: 'Student',
     tagline: 'Study blocks, revision loops, focus.',
     icon: GraduationCap,
-    color: '#3B82F6',
+    color: 'var(--arcade-cobalt)',
     habits: [
       { name: 'Study Session', target: 1, period: 'day' },
       { name: 'Revise Notes', target: 1, period: 'day' },
@@ -79,7 +73,7 @@ const PERSONAS: Persona[] = [
     title: 'Mindful',
     tagline: 'Meditation, journaling, nature.',
     icon: Flower2,
-    color: '#22C55E',
+    color: 'var(--arcade-green)',
     habits: [
       { name: 'Meditate', target: 10, period: 'day' },
       { name: 'Journal', target: 1, period: 'day' },
@@ -123,7 +117,7 @@ export const FirstRunSetup: React.FC = () => {
       // Mark onboarding complete and reload from D1 so the app shows the seeds.
       localStorage.setItem('bt_first_run', 'done');
       await init(apiClient);
-      navigate('/journey', { replace: true });
+      navigate('/today', { replace: true });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Setup failed — try again.');
     } finally {
@@ -134,20 +128,20 @@ export const FirstRunSetup: React.FC = () => {
   const skip = async () => {
     localStorage.setItem('bt_first_run', 'done');
     setBusy('skip');
-    navigate('/journey', { replace: true });
+    navigate('/today', { replace: true });
   };
 
   return (
-    <div className="min-h-screen bg-bg-primary text-text-primary font-sans flex items-center justify-center p-4">
+    <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'var(--arcade-void)', position: 'relative', zIndex: 1 }}>
       <div className="max-w-3xl w-full">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-2 bg-accent-pink/20 border-2 border-black rounded-full px-3 py-1 font-mono text-xs uppercase tracking-widest text-black dark:text-white mb-4">
+          <div className="inline-flex items-center gap-2 rounded-full px-3 py-1 font-mono text-xs uppercase tracking-widest mb-4 chip chip--gold">
             <Sparkles className="w-3.5 h-3.5" /> First Run
           </div>
-          <h1 className="text-3xl md:text-4xl font-black uppercase tracking-tight">
+          <h1 className="marquee-title text-3xl md:text-4xl m-0" style={{ color: 'var(--arcade-paper)' }}>
             How do you want to start?
           </h1>
-          <p className="mt-2 font-mono text-sm text-gray-500 max-w-md mx-auto">
+          <p className="mt-3 font-mono text-sm max-w-md mx-auto" style={{ color: 'var(--arcade-paper-muted)' }}>
             Pick a starting pack — habits, tasks and a journal seed get created for your account. You can change everything later.
           </p>
         </div>
@@ -161,23 +155,24 @@ export const FirstRunSetup: React.FC = () => {
                 key={p.id}
                 onClick={() => seedPersona(p)}
                 disabled={busy !== null}
-                className="neo-card p-5 bg-white dark:bg-surface border-2 border-black rounded-xl shadow-[5px_5px_0px_0px_rgba(0,0,0,1)] text-left hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] transition-all cursor-pointer disabled:opacity-60 disabled:cursor-wait text-black dark:text-white"
+                className="cabinet cabinet--playing p-5 text-left transition hover:scale-[1.02] cursor-pointer disabled:opacity-60 disabled:cursor-wait"
+                style={{ '--marquee-color': p.color } as React.CSSProperties}
               >
                 <div
-                  className="w-10 h-10 rounded-lg border-2 border-black flex items-center justify-center shadow-[2px_2px_0px_rgba(0,0,0,1)] mb-3"
-                  style={{ backgroundColor: p.color + '20' }}
+                  className="w-10 h-10 rounded-lg flex items-center justify-center mb-3"
+                  style={{ background: `${p.color}18`, border: `1px solid ${p.color}44` }}
                 >
                   {isBusy ? <Loader2 className="w-5 h-5 animate-spin" style={{ color: p.color }} /> : <Icon className="w-5 h-5" style={{ color: p.color }} />}
                 </div>
-                <h3 className="font-black text-base flex items-center gap-1.5">
+                <h3 className="marquee-title text-base flex items-center gap-1.5 m-0" style={{ color: 'var(--arcade-paper)' }}>
                   {p.title}
-                  <Check className="w-4 h-4" style={{ color: p.color }} />
+                  <Check className="w-4 h-4" style={{ color: p.color }} aria-hidden="true" />
                 </h3>
-                <p className="font-mono text-xs text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">{p.tagline}</p>
+                <p className="font-mono text-xs mt-1 leading-relaxed m-0" style={{ color: 'var(--arcade-paper-muted)' }}>{p.tagline}</p>
                 <div className="mt-3 space-y-1">
                   {p.habits.map((h) => (
-                    <div key={h.name} className="flex items-center gap-1.5 font-mono text-[10px] text-gray-500 dark:text-gray-400">
-                      <span className="w-1.5 h-1.5 rounded-full border border-black inline-block" style={{ backgroundColor: p.color }} />
+                    <div key={h.name} className="flex items-center gap-1.5 font-mono text-[10px]" style={{ color: 'var(--arcade-paper-muted)' }}>
+                      <span className="w-1.5 h-1.5 rounded-full inline-block" style={{ backgroundColor: p.color }} aria-hidden="true" />
                       {h.name} · {h.target}/{h.period}
                     </div>
                   ))}
@@ -188,14 +183,15 @@ export const FirstRunSetup: React.FC = () => {
         </div>
 
         {error && (
-          <p className="mt-4 text-center font-mono text-xs text-red-500">{error}</p>
+          <p className="mt-4 text-center font-mono text-xs text-danger m-0">{error}</p>
         )}
 
         <div className="mt-6 text-center">
           <button
             onClick={skip}
             disabled={busy !== null}
-            className="inline-flex items-center gap-1 font-mono text-xs text-gray-400 hover:text-black dark:hover:text-white transition-colors cursor-pointer disabled:opacity-50"
+            className="inline-flex items-center gap-1 font-mono text-xs cursor-pointer disabled:opacity-50 transition hover:text-arcade-gold"
+            style={{ color: 'var(--arcade-paper-muted)' }}
           >
             <Rocket className="w-3.5 h-3.5" />
             Skip — start with an empty tracker
@@ -205,5 +201,3 @@ export const FirstRunSetup: React.FC = () => {
     </div>
   );
 };
-
-export default FirstRunSetup;

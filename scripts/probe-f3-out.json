@@ -1,0 +1,283 @@
+{
+ "routes": [
+  {
+   "route": "/today",
+   "errors": [],
+   "heading": "Today's Focus Board",
+   "frame": {
+    "backdrop": "none",
+    "radius": "20px",
+    "border": "1px",
+    "height": 860,
+    "vh": 900,
+    "left": 20,
+    "top": 20
+   }
+  },
+  {
+   "route": "/habits",
+   "errors": [],
+   "heading": "Habits",
+   "frame": {
+    "backdrop": "none",
+    "radius": "20px",
+    "border": "1px",
+    "height": 860,
+    "vh": 900,
+    "left": 20,
+    "top": 20
+   }
+  },
+  {
+   "route": "/tasks",
+   "errors": [],
+   "heading": "Master Planner Board",
+   "frame": {
+    "backdrop": "none",
+    "radius": "20px",
+    "border": "1px",
+    "height": 860,
+    "vh": 900,
+    "left": 20,
+    "top": 20
+   }
+  },
+  {
+   "route": "/eisenhower",
+   "errors": [],
+   "heading": "Priority Matrix",
+   "frame": {
+    "backdrop": "none",
+    "radius": "20px",
+    "border": "1px",
+    "height": 860,
+    "vh": 900,
+    "left": 20,
+    "top": 20
+   }
+  },
+  {
+   "route": "/journal",
+   "errors": [],
+   "heading": "Daily Highlight Journal",
+   "frame": {
+    "backdrop": "none",
+    "radius": "20px",
+    "border": "1px",
+    "height": 860,
+    "vh": 900,
+    "left": 20,
+    "top": 20
+   }
+  },
+  {
+   "route": "/journey",
+   "errors": [],
+   "heading": "Journey Analytics",
+   "frame": {
+    "backdrop": "none",
+    "radius": "20px",
+    "border": "1px",
+    "height": 860,
+    "vh": 900,
+    "left": 20,
+    "top": 20
+   }
+  },
+  {
+   "route": "/notes",
+   "errors": [],
+   "heading": "Notebooks",
+   "frame": {
+    "backdrop": "none",
+    "radius": "20px",
+    "border": "1px",
+    "height": 860,
+    "vh": 900,
+    "left": 20,
+    "top": 20
+   }
+  }
+ ],
+ "desktop": {
+  "errors": [],
+  "frameInset": {
+   "left": 20,
+   "top": 20,
+   "right": 20,
+   "bottom": 20
+  },
+  "frameRadius": "20px",
+  "frameBorder": "1px",
+  "frameBg": "linear-gradient(rgba(13, 11, 26, 0.78) 0%, rgba(8, 7, 20, 0.72) 100%)",
+  "frameShadow": "rgba(0, 0, 0, 0.55) 0px 24px 64px 0px, rgba(0, 0, 0, 0.45) 0",
+  "frameBackdrop": "none",
+  "canvasBackdrop": "none",
+  "rootBackdrop": "none",
+  "frameOverflow": "hidden",
+  "outsideHit": "min-h-screen text-text-primary flex flex",
+  "insideHit": "cabinet-nav-item gap-3 px-4 ",
+  "bgZ": "0",
+  "bgPos": "fixed",
+  "canvasZ": "1",
+  "overlayZ": "1",
+  "tunnelMounted": true,
+  "asideId": "instrument-rail",
+  "toggleAriaExpanded": "true",
+  "toggleAriaControls": "instrument-rail",
+  "asideWidth": 256,
+  "asideTransition": "all",
+  "asideEase": "cubic-bezier(0.16, 1, 0.3, 1)",
+  "navHabitsActive": false,
+  "navTodayActive": true,
+  "hairlineBg": "rgba(0, 0, 0, 0)",
+  "hairlineShadow": "none",
+  "navHabitsColor": "#34d399",
+  "contextBarShadow": "rgba(0, 0, 0, 0.3) 0px 8px 24px 0px, rgba(233, 230",
+  "iconGold": "rgb(167, 139, 250)",
+  "iconCobalt": "rgb(56, 189, 248)",
+  "afterCollapseWidth": 80,
+  "persistedCollapsed": "true",
+  "toggleAriaExpandedAfter": "false",
+  "guestMenu": {
+   "open": true,
+   "hasCreateCTA": true,
+   "hasSignInUnavailable": false,
+   "hasLeaveDemo": true,
+   "hasDemoNote": true
+  },
+  "leaveDemo": {
+   "url": "/",
+   "demoFlag": null,
+   "firstRun": null
+  }
+ },
+ "tablet": {
+  "pref": "false",
+  "asideWidth": 80,
+  "toggleHidden": true,
+  "railLabelsHidden": false
+ },
+ "mobile": {
+  "navVisible": true,
+  "navPos": "fixed",
+  "navBottom": 844,
+  "vh": 844,
+  "navPaddingBottom": "6px",
+  "navZ": "50",
+  "frameBackdrop": "none",
+  "frameRadiusMobile": "0px",
+  "frameTop": 0,
+  "frameLeft": 0,
+  "navItems": 7,
+  "errors": [],
+  "aiSheet": {
+   "open": false
+  }
+ },
+ "contrast": {
+  "violations": [
+   {
+    "tag": "span",
+    "cls": "save-lamp is-local",
+    "txt": "Offline · local",
+    "size": "10.9",
+    "ratio": "4.40",
+    "need": 4.5,
+    "bg": "#161724"
+   }
+  ],
+  "samples": [
+   {
+    "cls": "flex items-center gap-3",
+    "txt": "BakaTrackerOBSERVATORY ·",
+    "ratio": "16.28",
+    "bg": "#060714"
+   },
+   {
+    "cls": "cabinet p-4 flex",
+    "txt": "LVL 5Offline · localGXP9",
+    "ratio": "16.28",
+    "bg": "#060714"
+   },
+   {
+    "cls": "save-lamp is-local",
+    "txt": "Offline · local",
+    "ratio": "4.75",
+    "bg": "#0d0e1b"
+   },
+   {
+    "cls": "cabinet-nav-item gap-3 px-4",
+    "txt": "Today",
+    "ratio": "15.31",
+    "bg": "#110e26"
+   },
+   {
+    "cls": "cabinet-nav-item gap-3 px-4",
+    "txt": "Habits",
+    "ratio": "10.03",
+    "bg": "#060714"
+   },
+   {
+    "cls": "cabinet-nav-item gap-3 px-4",
+    "txt": "Tasks",
+    "ratio": "10.03",
+    "bg": "#060714"
+   },
+   {
+    "cls": "cabinet-nav-item gap-3 px-4",
+    "txt": "Matrix",
+    "ratio": "10.03",
+    "bg": "#060714"
+   },
+   {
+    "cls": "cabinet-nav-item gap-3 px-4",
+    "txt": "Journal",
+    "ratio": "10.03",
+    "bg": "#060714"
+   },
+   {
+    "cls": "cabinet-nav-item gap-3 px-4",
+    "txt": "Journey",
+    "ratio": "10.03",
+    "bg": "#060714"
+   },
+   {
+    "cls": "cabinet-nav-item gap-3 px-4",
+    "txt": "Notes",
+    "ratio": "10.03",
+    "bg": "#060714"
+   },
+   {
+    "cls": "context-bar",
+    "txt": "05:18 PMSunday, Aug 16, ",
+    "ratio": "15.22",
+    "bg": "#10111e"
+   },
+   {
+    "cls": "context-chip",
+    "txt": "35% today",
+    "ratio": "4.64",
+    "bg": "#10111e"
+   },
+   {
+    "cls": "context-chip",
+    "txt": "90 / 100 XP",
+    "ratio": "4.64",
+    "bg": "#10111e"
+   },
+   {
+    "cls": "context-chip",
+    "txt": "3 quests left",
+    "ratio": "4.64",
+    "bg": "#10111e"
+   },
+   {
+    "cls": "save-lamp is-local",
+    "txt": "Offline · local",
+    "ratio": "4.40",
+    "bg": "#161724"
+   }
+  ]
+ }
+}

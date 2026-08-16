@@ -1,15 +1,72 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { useStore } from '../store/useStore';
 import type { Task, TaskStatus, TaskArea } from '../types';
-import { Plus, Search, Star, ChevronLeft, ChevronRight, Calendar, Trash2 } from 'lucide-react';
+import { Plus, Search, Star, ChevronLeft, ChevronRight, Calendar, Trash2, CheckCircle2, Zap } from 'lucide-react';
+import { UndoToast } from '../components/shared/UndoToast';
 
+/**
+ * Tasks — the action cabinet. Four-column Kanban:
+ * Backlog → Todo → Doing → Done, with areas, due dates, XP, today stars.
+ */
 export const Tasks: React.FC = () => {
   const { tasks, addTask, moveTask, toggleTodayTask, deleteTask } = useStore();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedArea, setSelectedArea] = useState<TaskArea | 'all'>('all');
+
+  // Undo-toast for task delete
+  const [pendingDelete, setPendingDelete] = useState<{ title: string; id: string } | null>(null);
+  const deleteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleDeleteTask = useCallback((task: { id: string; title: string }) => {
+    if (deleteTimerRef.current) clearTimeout(deleteTimerRef.current);
+    setPendingDelete({ title: task.title, id: task.id });
+    deleteTimerRef.current = setTimeout(() => {
+      deleteTask(task.id);
+      setPendingDelete(null);
+    }, 5000);
+  }, [deleteTask]);
+
+  const undoDeleteTask = useCallback(() => {
+    if (deleteTimerRef.current) clearTimeout(deleteTimerRef.current);
+    setPendingDelete(null);
+  }, []);
   const [showAddForm, setShowAddForm] = useState(false);
   const [activeMobileColumn, setActiveMobileColumn] = useState<TaskStatus>('todo');
+
+  // Completion feedback — a quiet XP tick (starred quests only, honest: the
+  // store grants an XP event for task.today completions; non-starred get a note).
+  interface FloatingXP {
+    id: number;
+    xp: number;
+    statName: string;
+    x: number;
+    y: number;
+  }
+  const [floatingXPs, setFloatingXPs] = useState<FloatingXP[]>([]);
+  const [xpNote, setXpNote] = useState<{ id: number; text: string } | null>(null);
+
+  const triggerXP = (e: React.MouseEvent | null, xp: number, statName: string) => {
+    let x = window.innerWidth / 2;
+    let y = window.innerHeight / 2;
+    if (e && 'clientX' in e && e.clientX) {
+      x = e.clientX;
+      y = e.clientY;
+    }
+    const item = { id: Date.now() + Math.random(), xp, statName, x, y };
+    setFloatingXPs(prev => [...prev, item]);
+    setTimeout(() => {
+      setFloatingXPs(prev => prev.filter(p => p.id !== item.id));
+    }, 1000);
+  };
+
+  const showXpNote = (text: string) => {
+    const note = { id: Date.now() + Math.random(), text };
+    setXpNote(note);
+    setTimeout(() => {
+      setXpNote(prev => (prev && prev.id === note.id ? null : prev));
+    }, 3000);
+  };
 
   // Form states
   const [title, setTitle] = useState('');
@@ -24,7 +81,7 @@ export const Tasks: React.FC = () => {
     if (!title.trim()) return;
 
     addTask(title, notes, area, Number(xp) || 10, today, dueDate);
-    
+
     // Reset form
     setTitle('');
     setNotes('');
@@ -35,17 +92,17 @@ export const Tasks: React.FC = () => {
     setShowAddForm(false);
   };
 
-  const columns: { id: TaskStatus; label: string; bg: string }[] = [
-    { id: 'backlog', label: 'Backlog', bg: 'bg-gray-100' },
-    { id: 'todo', label: 'Todo', bg: 'bg-blue-50/50' },
-    { id: 'doing', label: 'Doing', bg: 'bg-warning/10' },
-    { id: 'done', label: 'Done', bg: 'bg-success/10' }
+  const columns: { id: TaskStatus; label: string; tone: string }[] = [
+    { id: 'backlog', label: 'Backlog', tone: 'var(--arcade-paper-dim)' },
+    { id: 'todo', label: 'Todo', tone: 'var(--arcade-cobalt)' },
+    { id: 'doing', label: 'Doing', tone: 'var(--arcade-gold)' },
+    { id: 'done', label: 'Done', tone: 'var(--arcade-green)' }
   ];
 
   const areas: (TaskArea | 'all')[] = ['all', 'health', 'career', 'learning', 'personal', 'creativity'];
 
   const filteredTasks = tasks.filter(t => {
-    const matchesSearch = t.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    const matchesSearch = t.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                           t.notes.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesArea = selectedArea === 'all' || t.area === selectedArea;
     return matchesSearch && matchesArea;
@@ -53,291 +110,289 @@ export const Tasks: React.FC = () => {
 
   const getAreaColor = (area: TaskArea) => {
     switch (area) {
-      case 'health': return 'bg-success/20 text-success border-success/30';
-      case 'career': return 'bg-warning/20 text-warning-dark border-warning/30';
-      case 'learning': return 'bg-blue-500/20 text-blue-700 border-blue-500/30';
-      case 'personal': return 'bg-purple-500/20 text-purple-700 border-purple-500/30';
-      case 'creativity': return 'bg-accent-pink/20 text-accent-pink-dark border-accent-pink/30';
+      case 'health': return 'var(--arcade-green)';
+      case 'career': return 'var(--arcade-gold)';
+      case 'learning': return 'var(--arcade-cobalt)';
+      case 'personal': return 'var(--arcade-magenta)';
+      case 'creativity': return 'var(--arcade-red)';
     }
   };
 
-  const shiftStatus = (task: Task, direction: 'left' | 'right') => {
+  const shiftStatus = (task: Task, direction: 'left' | 'right', e?: React.MouseEvent) => {
     const statusOrder: TaskStatus[] = ['backlog', 'todo', 'doing', 'done'];
     const currentIndex = statusOrder.indexOf(task.status);
     let newIndex = currentIndex;
-    
+
     if (direction === 'left' && currentIndex > 0) {
       newIndex--;
     } else if (direction === 'right' && currentIndex < statusOrder.length - 1) {
       newIndex++;
     }
-    
+
     if (newIndex !== currentIndex) {
       moveTask(task.id, statusOrder[newIndex]);
+      if (statusOrder[newIndex] === 'done') {
+        if (task.today) {
+          triggerXP(e || null, task.xp, task.area);
+        } else {
+          showXpNote(`Done — no XP. Star it for Today to earn +${task.xp} XP.`);
+        }
+      }
     }
   };
 
   return (
     <div className="max-w-6xl mx-auto flex flex-col gap-6">
-      
+      {/* Undo toast for deletes */}
+      {pendingDelete && (
+        <UndoToast
+          message={`"${pendingDelete.title}" removing — tap Undo to keep`}
+          onUndo={undoDeleteTask}
+        />
+      )}
+
       {/* Header and Controls */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h2 className="text-2xl font-black">Master Planner Board</h2>
-          <p className="text-xs text-gray-500 font-mono">Brain dump, organize, and map out your tasks.</p>
+          <h2 className="marquee-title text-2xl m-0" style={{ color: 'var(--arcade-paper)' }}>Master Planner Board</h2>
+          <p className="font-mono text-xs mt-1.5 m-0" style={{ color: 'var(--arcade-paper-muted)' }}>Brain dump, organize, and map out your quests.</p>
         </div>
         <button
           onClick={() => setShowAddForm(!showAddForm)}
-          className="neo-button flex items-center gap-2 w-full md:w-auto"
+          className="insert-coin w-full md:w-auto justify-center !text-xs"
         >
-          <Plus className="w-4.5 h-4.5" />
-          <span>New Master Task</span>
+          <Plus className="w-4 h-4" aria-hidden="true" />
+          <span>New Quest</span>
         </button>
       </div>
 
+      {/* Completion feedback — quiet XP tick + honesty note */}
+      {floatingXPs.map(item => (
+        <div
+          key={item.id}
+          className="fixed z-30 pointer-events-none"
+          style={{ left: `${item.x}px`, top: `${item.y}px`, transform: 'translate(-50%, -50%)' }}
+        >
+          <div className="float-xp">
+            +{item.xp} {item.statName.toUpperCase()} XP
+          </div>
+        </div>
+      ))}
+      {xpNote && (
+        <div className="xp-note animate-fade-in" role="status">
+          <Zap className="w-3.5 h-3.5" aria-hidden="true" />
+          <span>{xpNote.text}</span>
+        </div>
+      )}
+
       {/* Task Add Form */}
       {showAddForm && (
-        <form onSubmit={handleAddTask} className="neo-card p-6 bg-white flex flex-col gap-4">
-          <h3 className="text-md font-black border-b border-black pb-2">Create Master Task</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <form onSubmit={handleAddTask} className="cabinet cabinet--playing animate-fade-in" style={{ '--marquee-color': 'var(--arcade-red)' } as React.CSSProperties}>
+          <div className="cabinet-marquee">
+            <span className="cabinet-led" aria-hidden="true" />
+            <span className="cabinet-marquee-title">Create new quest</span>
+          </div>
+          <div className="cabinet-screen !p-5 grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-bold font-mono">Task Title</label>
-              <input
-                type="text"
-                value={title}
-                onChange={e => setTitle(e.target.value)}
-                placeholder="e.g. Update resume"
-                className="neo-input"
-                maxLength={200}
-                required
-              />
+              <label className="font-mono text-[10px] font-bold uppercase" style={{ color: 'var(--arcade-paper-muted)' }}>Task Title</label>
+              <input type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Update resume" className="arcade-input" maxLength={200} required />
             </div>
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-bold font-mono">RPG Area</label>
-              <select
-                value={area}
-                onChange={e => setArea(e.target.value as TaskArea)}
-                className="neo-input font-mono"
-              >
-                <option value="health">💪 Health</option>
-                <option value="career">💼 Career</option>
-                <option value="learning">🧠 Learning (Knowledge)</option>
-                <option value="personal">⚔️ Personal (Discipline)</option>
-                <option value="creativity">🎨 Creativity</option>
+              <label className="font-mono text-[10px] font-bold uppercase" style={{ color: 'var(--arcade-paper-muted)' }}>RPG Area</label>
+              <select value={area} onChange={e => setArea(e.target.value as TaskArea)} className="arcade-input font-mono">
+                <option value="health">Health</option>
+                <option value="career">Career</option>
+                <option value="learning">Learning</option>
+                <option value="personal">Personal</option>
+                <option value="creativity">Creativity</option>
               </select>
             </div>
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-bold font-mono">Notes / Details</label>
-            <textarea
-              value={notes}
-              onChange={e => setNotes(e.target.value)}
-              placeholder="Add details, bullet points, links, etc."
-              className="neo-input h-20 resize-none"
-            />
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-bold font-mono">XP Reward</label>
-              <input
-                type="number"
-                value={xp}
-                onChange={e => setXp(Number(e.target.value))}
-                min={5}
-                className="neo-input font-mono"
-                required
-              />
+              <label className="font-mono text-[10px] font-bold uppercase" style={{ color: 'var(--arcade-paper-muted)' }}>Notes</label>
+              <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Details…" className="arcade-input min-h-[60px] resize-y" maxLength={500} />
             </div>
-
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-bold font-mono">Due Date (Optional)</label>
-              <input
-                type="date"
-                value={dueDate}
-                onChange={e => setDueDate(e.target.value)}
-                className="neo-input font-mono"
-              />
+              <label className="font-mono text-[10px] font-bold uppercase" style={{ color: 'var(--arcade-paper-muted)' }}>XP Reward</label>
+              <input type="number" value={xp} onChange={e => setXp(Number(e.target.value))} min={0} max={1000} className="arcade-input font-mono" />
             </div>
-
-            <div className="flex items-center gap-3 mt-4 md:mt-0">
-              <button
-                type="button"
-                onClick={() => setToday(!today)}
-                className={`neo-button text-xs font-mono font-bold flex-1 flex items-center justify-center gap-2 ${
-                  today ? 'bg-amber-400' : 'bg-white'
-                }`}
-              >
-                <Star className={`w-4 h-4 ${today ? 'fill-black' : ''}`} />
-                <span>{today ? 'Added to Today' : 'Add to Today'}</span>
+            <div className="flex items-center gap-2">
+              <input type="checkbox" id="task-today" checked={today} onChange={e => setToday(e.target.checked)} className="w-4 h-4 accent-arcade-gold" />
+              <label htmlFor="task-today" className="font-mono text-[10px] font-bold cursor-pointer" style={{ color: 'var(--arcade-paper-dim)' }}>Star for Today board</label>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="font-mono text-[10px] font-bold uppercase" style={{ color: 'var(--arcade-paper-muted)' }}>Due Date</label>
+              <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} className="arcade-input font-mono" />
+            </div>
+            <div className="md:col-span-2 flex justify-end gap-2">
+              <button type="button" onClick={() => setShowAddForm(false)} className="btn-ghost !text-xs">Cancel</button>
+              <button type="submit" disabled={!title.trim()} className="insert-coin !py-2 !px-4 !text-xs">
+                <span className="coin-slot" aria-hidden="true" /> Add quest
               </button>
             </div>
-          </div>
-
-          <div className="flex justify-end gap-3 mt-2">
-            <button
-              type="button"
-              onClick={() => setShowAddForm(false)}
-              className="px-4 py-2 border-2 border-black font-bold rounded-lg hover:bg-gray-50 transition"
-            >
-              Cancel
-            </button>
-            <button type="submit" className="neo-button bg-success text-white">
-              Create Task
-            </button>
           </div>
         </form>
       )}
 
-      {/* Filter and Search Bar */}
-      <section className="neo-card p-4 bg-white flex flex-col md:flex-row gap-4 items-center justify-between">
-        {/* Search */}
-        <div className="relative w-full md:w-80">
-          <Search className="absolute left-3 top-2.5 w-4.5 h-4.5 text-gray-400" />
+      {/* Search + Area Filters */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'var(--arcade-paper-disabled)' }} aria-hidden="true" />
           <input
             type="text"
-            placeholder="Search tasks..."
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            className="neo-input pl-10 w-full py-1.5 text-sm"
+            placeholder="Search quests…"
+            className="arcade-input !pl-9"
+            aria-label="Search tasks"
           />
         </div>
-
-        {/* Filters */}
-        <div className="flex gap-2 overflow-x-auto no-scrollbar w-full md:w-auto py-1">
-          {areas.map(areaName => (
+        <div className="flex gap-1.5 flex-wrap">
+          {areas.map(a => (
             <button
-              key={areaName}
-              onClick={() => setSelectedArea(areaName)}
-              className={`px-3 py-1 text-xs font-bold font-mono border-2 border-black rounded-full transition shrink-0 ${
-                selectedArea === areaName ? 'bg-accent-pink shadow-gumroad-sm' : 'bg-white hover:bg-gray-50'
-              }`}
+              key={a}
+              type="button"
+              onClick={() => setSelectedArea(a)}
+              className={`chip cursor-pointer ${selectedArea === a ? 'chip--aurora' : ''}`}
+              style={{ textTransform: 'capitalize' }}
             >
-              {areaName === 'all' ? 'All Areas' : areaName.toUpperCase()}
+              {a}
             </button>
           ))}
         </div>
-      </section>
-
-      {/* Mobile Column Tabs */}
-      <div className="md:hidden flex border-2 border-black rounded-lg overflow-hidden bg-white shadow-gumroad-sm">
-        {columns.map(col => (
-          <button
-            key={col.id}
-            onClick={() => setActiveMobileColumn(col.id)}
-            className={`flex-1 py-2 text-xs font-black font-mono text-center border-r last:border-r-0 border-black transition ${
-              activeMobileColumn === col.id ? 'bg-accent-pink text-black' : 'bg-white text-gray-500'
-            }`}
-          >
-            {col.label}
-          </button>
-        ))}
       </div>
 
-      {/* Kanban Board Grid */}
-      <div id="task-kanban-cols" className="grid grid-cols-1 md:grid-cols-4 gap-6 min-h-[400px]">
+      {/* Kanban Board — desktop */}
+      <div id="task-kanban-cols" className="hidden md:grid grid-cols-4 gap-4">
         {columns.map(col => {
-          const columnTasks = filteredTasks.filter(t => t.status === col.id);
-          
+          const colTasks = filteredTasks.filter(t => t.status === col.id);
           return (
-            <div
-              key={col.id}
-              className={`flex flex-col neo-card border-2 border-black p-4 bg-white ${
-                col.id === activeMobileColumn ? 'flex' : 'hidden md:flex'
-              }`}
-            >
-              {/* Column Header */}
-              <div className="flex justify-between items-center border-b-2 border-black pb-2 mb-4">
-                <span className="font-black text-md font-mono">{col.label}</span>
-                <span className="bg-black text-white px-2 py-0.5 rounded font-mono text-xs font-bold">
-                  {columnTasks.length}
-                </span>
+            <section key={col.id} className="cabinet cabinet--off min-h-[200px]" style={{ '--marquee-color': col.tone } as React.CSSProperties}>
+              <div className="cabinet-marquee">
+                <span className="cabinet-led" aria-hidden="true" />
+                <span className="cabinet-marquee-title">{col.label}</span>
+                <span className="ml-auto font-mono text-[10px] score-readout" style={{ color: 'var(--arcade-paper-muted)' }}>{colTasks.length}</span>
               </div>
-
-              {/* Tasks List */}
-              <div className="flex flex-col gap-4 flex-1 overflow-y-auto no-scrollbar max-h-[500px]">
-                {columnTasks.length === 0 ? (
-                  <div className="text-center py-8 text-gray-400 text-xs font-mono border-2 border-dashed border-gray-200 rounded-lg">
-                    Empty column
-                  </div>
+              <div className="cabinet-screen !p-3 flex flex-col gap-2 min-h-[160px]">
+                {colTasks.length === 0 ? (
+                  <p className="m-0 py-6 text-center font-mono text-[10px]" style={{ color: 'var(--arcade-paper-disabled)' }}>Empty bay</p>
                 ) : (
-                  columnTasks.map(task => (
+                  colTasks.map(task => (
                     <div
                       key={task.id}
-                      className="neo-card p-4 bg-white border-2 border-black shadow-gumroad-sm flex flex-col gap-3 group/card relative"
+                      className={`rounded-lg p-3 flex flex-col gap-2 ${task.status === 'done' ? 'opacity-60' : ''}`}
+                      style={{ background: 'rgba(242,242,242,0.03)', border: '1px solid var(--obs-glass-9)' }}
                     >
-                      {/* Star / Today indicator */}
-                      <button
-                        onClick={() => toggleTodayTask(task.id)}
-                        className={`absolute top-3 right-3 p-1 rounded-full border border-black transition-colors ${
-                          task.today ? 'bg-amber-400 text-black shadow-gumroad-sm' : 'bg-white text-gray-300'
-                        }`}
-                        title={task.today ? 'Assigned to Today' : 'Pin to Today Board'}
-                      >
-                        <Star className={`w-3.5 h-3.5 ${task.today ? 'fill-black' : ''}`} />
-                      </button>
-
-                      <div className="pr-6">
-                        <h4 className="font-black text-sm text-black leading-snug break-words">
-                          {task.title}
-                        </h4>
-                        {task.notes && (
-                          <p className="text-[11px] text-gray-500 font-medium mt-1 whitespace-pre-wrap break-words">
-                            {task.notes}
-                          </p>
-                        )}
+                      <div className="flex items-start justify-between gap-2">
+                        <p className={`m-0 text-xs font-bold ${task.status === 'done' ? 'line-through' : ''}`} style={{ color: 'var(--arcade-paper)' }}>{task.title}</p>
+                        <span
+                          className={`w-2 h-2 rounded-full shrink-0 mt-0.5 ${task.today ? '' : 'opacity-30'}`}
+                          style={{ background: 'var(--arcade-gold)', boxShadow: task.today ? '0 0 8px var(--arcade-gold)' : 'none' }}
+                          title={task.today ? 'Starred for Today' : 'Not starred'}
+                          aria-hidden="true"
+                        />
                       </div>
-
-                      {/* Metadata */}
-                      <div className="flex flex-wrap gap-1.5 items-center mt-1">
-                        <span className={`text-[9px] font-bold font-mono px-2 py-0.5 rounded border border-black/10 ${getAreaColor(task.area)}`}>
-                          {task.area}
-                        </span>
-                        <span className="text-[9px] font-bold font-mono bg-bg-primary text-gray-600 px-2 py-0.5 rounded border border-black/10">
-                          +{task.xp} XP
-                        </span>
-                        {task.due_date && (
-                          <span className="text-[9px] font-bold font-mono bg-danger/10 text-danger px-2 py-0.5 rounded border border-danger/20 flex items-center gap-1">
-                            <Calendar className="w-2.5 h-2.5" />
-                            {task.due_date}
+                      {task.notes && (
+                        <p className="m-0 text-[10px] leading-relaxed" style={{ color: 'var(--arcade-paper-muted)' }}>{task.notes}</p>
+                      )}
+                      <div className="flex items-center justify-between mt-1">
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-mono text-[9px] chip" style={{ color: getAreaColor(task.area), borderColor: `${getAreaColor(task.area)}44`, background: `${getAreaColor(task.area)}12` }}>
+                            {task.area}
                           </span>
-                        )}
+                          <span className="font-mono text-[9px] score-readout" style={{ color: 'var(--arcade-gold)' }}>+{task.xp}</span>
+                        </div>
+                        <div className="flex items-center gap-0.5">
+                          <button type="button" onClick={() => toggleTodayTask(task.id)} className="icon-button icon-button-small" style={{ color: task.today ? 'var(--arcade-gold)' : 'var(--arcade-paper-disabled)' }} aria-label={task.today ? `Unstar ${task.title}` : `Star ${task.title} for today`} title={task.today ? 'Starred for Today' : 'Star for Today'}>
+                            <Star className="w-3 h-3" aria-hidden="true" />
+                          </button>
+                          {task.status !== 'backlog' && (
+                            <button type="button" onClick={(e) => shiftStatus(task, 'left', e)} className="icon-button icon-button-small" aria-label={`Move ${task.title} left`}>
+                              <ChevronLeft className="w-3 h-3" aria-hidden="true" />
+                            </button>
+                          )}
+                          {task.status !== 'done' && (
+                            <button type="button" onClick={(e) => shiftStatus(task, 'right', e)} className="icon-button icon-button-small" aria-label={`Move ${task.title} right`}>
+                              <ChevronRight className="w-3 h-3" aria-hidden="true" />
+                            </button>
+                          )}
+                          <button type="button" onClick={() => handleDeleteTask(task)} className="icon-button icon-button-small hover:!text-danger" aria-label={`Delete ${task.title}`}>
+                            <Trash2 className="w-3 h-3" aria-hidden="true" />
+                          </button>
+                        </div>
                       </div>
-
-                      {/* Board Movement Actions */}
-                      <div className="flex justify-between items-center border-t border-black/10 pt-2.5 mt-1">
-                        <button
-                          onClick={() => shiftStatus(task, 'left')}
-                          disabled={task.status === 'backlog'}
-                          className="p-1 rounded border border-black disabled:opacity-30 disabled:cursor-not-allowed hover:bg-gray-100 bg-white"
-                          title="Move Left"
-                        >
-                          <ChevronLeft className="w-3.5 h-3.5" />
-                        </button>
-                        
-                        <button
-                          onClick={() => deleteTask(task.id)}
-                          className="p-1 rounded text-gray-400 hover:text-danger border border-transparent hover:border-black hover:bg-danger/5 transition"
-                          title="Delete Task"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                        
-                        <button
-                          onClick={() => shiftStatus(task, 'right')}
-                          disabled={task.status === 'done'}
-                          className="p-1 rounded border border-black disabled:opacity-30 disabled:cursor-not-allowed hover:bg-gray-100 bg-white"
-                          title="Move Right"
-                        >
-                          <ChevronRight className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
+                      {task.due_date && (
+                        <span className="flex items-center gap-1 font-mono text-[9px]" style={{ color: 'var(--arcade-paper-muted)' }}>
+                          <Calendar className="w-3 h-3" aria-hidden="true" /> {task.due_date}
+                        </span>
+                      )}
+                      {task.status === 'done' && task.completed_at && (
+                        <span className="flex items-center gap-1 font-mono text-[9px]" style={{ color: 'var(--arcade-paper-disabled)' }}>
+                          <CheckCircle2 className="w-3 h-3" aria-hidden="true" /> done {new Date(task.completed_at).toLocaleDateString()}
+                        </span>
+                      )}
                     </div>
                   ))
                 )}
               </div>
-            </div>
+            </section>
+          );
+        })}
+      </div>
+
+      {/* Kanban — mobile column tabs */}
+      <div className="md:hidden flex gap-2">
+        {columns.map(col => (
+          <button
+            key={col.id}
+            type="button"
+            onClick={() => setActiveMobileColumn(col.id)}
+            className={`flex-1 rounded-lg px-2 py-2 font-mono text-[10px] font-bold cursor-pointer transition ${activeMobileColumn === col.id ? 'chip chip--aurora' : 'chip'}`}
+          >
+            {col.label} ({filteredTasks.filter(t => t.status === col.id).length})
+          </button>
+        ))}
+      </div>
+
+      {/* Kanban — mobile active column */}
+      <div className="md:hidden">
+        {columns.filter(col => col.id === activeMobileColumn).map(col => {
+          const colTasks = filteredTasks.filter(t => t.status === col.id);
+          return (
+            <section key={col.id} className="cabinet cabinet--off" style={{ '--marquee-color': col.tone } as React.CSSProperties}>
+              <div className="cabinet-marquee">
+                <span className="cabinet-led" aria-hidden="true" />
+                <span className="cabinet-marquee-title">{col.label}</span>
+              </div>
+              <div className="cabinet-screen !p-3 flex flex-col gap-2">
+                {colTasks.length === 0 ? (
+                  <p className="m-0 py-6 text-center font-mono text-[10px]" style={{ color: 'var(--arcade-paper-disabled)' }}>Empty bay</p>
+                ) : (
+                  colTasks.map(task => (
+                    <div key={task.id} className="rounded-lg p-3 flex flex-col gap-2" style={{ background: 'rgba(242,242,242,0.03)', border: '1px solid var(--obs-glass-9)' }}>
+                      <p className="m-0 text-xs font-bold" style={{ color: 'var(--arcade-paper)' }}>{task.title}</p>
+                      {task.notes && <p className="m-0 text-[10px]" style={{ color: 'var(--arcade-paper-muted)' }}>{task.notes}</p>}
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-mono text-[9px] chip" style={{ color: getAreaColor(task.area), borderColor: `${getAreaColor(task.area)}44`, background: `${getAreaColor(task.area)}12` }}>{task.area}</span>
+                          <span className="font-mono text-[9px] score-readout" style={{ color: 'var(--arcade-gold)' }}>+{task.xp}</span>
+                        </div>
+                        <div className="flex items-center gap-0.5">
+                          <button type="button" onClick={() => toggleTodayTask(task.id)} className="icon-button icon-button-small" style={{ color: task.today ? 'var(--arcade-gold)' : 'var(--arcade-paper-disabled)' }} aria-label="Toggle today star"><Star className="w-3 h-3" aria-hidden="true" /></button>
+                          {task.status !== 'backlog' && <button type="button" onClick={(e) => shiftStatus(task, 'left', e)} className="icon-button icon-button-small" aria-label="Move left"><ChevronLeft className="w-3 h-3" aria-hidden="true" /></button>}
+                          {task.status !== 'done' && <button type="button" onClick={(e) => shiftStatus(task, 'right', e)} className="icon-button icon-button-small" aria-label="Move right"><ChevronRight className="w-3 h-3" aria-hidden="true" /></button>}
+                          <button type="button" onClick={() => handleDeleteTask(task)} className="icon-button icon-button-small hover:!text-danger" aria-label="Delete"><Trash2 className="w-3 h-3" aria-hidden="true" /></button>
+                        </div>
+                      </div>
+                      {task.status === 'done' && task.completed_at && (
+                        <span className="flex items-center gap-1 font-mono text-[9px]" style={{ color: 'var(--arcade-paper-disabled)' }}>
+                          <CheckCircle2 className="w-3 h-3" aria-hidden="true" /> done {new Date(task.completed_at).toLocaleDateString()}
+                        </span>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            </section>
           );
         })}
       </div>

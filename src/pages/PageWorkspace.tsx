@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, RotateCcw, Cloud, CloudOff, AlertTriangle, RefreshCw } from 'lucide-react';
 import { useApiClient } from '../api/authFetch';
+import { useAuth } from '../features/auth';
 import {
   getPage,
   PageNotFoundError,
@@ -34,25 +35,38 @@ type SaveStatus =
   | { kind: 'data-url' };
 
 const WorkspaceSpinner: React.FC<{ label: string }> = ({ label }) => (
-  <div className="flex h-full w-full items-center justify-center bg-bg-primary">
-    <div className="neo-card flex flex-col items-center gap-3 p-6">
-      <div className="h-8 w-8 animate-spin rounded-full border-4 border-black border-t-accent-pink bg-white" />
-      <p className="font-mono text-xs font-bold text-gray-600 dark:text-gray-400">{label}</p>
+  <div className="flex h-full w-full items-center justify-center" style={{ background: 'var(--arcade-void-deep)' }}>
+    <div className="cabinet cabinet--attract flex flex-col items-center gap-3 p-6" style={{ '--marquee-color': 'var(--arcade-magenta)' } as React.CSSProperties}>
+      <div className="w-8 h-8 animate-spin rounded-full border-2" style={{ borderColor: 'var(--arcade-magenta)', borderTopColor: 'transparent' }} />
+      <p className="font-mono text-xs font-bold m-0" style={{ color: 'var(--arcade-paper-dim)' }}>{label}</p>
     </div>
   </div>
 );
 
+/**
+ * PageWorkspace — the Excalidraw trick cabinet. Full-viewport canvas with
+ * debounced autosave, optimistic-concurrency revision handling, and the
+ * designed conflict / too-large / data-URL states.
+ */
 export const PageWorkspace: React.FC = () => {
   const { pageId } = useParams<{ pageId: string }>();
+  const { user } = useAuth();
   const [reloadKey, setReloadKey] = useState(0);
   // Remount on id OR reload so every open starts from a clean, fully-reset
   // state — no stale refs, revision, or save status.
   const reload = useCallback(() => setReloadKey(k => k + 1), []);
+  // Guests have no pages: the backend would 401 every REST call. Hand them
+  // back to the Notes library, which shows the designed "Notes live on your
+  // own instance" attract state instead of a raw error cabinet.
+  if (user?.provider === 'guest') {
+    return <Navigate to="/notes" replace />;
+  }
   return <PageWorkspaceInner key={`${pageId ?? 'no-id'}:${reloadKey}`} pageId={pageId} onReload={reload} />;
 };
 
 const PageWorkspaceInner: React.FC<{ pageId: string | undefined; onReload: () => void }> = ({ pageId, onReload }) => {
   const apiClient = useApiClient();
+  const navigate = useNavigate();
   const [page, setPage] = useState<Page | null>(null);
   const [loadError, setLoadError] = useState<LoadError | null>(null);
   const [hydratedScene, setHydratedScene] = useState<ExcalidrawInitialDataState | null | undefined>(undefined);
@@ -237,12 +251,71 @@ const PageWorkspaceInner: React.FC<{ pageId: string | undefined; onReload: () =>
     };
   }, [apiClient, pageId, missingId]);
 
-  // Flush any pending save on unmount.
+  // Latest save status in a ref so the global key handler (subscribed once per
+  // mount) reads the CURRENT conflict state without re-subscribing on every
+  // status change. Effects flush right after commit, so by the time any
+  // subsequent keydown arrives this ref is already fresh.
+  const saveStatusRef = useRef(saveStatus);
+  useEffect(() => {
+    saveStatusRef.current = saveStatus;
+  }, [saveStatus]);
+
+  // Flush any pending save on unmount (risk register #2 — real data-loss bug).
+  // The old code COMMENT said "flush" but only CLEARED the debounce timer, so
+  // edits made within AUTOSAVE_DEBOUNCE_MS of navigating away were silently
+  // dropped. Real flush semantics:
+  //   * No save in flight → fire flush() directly. The serialize + PUT keep
+  //     running after unmount (refs outlive the fiber); its setSaveStatus
+  //     calls are dropped, which is exactly right — the SAVE still lands.
+  //   * Save in flight    → flush() returns early on the in-flight guard
+  //     (dirtyRef stays true), and the in-flight save's success path re-arms
+  //     the debounce, so the pending edit lands a beat later. That re-arm
+  //     creates a FRESH timer which this cleanup has already run past — it is
+  //     never cleared, and flushRef still points at this page's save.
+  // expected_revision semantics are preserved: the flush sends
+  // revisionRef.current at the moment it runs, exactly like a debounced save.
+  // StrictMode dev double-mount is safe: at fake-unmount time nothing is
+  // dirty yet (elementsRef is null until the editor hydrates), so no spurious
+  // save fires. flush is stable per mount (apiClient/pageId are stable), so
+  // this effect never re-runs mid-mount.
   useEffect(() => {
     return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+        debounceRef.current = null;
+      }
+      if (dirtyRef.current) {
+        void flush();
+      }
     };
-  }, []);
+  }, [flush]);
+
+  // ⌘S manual save + ESC-to-back (UX gap #11 / a11y). Capture phase: Excalidraw
+  // binds its own keys and stops propagation on some of them, so a bubble
+  // listener on window would never fire for canvas-focused strokes. Capture
+  // runs before every target handler.
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's') {
+        if (e.repeat) return;
+        e.preventDefault();
+        // Same serialization guard as autosave; during a conflict this
+        // resolves the banner as "Keep my version" (revisionRef already holds
+        // the server's currentRevision) — consistent with the overwrite path.
+        void flush();
+        return;
+      }
+      if (e.key === 'Escape') {
+        // While the conflict banner is asking Load latest / Keep my version,
+        // Escape must NOT bounce the user out of the decision.
+        if (saveStatusRef.current.kind === 'conflict') return;
+        e.preventDefault();
+        navigate('/notes');
+      }
+    };
+    window.addEventListener('keydown', onKeyDown, { capture: true });
+    return () => window.removeEventListener('keydown', onKeyDown, { capture: true });
+  }, [flush, navigate]);
 
   const retry = () => {
     onReload();
@@ -255,15 +328,19 @@ const PageWorkspaceInner: React.FC<{ pageId: string | undefined; onReload: () =>
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <header className="sticky top-0 z-10 flex shrink-0 items-center gap-2 border-b-2 border-border-primary bg-surface px-3 py-2 sm:gap-3 sm:px-4 sm:py-3">
+      <header
+        className="sticky top-0 z-10 flex shrink-0 items-center gap-2 px-3 py-2 sm:gap-3 sm:px-4 sm:py-3"
+        style={{ background: 'rgba(13,11,22,0.92)', backdropFilter: 'blur(10px)', borderBottom: '1px solid rgba(255,92,200,0.15)' }}
+      >
         <Link
           to="/notes"
-          className="flex shrink-0 items-center gap-1.5 rounded-lg border-2 border-border-primary bg-surface px-2 py-1.5 font-mono text-xs font-bold shadow-gumroad-sm transition hover:translate-x-[1px] hover:translate-y-[1px]"
+          className="btn-ghost !py-1.5 !px-2.5 !text-xs no-underline"
+          title="Back to notebooks (Esc)"
         >
-          <ArrowLeft className="h-3.5 w-3.5" />
+          <ArrowLeft className="w-3.5 h-3.5" aria-hidden="true" />
           <span className="hidden sm:inline">Back</span>
         </Link>
-        <h1 className="m-0 min-w-0 flex-1 truncate text-base font-black sm:text-lg">{title}</h1>
+        <h1 className="m-0 min-w-0 flex-1 truncate marquee-title text-base" style={{ color: 'var(--arcade-paper)' }}>{title}</h1>
         <SaveStatusBadge status={saveStatus} />
       </header>
 
@@ -272,18 +349,18 @@ const PageWorkspaceInner: React.FC<{ pageId: string | undefined; onReload: () =>
         {hydrating && <WorkspaceSpinner label="Loading canvas…" />}
 
         {loadError?.kind === 'error' && (
-          <div className="flex h-full w-full items-center justify-center bg-bg-primary">
-            <div className="neo-card flex max-w-md flex-col items-center gap-4 p-6 text-center">
-              <p className="m-0 font-black text-lg">Couldn&apos;t open this page</p>
-              <p className="m-0 font-mono text-xs font-bold text-gray-600 dark:text-gray-400">
+          <div className="flex h-full w-full items-center justify-center" style={{ background: 'var(--arcade-void-deep)' }}>
+            <div className="cabinet cabinet--ooo flex max-w-md flex-col items-center gap-4 p-6 text-center">
+              <p className="m-0 marquee-title text-lg" style={{ color: 'var(--arcade-paper)' }}>Couldn&apos;t open this page</p>
+              <p className="m-0 font-mono text-xs" style={{ color: 'var(--arcade-paper-muted)' }}>
                 {loadError.message}
               </p>
               <button
                 type="button"
                 onClick={retry}
-                className="flex items-center gap-1.5 rounded-lg border-2 border-border-primary bg-surface px-3 py-1.5 font-mono text-xs font-bold shadow-gumroad-sm transition hover:translate-x-[1px] hover:translate-y-[1px]"
+                className="btn-ghost !text-xs"
               >
-                <RotateCcw className="h-3.5 w-3.5" />
+                <RotateCcw className="w-3.5 h-3.5" aria-hidden="true" />
                 Retry
               </button>
             </div>
@@ -291,18 +368,18 @@ const PageWorkspaceInner: React.FC<{ pageId: string | undefined; onReload: () =>
         )}
 
         {(missingId || loadError?.kind === 'not-found') && (
-          <div className="flex h-full w-full items-center justify-center bg-bg-primary">
-            <div className="neo-card flex max-w-md flex-col items-center gap-4 p-6 text-center">
-              <p className="m-0 font-black text-lg">Page not found</p>
-              <p className="m-0 font-mono text-xs font-bold text-gray-600 dark:text-gray-400">
+          <div className="flex h-full w-full items-center justify-center" style={{ background: 'var(--arcade-void-deep)' }}>
+            <div className="cabinet cabinet--ooo flex max-w-md flex-col items-center gap-4 p-6 text-center">
+              <p className="m-0 marquee-title text-lg" style={{ color: 'var(--arcade-paper)' }}>Page not found</p>
+              <p className="m-0 font-mono text-xs" style={{ color: 'var(--arcade-paper-muted)' }}>
                 This page doesn&apos;t exist or you don&apos;t have access to it. It may have
                 been archived, moved, or never created.
               </p>
               <Link
                 to="/notes"
-                className="flex items-center gap-1.5 rounded-lg border-2 border-border-primary bg-surface px-3 py-1.5 font-mono text-xs font-bold shadow-gumroad-sm transition hover:translate-x-[1px] hover:translate-y-[1px]"
+                className="btn-ghost !text-xs no-underline"
               >
-                <ArrowLeft className="h-3.5 w-3.5" />
+                <ArrowLeft className="w-3.5 h-3.5" aria-hidden="true" />
                 Back to Notebooks
               </Link>
             </div>
@@ -322,29 +399,32 @@ const PageWorkspaceInner: React.FC<{ pageId: string | undefined; onReload: () =>
 };
 
 const SaveStatusBadge: React.FC<{ status: SaveStatus }> = ({ status }) => {
+  const base = 'flex items-center gap-1.5 font-mono text-xs font-bold';
+  // The save lamp doubles as the manual-save affordance hint (⌘S / Ctrl+S).
+  const hint = 'Save now — ⌘S (Ctrl+S on Windows/Linux)';
   switch (status.kind) {
     case 'saving':
       return (
-        <span className="flex items-center gap-1.5 font-mono text-xs font-bold text-gray-500">
-          <RefreshCw className="h-3.5 w-3.5 animate-spin" /> Saving…
+        <span className={`${base} chip chip--gold`} title={hint}>
+          <RefreshCw className="w-3.5 h-3.5 animate-spin" aria-hidden="true" /> Saving…
         </span>
       );
     case 'saved':
       return (
-        <span className="flex items-center gap-1.5 font-mono text-xs font-bold text-green-600 dark:text-green-400">
-          <Cloud className="h-3.5 w-3.5" /> Saved
+        <span className={`${base} chip chip--green`} title={hint}>
+          <Cloud className="w-3.5 h-3.5" aria-hidden="true" /> Saved
         </span>
       );
     case 'dirty':
       return (
-        <span className="flex items-center gap-1.5 font-mono text-xs font-bold text-amber-600 dark:text-amber-400">
-          <Cloud className="h-3.5 w-3.5" /> Unsaved
+        <span className={`${base} chip chip--gold`} title={hint}>
+          <Cloud className="w-3.5 h-3.5" aria-hidden="true" /> Unsaved
         </span>
       );
     case 'error':
       return (
-        <span className="flex items-center gap-1.5 font-mono text-xs font-bold text-red-600 dark:text-red-400">
-          <CloudOff className="h-3.5 w-3.5" /> Save failed
+        <span className={`${base} chip chip--red`} title={hint}>
+          <CloudOff className="w-3.5 h-3.5" aria-hidden="true" /> Save failed
         </span>
       );
     default:
@@ -353,22 +433,26 @@ const SaveStatusBadge: React.FC<{ status: SaveStatus }> = ({ status }) => {
 };
 
 const ConflictBanner: React.FC<{ onReload: () => void; onOverwrite: () => void }> = ({ onReload, onOverwrite }) => (
-  <div className="flex flex-col gap-2 border-b-2 border-amber-400 bg-amber-50 px-4 py-2 dark:bg-amber-950/40 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
-    <p className="m-0 flex items-center gap-2 font-mono text-xs font-bold text-amber-700 dark:text-amber-300">
-      <AlertTriangle className="h-4 w-4 shrink-0" /> This page was edited somewhere else. Keep your version or load the latest?
+  <div
+    className="flex flex-col gap-2 px-4 py-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3"
+    style={{ background: 'rgba(139, 92, 246, 0.08)', borderBottom: '1px solid rgba(139, 92, 246, 0.35)' }}
+    role="alert"
+  >
+    <p className="m-0 flex items-center gap-2 font-mono text-xs font-bold" style={{ color: 'var(--arcade-gold)' }}>
+      <AlertTriangle className="w-4 h-4 shrink-0" aria-hidden="true" /> This page was edited somewhere else. Keep your version or load the latest?
     </p>
     <div className="flex shrink-0 gap-2">
       <button
         type="button"
         onClick={onReload}
-        className="flex-1 rounded-lg border-2 border-border-primary bg-surface px-3 py-1.5 font-mono text-xs font-bold shadow-gumroad-sm transition hover:translate-x-[1px] hover:translate-y-[1px] sm:flex-none"
+        className="btn-ghost !py-1.5 !text-xs flex-1 sm:flex-none"
       >
         Load latest
       </button>
       <button
         type="button"
         onClick={onOverwrite}
-        className="flex-1 rounded-lg border-2 border-border-primary bg-accent-pink px-3 py-1.5 font-mono text-xs font-bold text-white shadow-gumroad-sm transition hover:translate-x-[1px] hover:translate-y-[1px] sm:flex-none"
+        className="insert-coin !py-1.5 !px-3 !text-xs flex-1 sm:flex-none"
       >
         Keep my version
       </button>
@@ -377,17 +461,17 @@ const ConflictBanner: React.FC<{ onReload: () => void; onOverwrite: () => void }
 );
 
 const TooLargeBanner: React.FC = () => (
-  <div className="flex items-center gap-2 border-b-2 border-red-400 bg-red-50 px-4 py-2 dark:bg-red-950/40">
-    <p className="m-0 font-mono text-xs font-bold text-red-700 dark:text-red-300">
-      <AlertTriangle className="mr-1 inline h-4 w-4" /> This canvas is too large to save (over the 2 MiB limit). Try removing some elements.
+  <div className="flex items-center gap-2 px-4 py-2" style={{ background: 'rgba(255,59,92,0.08)', borderBottom: '1px solid rgba(255,59,92,0.35)' }} role="alert">
+    <p className="m-0 font-mono text-xs font-bold" style={{ color: 'var(--arcade-red)' }}>
+      <AlertTriangle className="mr-1 inline w-4 h-4" aria-hidden="true" /> This canvas is too large to save (over the 2 MiB limit). Try removing some elements.
     </p>
   </div>
 );
 
 const DataUrlBanner: React.FC = () => (
-  <div className="flex items-center gap-2 border-b-2 border-red-400 bg-red-50 px-4 py-2 dark:bg-red-950/40">
-    <p className="m-0 font-mono text-xs font-bold text-red-700 dark:text-red-300">
-      <AlertTriangle className="mr-1 inline h-4 w-4" /> Images aren&apos;t supported in notes yet — remove any pasted/dropped pictures to save.
+  <div className="flex items-center gap-2 px-4 py-2" style={{ background: 'rgba(255,59,92,0.08)', borderBottom: '1px solid rgba(255,59,92,0.35)' }} role="alert">
+    <p className="m-0 font-mono text-xs font-bold" style={{ color: 'var(--arcade-red)' }}>
+      <AlertTriangle className="mr-1 inline w-4 h-4" aria-hidden="true" /> Images aren&apos;t supported in notes yet — remove any pasted/dropped pictures to save.
     </p>
   </div>
 );

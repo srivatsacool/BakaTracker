@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { CalendarDays, Check, Clock3, CloudOff, Moon, RefreshCw, Sun, Target, Zap, WifiOff } from 'lucide-react';
+import { CalendarDays, Check, Clock3, CloudOff, RefreshCw, Sun, Target, Zap, WifiOff } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import { useAuth } from '../../features/auth';
 import { calculateDailyScore, getTodayDateString } from '../../lib/utils';
@@ -10,12 +10,17 @@ interface ContextBarProps {
   assistantCollapsed: boolean;
 }
 
+/**
+ * ContextBar — the observatory's status strip. Time, daily score,
+ * XP counter, quests left, the save lamp, level, day/night, BakaSur.
+ * Every number is a score readout in tabular mono.
+ */
 export const ContextBar: React.FC<ContextBarProps> = ({
   isOffline,
   onToggleAssistant,
   assistantCollapsed,
 }) => {
-  const { stats, settings, habits, habitLogs, tasks, journal, theme, toggleTheme, syncStatus, syncError, syncWithSheets } = useStore();
+  const { stats, settings, habits, habitLogs, tasks, journal, syncStatus, syncError, syncWithSheets } = useStore();
   const { user } = useAuth();
   const [now, setNow] = useState(() => new Date());
 
@@ -47,86 +52,58 @@ export const ContextBar: React.FC<ContextBarProps> = ({
           : 'synced';
 
   const syncMeta = {
-    local: { label: 'Local only', Icon: CloudOff, cls: 'is-local' },
-    offline: { label: 'Offline', Icon: WifiOff, cls: 'is-warning' },
-    syncing: { label: 'Syncing…', Icon: RefreshCw, cls: 'is-syncing' },
-    error: { label: 'Sync failed · Retry', Icon: CloudOff, cls: 'is-error' },
-    synced: { label: 'Synced', Icon: Check, cls: 'is-success' },
+    local: { label: 'Offline · local', Icon: CloudOff, cls: 'is-local' },
+    offline: { label: 'Offline', Icon: WifiOff, cls: 'is-offline' },
+    syncing: { label: 'Recording…', Icon: RefreshCw, cls: 'is-syncing' },
+    error: { label: 'Out of order · Retry', Icon: CloudOff, cls: 'is-error' },
+    synced: { label: 'Observing', Icon: Check, cls: 'is-saved' },
   }[syncState];
   const { label, Icon, cls } = syncMeta;
   const syncTitle =
     syncState === 'error'
-      ? `Sync failed — ${syncError ?? 'unknown error'}. Click to retry.`
+      ? `Save failed — ${syncError ?? 'unknown reason'}. Click to try again.`
       : syncState === 'offline'
-        ? 'You are offline — changes are saved locally and will sync when you are back online.'
+        ? 'The machine keeps your credits here — everything syncs to your Worker when you are back online.'
         : label;
 
   return (
-    <header className="context-bar" aria-label="Current life context">
-      <div className="context-time">
-        <Clock3 className="context-icon context-icon-violet" aria-hidden="true" />
-        <div>
-          <strong>{timeLabel}</strong>
-          <span>{dateLabel}</span>
+    <header className="context-bar context-bar--floating" aria-label="Current life context">
+      <div className="flex items-center gap-3">
+        <Clock3 className="w-4 h-4" style={{ color: 'var(--arcade-gold)' }} aria-hidden="true" />
+        <div className="flex flex-col leading-tight">
+          <strong className="score-readout text-sm">{timeLabel}</strong>
+          <span className="font-mono text-[10px]" style={{ color: 'var(--arcade-paper-muted)' }}>{dateLabel}</span>
         </div>
       </div>
 
       <div className="context-metrics" role="group" aria-label="Daily progress">
-        <span className="context-chip">
-          <Target className="context-chip-icon context-icon-cyan" aria-hidden="true" />
-          <span><b>{dailyScore}%</b> today</span>
-        </span>
-        <span className="context-chip">
-          <Zap className="context-chip-icon context-icon-gold" aria-hidden="true" />
-          <span><b>{stats.xp}</b> / {settings.xp_per_level} XP</span>
-        </span>
-        <span className="context-chip context-chip-quiet">
-          <CalendarDays className="context-chip-icon" aria-hidden="true" />
-          <span><b>{pendingQuests}</b> quests left</span>
-        </span>
+        <span className="context-metric"><Target className="metric-icon icon-gold" aria-hidden="true" /><b>{dailyScore}%</b> today</span>
+        <span className="context-metric"><Zap className="metric-icon icon-cobalt" aria-hidden="true" /><b>{stats.xp}</b> / {settings.xp_per_level} XP</span>
+        <span className="context-metric"><CalendarDays className="metric-icon" aria-hidden="true" /><b>{pendingQuests}</b> quests left</span>
       </div>
 
-      <div className="context-actions">
+      <div className="flex items-center gap-2">
         {syncState === 'error' ? (
-          <button
-            type="button"
-            className={`context-status ${cls}`}
-            onClick={() => syncWithSheets()}
-            title={syncTitle}
-            aria-label={syncTitle}
-          >
-            <Icon aria-hidden="true" />
-            <span>{label}</span>
+          <button type="button" className={`save-lamp ${cls}`} onClick={() => syncWithSheets()} title={syncTitle} aria-label={syncTitle}>
+            <Icon className="w-3.5 h-3.5" aria-hidden="true" /><span>{label}</span>
           </button>
         ) : (
-          <span className={`context-status ${cls}`} title={syncTitle} aria-label={syncTitle}>
-            <Icon className={syncState === 'syncing' ? 'animate-spin' : ''} aria-hidden="true" />
-            <span>{label}</span>
+          <span className={`save-lamp ${cls}`} title={syncTitle} aria-label={syncTitle}>
+            <Icon className={syncState === 'syncing' ? 'w-3.5 h-3.5 animate-spin' : 'w-3.5 h-3.5'} aria-hidden="true" /><span>{label}</span>
           </span>
         )}
-        {isGuest && <span className="context-demo">Demo</span>}
-        <div className="context-xp" aria-label={`Level ${stats.level}, ${Math.round(xpProgress)} percent to next level`}>
-          <span>LVL {stats.level}</span>
-          <span className="context-xp-track"><span style={{ width: `${xpProgress}%` }} /></span>
+        {isGuest && <span className="chip chip--aurora">Demo</span>}
+        <div className="flex items-center gap-2" aria-label={`Level ${stats.level}, ${Math.round(xpProgress)} percent to next level`}>
+          <span className="score-readout text-xs" style={{ color: 'var(--arcade-gold)' }}>LVL {stats.level}</span>
+          <span className="w-14 h-1.5 rounded-full overflow-hidden relative" style={{ background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(139, 92, 246,0.2)' }}>
+            <span className="block h-full transition-all duration-300" style={{ width: `${xpProgress}%`, background: 'linear-gradient(90deg, var(--arcade-gold-deep), var(--arcade-gold))', boxShadow: '0 0 8px rgba(139, 92, 246, 0.5)' }} />
+          </span>
         </div>
-        <button
-          type="button"
-          className="icon-button icon-button-small"
-          onClick={toggleTheme}
-          title={`Switch to ${theme === 'dark' ? 'day' : 'night'} mode`}
-          aria-label={`Switch to ${theme === 'dark' ? 'day' : 'night'} mode`}
-        >
-          {theme === 'dark' ? <Sun aria-hidden="true" /> : <Moon aria-hidden="true" />}
-        </button>
-        <button
-          type="button"
-          className={`assistant-toggle ${assistantCollapsed ? '' : 'is-open'}`}
-          onClick={onToggleAssistant}
-          aria-expanded={!assistantCollapsed}
-          aria-controls="bakasur-rail"
-        >
-          <span className="assistant-orb" aria-hidden="true"><span /></span>
-          <span>BakaSur</span>
+        <span className="icon-button icon-button-small opacity-40 cursor-default" title="Dark mode (always)" aria-label="Dark mode always on">
+          <Sun className="w-4 h-4" aria-hidden="true" />
+        </span>
+        <button type="button" className="assistant-trigger" onClick={onToggleAssistant} aria-expanded={!assistantCollapsed} aria-controls="bakasur-rail">
+          <span className="assistant-trigger-dot" aria-hidden="true" /><span>BakaSur</span>
         </button>
       </div>
     </header>

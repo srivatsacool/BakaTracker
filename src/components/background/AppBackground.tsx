@@ -2,10 +2,28 @@ import React, { useEffect, useState } from 'react';
 import LightTunnel from './LightTunnel';
 
 /**
- * AppBackground — renders the LightTunnel as a fixed full-viewport
- * animated background. Mount this once at the app root, behind all content.
+ * AppBackground — the LightTunnel world's fixed background stack, mounted
+ * once at the app root behind all content (see the layer stack in
+ * src/index.css — BACKGROUND section).
  *
- * Hardening: Respects prefers-reduced-motion by disabling the tunnel animation.
+ * Layer stack:
+ *   z0  LightTunnel               — WebGL fibre-optic tunnel, fixed full
+ *                                   viewport, pointer-events: none. The
+ *                                   component pauses itself off-screen
+ *                                   (IntersectionObserver) and on tab
+ *                                   hide (visibilitychange), and disposes
+ *                                   its WebGL context on unmount.
+ *   z1  BackgroundReadabilityOverlay — dark translucent LAYERED treatment:
+ *                                   base wash + radial darkening + edge
+ *                                   vignette + subtle center readability
+ *                                   gradient (class .obs-readability-overlay).
+ *                                   Never a flat black layer — the tunnel
+ *                                   stays visible while text stays
+ *                                   readable. TEXT ALWAYS WINS.
+ *
+ * Reduced motion: prefers-reduced-motion → the tunnel is NOT mounted; a
+ * static indigo gradient (.obs-tunnel-static) stands in. The overlay is
+ * never animated. All tunnel props stay exposed for later live tuning.
  */
 const AppBackground: React.FC = () => {
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
@@ -22,80 +40,45 @@ const AppBackground: React.FC = () => {
     return () => mediaQuery.removeEventListener('change', handleChange);
   }, []);
 
-  if (prefersReducedMotion) {
-    return (
-      <div
-        className="app-background"
-        aria-hidden="true"
-        style={{
-          position: 'fixed',
-          inset: 0,
-          zIndex: 0,
-          pointerEvents: 'none',
-          background:
-            'radial-gradient(ellipse 80% 60% at 50% 40%, #1a0b2e 0%, #0a0612 55%, #050308 100%)',
-        }}
-      />
-    );
-  }
-
   return (
-    <div
-      className="app-background"
-      aria-hidden="true"
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 0,
-        pointerEvents: 'none',
-        background:
-          'radial-gradient(ellipse 80% 60% at 50% 40%, #1a0b2e 0%, #0a0612 55%, #050308 100%)',
-      }}
-    >
-      {/* Primary tunnel — full viewport */}
-      <div style={{ position: 'absolute', inset: 0, pointerEvents: 'auto' }}>
-        <LightTunnel
-          cableColor="#A855F7"
-          pulseColor="#C084FC"
-          tunnelColor="#5227FF"
-          tunnelOpacity={0}
-          speed={0.08}
-          flowDirection="outward"
-          pulseSpeed={1.8}
-          pulseLength={0.32}
-          pulseBlend={1}
-          pulseWidth={1}
-          cableCount={24}
-          thickness={0.3}
-          rimWidth={0.18}
-          waviness={0.35}
-          sway={0.4}
-          size={1.1}
-          centerX={0.0}
-          centerY={0.0}
-          glow={1.2}
-          fadeNear={0.4}
-          fadeFar={2.2}
-          brightness={1.0}
-          colorVariance={true}
-          grain={true}
-          grainIntensity={0.04}
-          opacity={0.85}
-          mouseInteraction={true}
-          mouseStrength={0.08}
-        />
-      </div>
-
-      {/* Vignette overlay — deepens the edges */}
-      <div
-        style={{
-          position: 'absolute',
-          inset: 0,
-          background:
-            'radial-gradient(ellipse 100% 80% at 50% 50%, transparent 0%, rgba(5, 3, 8, 0.3) 50%, rgba(5, 3, 8, 0.7) 100%)',
-          pointerEvents: 'none',
-        }}
-      />
+    <div className="obs-background" aria-hidden="true">
+      {prefersReducedMotion ? (
+        <div className="obs-tunnel-static" />
+      ) : (
+        <div className="obs-tunnel-layer">
+          <LightTunnel
+            cableColor="#8B5CF6"
+            pulseColor="#A78BFA"
+            tunnelColor="#312E81"
+            tunnelOpacity={0}
+            speed={0.08}
+            flowDirection="outward"
+            pulseSpeed={1.8}
+            pulseLength={0.25}
+            pulseBlend={1}
+            pulseWidth={1}
+            cableCount={22}
+            thickness={0.3}
+            rimWidth={0.14}
+            waviness={0.25}
+            sway={0.4}
+            size={1.0}
+            centerX={0.0}
+            centerY={0.0}
+            glow={0.8}
+            fadeNear={0.35}
+            fadeFar={2.2}
+            brightness={0.75}
+            colorVariance={true}
+            grain={true}
+            grainIntensity={0.04}
+            opacity={0.8}
+            mouseInteraction={true}
+            mouseStrength={0.06}
+          />
+        </div>
+      )}
+      <div className="obs-readability-overlay" />
     </div>
   );
 };

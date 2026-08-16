@@ -1,0 +1,137 @@
+{
+  "today": {
+    "heading": "Today's Focus Board",
+    "dock": true,
+    "dockTitle": "Today's instruments",
+    "dockKicker": "score · habits · journal · level",
+    "gridCols": "repeat(2, minmax(0px, 1fr))",
+    "modules": [
+      "Daily Score",
+      "Habits",
+      "Journal",
+      "Level"
+    ],
+    "questBoard": true,
+    "playingTitle": "Today's Quests",
+    "dayLine": true,
+    "questRows": 6,
+    "openQuestRow": true,
+    "heatNotHere": true,
+    "clicked": true,
+    "completion": true,
+    "errors": []
+  },
+  "journey": {
+    "heading": "Journey Analytics",
+    "titleLine": "LVL 1 · Novice Adventurer Export lifeCharacter s",
+    "heatmap": true,
+    "heatCells": 224,
+    "heatCellBg": "rgba(233, 230, 242, 0.06)",
+    "statBars": true,
+    "statBarTracks": 20,
+    "svgCount": 2,
+    "xpGradient": true,
+    "habitGradient": true,
+    "taskGradient": true,
+    "tickFont": null,
+    "tickFill": null,
+    "streaks": true,
+    "insights": true,
+    "exportBtn": true,
+    "tooltip": null,
+    "errors": [
+      "Error: Maximum update depth exceeded. This can happen when a component repeatedly calls setState inside componentWillUpdate or componentDidUpdate. React limits "
+    ]
+  },
+  "settings": {
+    "modal": {
+      "role": "dialog",
+      "ariaModal": "true",
+      "labelledby": "settings-modal-title",
+      "titleText": "BakaTracker Settings",
+      "sectionTitles": [
+        "Account",
+        "Appearance",
+        "Notifications",
+        "Data"
+      ],
+      "sections": 4,
+      "controls": {
+        "dayAccentInputs": 2,
+        "dayAccentText": 2,
+        "accentPresets": 12,
+        "resetDefaults": true,
+        "themeBtn": true,
+        "pushBtn": true,
+        "bakasurTone": true,
+        "quietHours": 0,
+        "syncLamp": 1,
+        "exportBtn": true,
+        "loadTrial": true,
+        "replayTour": true,
+        "dangerZone": true,
+        "clearDaysSelect": true,
+        "deleteConfirm": 1,
+        "clearBtn": true,
+        "savePrefs": true,
+        "cancel": true,
+        "accountSection": true,
+        "guestLeaveDemo": true
+      }
+    },
+    "focus": {
+      "initial": true,
+      "wrap": {
+        "lastName": "",
+        "firstName": "Close settings",
+        "wrappedToFirst": true
+      },
+      "esc": true,
+      "restore": true
+    },
+    "errors": []
+  },
+  "contrastSettings": {
+    "violations": [
+      {
+        "tag": "div",
+        "cls": "w-10 h-10 rounded-full",
+        "txt": "G",
+        "size": "14.0",
+        "ratio": "1.12",
+        "need": 3,
+        "bg": "#020206"
+      },
+      {
+        "tag": "p",
+        "cls": "text-[10px] font-mono text-center",
+        "txt": "Adds sample habits, tasks, jou",
+        "size": "10.0",
+        "ratio": "2.30",
+        "need": 4.5,
+        "bg": "#020206"
+      }
+    ],
+    "total": 2,
+    "samples": 65
+  },
+  "mobileSheetOpened": true,
+  "mobile": {
+    "gridCols": "358px",
+    "dock": true,
+    "kickerHidden": true,
+    "heatmapScroll": null,
+    "mobileNav": true,
+    "sheet": {
+      "bottomAnchored": true,
+      "roundedTop": "16px",
+      "width": 390
+    },
+    "errors": []
+  },
+  "contrastJourney": {
+    "violations": [],
+    "total": 0,
+    "samples": 0
+  }
+}

@@ -4,14 +4,20 @@ interface LoadingScreenProps {
   message?: string;
 }
 
+/**
+ * LoadingScreen — ATTRACT MODE: the cabinet boots before you can play.
+ */
 export const LoadingScreen: React.FC<LoadingScreenProps> = ({ message = 'Checking session...' }) => {
   return (
-    <div className="min-h-screen bg-bg-primary text-text-primary flex flex-col items-center justify-center p-4">
+    <div className="min-h-screen flex flex-col items-center justify-center p-4" style={{ background: 'var(--arcade-void)', position: 'relative', zIndex: 1 }}>
       <div className="flex flex-col items-center gap-4">
-        {/* Neobrutalist spinner */}
-        <div className="w-12 h-12 border-4 border-black border-t-accent-pink rounded-full animate-spin bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]" />
-        <div className="font-mono font-bold text-sm tracking-wide bg-white text-black px-4 py-1.5 border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] rounded-lg">
-          {message}
+        {/* Cabinet boot spinner */}
+        <div className="cabinet cabinet--attract px-5 py-4 flex flex-col items-center gap-3" style={{ '--marquee-color': 'var(--arcade-gold)' } as React.CSSProperties}>
+          <div className="w-10 h-10 rounded-full border-2 animate-spin" style={{ borderColor: 'var(--arcade-gold)', borderTopColor: 'transparent', boxShadow: '0 0 16px rgba(139, 92, 246,0.25)' }} aria-hidden="true" />
+          <div className="font-mono font-bold text-xs tracking-wider score-readout" style={{ color: 'var(--arcade-gold)' }}>
+            {message}
+          </div>
+          <div className="attract-dots" aria-hidden="true"><span /><span /><span /></div>
         </div>
       </div>
     </div>

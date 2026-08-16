@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useStore } from '../../store/useStore';
 import { calculateHabitStreak } from '../../services/habits/calculateHabitStreak';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { Copy, Check, Printer, X, Sparkles } from 'lucide-react';
 
 interface ExportLifeModalProps {
@@ -8,10 +9,23 @@ interface ExportLifeModalProps {
   onClose: () => void;
 }
 
+/**
+ * ExportLifeModal — the save-file printer. Generates a plain-text
+ * life report for the selected timeframe and copies or prints it.
+ */
 export const ExportLifeModal: React.FC<ExportLifeModalProps> = ({ isOpen, onClose }) => {
+  const [closing, setClosing] = React.useState(false);
+  const handleClose = () => {
+    setClosing(true);
+    setTimeout(() => { onClose(); setClosing(false); }, 150);
+  };
   const { habits, habitLogs, stats, events, currentQuote } = useStore();
   const [timeframe, setTimeframe] = useState<'week' | 'month' | 'all'>('month');
   const [copied, setCopied] = useState(false);
+
+  // F9 modal a11y: dialog role, focus trap, Esc → close, focus restore.
+  // Chrome only — report generation and copy/print flows are untouched.
+  const dialogRef = useFocusTrap<HTMLDivElement>(isOpen && !closing, { onEscape: handleClose });
 
   if (!isOpen) return null;
 
@@ -108,61 +122,58 @@ FAVORITE QUOTE:
   };
 
   return (
-    <div className="fixed inset-0 z-[9999] bg-black/70 flex items-center justify-center p-4 animate-fade-in max-sm:items-end p-0 sm:p-4">
-      <div className="neo-card p-6 bg-white dark:bg-surface max-w-lg w-full flex flex-col gap-4 text-text-primary max-sm:rounded-b-none max-sm:rounded-t-2xl max-sm:max-h-[90vh] max-sm:overflow-y-auto border-2 border-black dark:border-white shadow-gumroad-lg">
-        
+    <div className={`fixed inset-0 z-[9999] flex items-center justify-center p-4 ${closing ? 'animate-fade-out' : 'animate-fade-in'} max-sm:items-end sm:p-4`} style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }}>
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="export-life-modal-title"
+        tabIndex={-1}
+        className="cabinet cabinet--playing max-w-lg w-full flex flex-col gap-4 p-6 max-sm:rounded-b-none max-sm:rounded-t-2xl max-sm:max-h-[90vh] max-sm:overflow-y-auto" style={{ '--marquee-color': 'var(--arcade-gold)' } as React.CSSProperties}
+      >
+
         {/* Header */}
-        <div className="flex justify-between items-center border-b-2 border-black dark:border-white pb-3">
+        <div className="flex justify-between items-center pb-3" style={{ borderBottom: '1px solid rgba(242,242,242,0.1)' }}>
           <div className="flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-accent-pink" />
-            <h3 className="font-black text-lg tracking-tight">Export Your Life Report</h3>
+            <Sparkles className="w-5 h-5" style={{ color: 'var(--arcade-gold)' }} aria-hidden="true" />
+            <h3 id="export-life-modal-title" className="marquee-title text-lg m-0" style={{ color: 'var(--arcade-paper)' }}>Export Your Life Report</h3>
           </div>
-          <button
-            onClick={onClose}
-            className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800 transition border border-transparent hover:border-black cursor-pointer"
-          >
-            <X className="w-5 h-5" />
+          <button onClick={handleClose} className="icon-button" aria-label="Close export modal">
+            <X className="w-5 h-5" aria-hidden="true" />
           </button>
         </div>
 
-        {/* Timeframe Selector */}
-        <div className="flex gap-2 bg-bg-primary dark:bg-black/20 p-1.5 rounded-lg border-2 border-black dark:border-white font-mono text-xs">
-          {(['week', 'month', 'all'] as const).map(tf => (
+        {/* Timeframe selector */}
+        <div className="flex gap-2" role="group" aria-label="Report timeframe">
+          {(['week', 'month', 'all'] as const).map(t => (
             <button
-              key={tf}
-              onClick={() => setTimeframe(tf)}
-              className={`flex-1 py-1.5 rounded font-black uppercase transition cursor-pointer ${
-                timeframe === tf ? 'bg-accent-pink text-black shadow-gumroad-sm' : 'hover:bg-white/50 text-gray-600 dark:text-gray-400'
-              }`}
+              key={t}
+              type="button"
+              onClick={() => setTimeframe(t)}
+              className={`chip cursor-pointer flex-1 justify-center !py-2 ${timeframe === t ? 'chip--gold' : ''}`}
+              aria-pressed={timeframe === t}
             >
-              {tf === 'week' ? 'Weekly' : tf === 'month' ? 'Monthly' : 'All Time'}
+              {t === 'week' ? 'Past 7 days' : t === 'month' ? 'Past 30 days' : 'All time'}
             </button>
           ))}
         </div>
 
-        {/* Report Preview Box */}
-        <div className="neo-card p-4 bg-bg-primary dark:bg-black/35 font-mono text-xs leading-relaxed overflow-x-auto border-2 border-black dark:border-white whitespace-pre-wrap select-all">
+        {/* Report preview */}
+        <pre
+          className="rounded-lg p-4 text-[10px] leading-relaxed font-mono whitespace-pre-wrap max-h-[40vh] overflow-y-auto m-0"
+          style={{ background: 'rgba(0,0,0,0.35)', border: '1px solid rgba(242,242,242,0.1)', color: 'var(--arcade-paper-dim)' }}
+        >
           {reportText}
-        </div>
+        </pre>
 
         {/* Actions */}
-        <div className="flex flex-col sm:flex-row justify-between gap-3 mt-2">
-          <button
-            onClick={handlePrint}
-            className="neo-button bg-white text-black border-black hover:bg-gray-100 py-2.5 flex-1 inline-flex items-center justify-center gap-2"
-          >
-            <Printer className="w-4 h-4" />
-            <span>Print / Save PDF</span>
+        <div className="flex gap-2">
+          <button onClick={handleCopy} className="insert-coin flex-1 justify-center !text-xs">
+            {copied ? <Check className="w-4 h-4" aria-hidden="true" /> : <Copy className="w-4 h-4" aria-hidden="true" />}
+            {copied ? 'Copied!' : 'Copy report'}
           </button>
-
-          <button
-            onClick={handleCopy}
-            className={`neo-button py-2.5 flex-1 inline-flex items-center justify-center gap-2 ${
-              copied ? 'bg-success text-white' : 'bg-accent-pink text-black'
-            }`}
-          >
-            {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-            <span>{copied ? 'Copied to Clipboard!' : 'Copy Markdown Report'}</span>
+          <button onClick={handlePrint} className="btn-ghost !text-xs">
+            <Printer className="w-4 h-4" aria-hidden="true" /> Print
           </button>
         </div>
       </div>

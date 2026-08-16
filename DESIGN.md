@@ -1,422 +1,219 @@
-# Design System — Dark Glassmorphism with LightTunnel
-
-## Visual Identity
-
-**Aesthetic:** Immersive dark void with animated WebGL background
-**Mood:** Futuristic, mysterious, premium, focused
-**Brand Personality:** Playful rebellion, technical sophistication, ADHD-friendly clarity
-
+---
+name: BakaTracker
+description: Your life inside a light tunnel — every tool a smoked-glass instrument pane floating over the fibre-optic world, the daily check-in one lit pane in the tunnel.
+colors:
+  obs-void: "#060714"
+  obs-void-deep: "#03040b"
+  obs-void-lift: "#0d1022"
+  obs-paper: "#e9e6f2"
+  obs-paper-dim: "#b9b5c9"
+  obs-paper-muted: "#7f7c93"
+  obs-paper-disabled: "#4a4759"
+  obs-aurora: "#8b5cf6"
+  obs-aurora-deep: "#7c3aed"
+  obs-aurora-bright: "#a78bfa"
+  obs-teal: "#34d399"
+  obs-coral: "#f87171"
+  obs-amber: "#e8b45a"
+  obs-rose: "#f472b6"
+  obs-cobalt: "#38bdf8"
+typography:
+  display:
+    fontFamily: "'Archivo', 'Arial Black', system-ui, sans-serif"
+    fontWeight: 600-800
+    letterSpacing: "-0.02em"
+  instrument:
+    fontFamily: "'Fragment Mono', ui-monospace, monospace"
+    fontWeight: 400
+    letterSpacing: "0.02em"
+  body:
+    fontFamily: "'Inter', system-ui, sans-serif"
+    fontWeight: 400-500
+rounded:
+  sm: "8px"
+  md: "12px"
+  lg: "16px"
+  pill: "999px"
+spacing:
+  xs: "4px"
+  sm: "8px"
+  md: "16px"
+  lg: "24px"
+components:
+  btn-primary:
+    backgroundColor: "linear-gradient(180deg, #8b5cf6 0%, #7c3aed 100%)"
+    textColor: "#f4f2ff"
+    rounded: "{rounded.sm}"
+    padding: "12px 22px"
+    shadow: "0 0 28px rgba(139,92,246,0.35)"
+  btn-ghost:
+    backgroundColor: "rgba(233, 230, 242, 0.04)"
+    textColor: "{colors.obs-paper-dim}"
+    rounded: "{rounded.sm}"
+    padding: "10px 18px"
+  glass-pane:
+    backgroundColor: "linear-gradient(180deg, rgba(233,230,242,0.07) 0%, rgba(233,230,242,0.03) 100%)"
+    textColor: "{colors.obs-paper}"
+    rounded: "{rounded.lg}"
+    border: "1px solid rgba(233,230,242,0.12)"
+    blur: "blur(20px) saturate(140%)"
+    shadow: "0 24px 64px rgba(0,0,0,0.55), inset 0 1px 0 rgba(233,230,242,0.09)"
+  chip:
+    backgroundColor: "rgba(233, 230, 242, 0.04)"
+    textColor: "{colors.obs-paper-dim}"
+    rounded: "{rounded.pill}"
+    padding: "4px 10px"
 ---
 
-## Color Palette
+# Design System: BakaTracker
 
-### Core Colors
-```
---bg-void: #050308          Near-black with violet undertone
---bg-deep: #0a0612          Deep void base
---bg-surface: #1a0b2e       Elevated surface
---bg-elevated: #2d1b4e      Highest elevation
-```
+## Overview
 
-### Glass Surfaces
-```
---glass-bg: rgba(255, 255, 255, 0.03)
---glass-bg-hover: rgba(255, 255, 255, 0.06)
---glass-bg-strong: rgba(255, 255, 255, 0.08)
---glass-border: rgba(255, 255, 255, 0.08)
---glass-border-hover: rgba(255, 255, 255, 0.18)
---glass-border-active: rgba(168, 85, 247, 0.4)
-```
+**Creative North Star: "The Light Tunnel"**
 
-### Accent Palette
-```
---accent-violet: #A855F7    Primary accent (buttons, active states, glows)
---accent-cyan: #06B6D4      Secondary accent (data, info, gradients)
---accent-pink: #EC4899      Tertiary accent (highlights)
---accent-success: #10B981   Emerald (success states)
---accent-warning: #F59E0B   Amber (warnings)
---accent-danger: #EF4444    Red (errors, destructive actions)
-```
+BakaTracker is a personal life operating system floating inside an animated fibre-optic world. A violet-indigo LightTunnel (the repo's React Bits port — ogl/WebGL, cables #8B5CF6, pulses #A78BFA, tunnel #312E81, outward flow, restrained glow/brightness, grain, subtle mouse) runs slowly behind everything. A layered dark readability overlay sits between the world and the app — translucent base (rgba(4,5,15,0.58)) + radial darkening + edge vignette, never a flat black layer — so the tunnel stays visible while text stays immediately readable. **TEXT ALWAYS WINS:** if an animation hurts readability, the overlay darkens; typography never suffers for atmosphere.
 
-### Text
-```
---text-primary: #F8FAFC     White with slight warmth
---text-secondary: #CBD5E1   Light gray for body text
---text-muted: #94A3B8       Muted for captions
---text-disabled: #64748B    Disabled states
-```
+The application is a floating smoked-glass shell: 20px breathing room around it on desktop, 20px radius, hairline border, inner top highlight, layered shadow — and **no backdrop-filter on the shell frame** (fixed children — the mobile bottom nav and the AI bottom sheet — must keep anchoring to the viewport). Three zones: the left instrument rail (*where am I*), the centre life workspace (*what am I doing*), the right BakaSur intelligence pane (*who is helping me*). The shell is a stable structure floating inside a moving environment; the background never moves with cards and never causes layout shift.
 
----
+**Key Characteristics:**
+- Violet (#8b5cf6) is the primary accent family — lavender #a78bfa for text, deep #7c3aed for fills — used for actions, active items, progress, XP, and BakaSur. **Glow is scarce:** BakaSur, the active item, XP, and completion moments — never every border or every card.
+- The majority of the interface is dark and neutral; color represents attention.
+- Tool tones render as hairline band edges, never fields: teal = Habits, coral = Tasks, amber = Eisenhower, rose = Journal + Notes, cobalt = Journey.
+- The save lamp tells the backend's truth in one LED: Observing / Recording… / Offline / Out of order / Offline · local.
+- Score readouts are Fragment Mono, tabular: XP, streaks, levels, dates.
+- Motion is physical and restrained: background very slow, shell smooth, panels responsive, cards subtle, action feedback immediate. `prefers-reduced-motion` turns the tunnel into a static indigo frame and stops every animation.
+- Completing a quest lights the pane: `float-xp` + `star-join` + `pane-light` — the one authored moment, kept verbatim.
+
+## Colors
+
+The palette is an indigo-tinted night: deep void ground (cool, never warm), instrument-white paper, and one violet accent family. Secondary text is tinted from the paper scale, never the slate/warm-gray scale.
+
+### Primary
+- **Violet** (#8b5cf6): primary actions, active items, progress, focus rings — 4.73:1 on void (AA). Its deep variant (#7c3aed) is the button fill (white text 4.56:1); its bright variant (#a78bfa) is text on void (7.36:1) and on glass (6.66:1).
+- **Teal** (#34d399): Habits — the consistency instrument. Also success and the saved lamp (10.42:1).
+- **Coral** (#f87171): Tasks. Also danger, OUT OF ORDER, destructive (7.24:1).
+- **Cobalt** (#38bdf8): Journey — the charts and stats (9.35:1).
+- **Rose** (#f472b6): Journal + Notes — the diary pane (7.56:1).
+- **Amber** (#e8b45a): Eisenhower — the priority matrix (10.60:1).
+
+> **Palette provenance.** The Light Tunnel world was pinned by the user's master brief (2026-08-16 evening): violet/indigo fibre-optic background, layered dark readability overlay, floating smoked-glass shell. Supersedes the Night Observatory (aurora #6f5bd8 — retired) and all earlier worlds. Token NAMES (`--obs-*`) are kept because the code and the compat/alias layer depend on them; their VALUES are the Light Tunnel world.
+
+### Neutral
+- **Deep Void** (#060714): the world ground, indigo-tinted. Fades to #03040b and lifts to #0d1022 where glass beds sit.
+- **Instrument White** (#e9e6f2): primary text — the readout white.
+- **Paper Dim** (#b9b5c9): secondary text.
+- **Paper Muted** (#7f7c93): captions, quiet labels.
+- **Paper Disabled** (#4a4759): disabled states (WCAG-exempt).
+
+### Named Rules
+**The One-Hot-Pane Rule.** Violet appears on at most one clear action per viewport. A screen full of hot violet is a screen on fire.
+
+**The TEXT-ALWAYS-WINS Rule.** Readability beats atmosphere. If a surface is hard to read over the tunnel, darken the overlay or raise the surface opacity — never add text shadows, never sacrifice usability for aesthetics.
+
+**The No-Warm-Gray Rule.** Secondary text is tinted from the paper scale, never warm gray. Warm grays belong to the retired worlds.
+
+**The Hairline-Edge Rule.** Tool colors exist only as hairline band edges (1px instrument lines, LED dots, thin accents) — never as full fields.
+
+**The Glow-Scarce Rule.** Glow is reserved for BakaSur, the active item, XP, and successful completion. If everything glows, nothing is important.
 
 ## Typography
 
-### Font Stack
-```css
---font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 
-             "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-```
+**Display Font:** Archivo (self-hosted, variable 100–900, with Arial Black fallback) — a technical grotesque with precision; headings and the one shouting word.
+**Instrument Font:** Fragment Mono (self-hosted, with ui-monospace fallback) — tabular instrument readouts: XP, streaks, levels, timestamps, status lines, all score register.
+**Body Font:** Inter (variable, self-hosted, 100–900) — the workhorse UI face.
 
-### Type Scale
-- **Display:** 4xl-7xl (40px-72px), font-black, tight tracking
-- **Heading:** 3xl-4xl (30px-36px), font-black, tracking-tight
-- **Title:** xl-2xl (20px-24px), font-bold
-- **Body:** base (16px), font-normal
-- **Caption:** xs-sm (12px-14px), font-normal
-- **Mono:** font-mono for stats, labels, code
+**Character:** Technical at the top, tabular in the numbers, precise underneath — an instrument panel inside a smoked-glass shell. All three faces are self-hosted WOFF2 so the world survives offline PWA installs. No gratuitous uppercase and no futuristic display faces; the hierarchy carries the confidence.
 
-### Usage
-- **Gradient text:** Used for main title "BakaTracker" (violet → cyan)
-- **Monospace:** Stats, levels, labels (XP, LVL, progress)
-- **Font weights:** 400 (normal), 500 (medium), 600 (semibold), 700 (bold), 900 (black)
+### Hierarchy
+- **Display** (Archivo 800, ~57px hero / 24px section): page titles and the one shouting word.
+- **Headline** (Archivo 700, ~20px): section headings, card titles.
+- **Instrument** (Fragment Mono, 400, tabular): XP, levels, streaks, CTAs, the score register.
+- **Body** (Inter, 400, ~0.95rem, 65–75ch max): content and descriptions.
+- **Label** (Fragment Mono, 400, 0.22em tracking, uppercase): kickers, chips, status, save readouts, nav labels.
 
----
+## Layout
+
+The app is a floating glass shell inside the tunnel: 20px breathing room on desktop, 20px rounded frame, hairline border + inner top highlight + layered shadow, translucent smoked glass — **no backdrop-filter on the frame or its ancestors** (a filtered ancestor becomes the containing block for fixed children; the mobile bottom nav and AI sheet would break). Three zones: left instrument rail (collapsible to an icon rail; auto icon-rail at ≤1180px), centre life workspace, right BakaSur pane (collapsible orb; overlay tier on tablet; bottom sheet on mobile). ≤767px: stacked mobile layout with a fixed bottom instrument nav, a sticky header, and the assistant as a bottom sheet. The sidebar is the instrument rail: logo, the Status card (level, save lamp, theme/settings, XP bar), then the tool nav — each tool a glass row, the active one violet-tinted with a tool-tone hairline band. Spacing rhythm: tight groups (8px) inside cards, generous separation (16–24px) between cards, more space above headings than below.
+
+## Elevation & Depth
+
+Depth is smoked glass, not luminous: panes float on the void with backdrop blur, a hairline edge, a top highlight that reads as the glass rim, and a deep soft shadow. The world's own depth comes from the tunnel behind the layered overlay (z0 tunnel → z1 readability overlay → z10+ app). There is no neon glow except at the violet moments. The one authored motion moment is the pane lighting on completion — a quick luminance settle, a star joins the tunnel, the save lamp blinks. Everything else moves on 200ms expo-out for micro-interactions, 360ms for surfaces, and honors `prefers-reduced-motion` with static frames.
+
+### Shadow Vocabulary
+- **Glass shadow** (`0 24px 64px rgba(0,0,0,0.55), inset 0 1px 0 rgba(233,230,242,0.09)`): panes, cards.
+- **Violet glow** (`0 0 28px rgba(139,92,246,0.35)`): the active pane, primary CTA, Day Line fill.
+- **LED glow** (`0 0 8px <lamp-color>`): the sync indicator dot.
+
+### Named Rules
+**The Pane-Light Rule.** Completion animates as a single pane lighting (luminance settle, one quick scale) plus a star joining the tunnel — never confetti or bounce. The save lamp blinks once; the day's headline holds.
+
+## Shapes
+
+Forms are glass: rounded rectangles with a 16px corner radius for panes, 8–10px for buttons and inputs, pills (999px) for chips, status lamps, and the assistant toggle. The instrument header carries a small square LED before its title. Panes read as frosted glass: a faint top-edge highlight, hairline border, translucent body. Borders are 1px hairlines from the paper scale at 7–12% alpha; the active pane raises its border to violet at 40%+.
 
 ## Components
 
-### Glass Card
-```css
-.glass-card {
-  background: linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 100%);
-  backdrop-filter: blur(24px) saturate(180%);
-  border: 1px solid rgba(255,255,255,0.08);
-  box-shadow: 0 8px 32px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.06);
-  border-radius: 16px;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
+### Buttons
+- **Shape:** rounded (8px), inline-flex, gap 8px.
+- **Primary (btn-primary):** the violet fill — gradient #8b5cf6 → #7c3aed, near-white label (#f4f2ff, 4.56:1), violet glow, top white highlight. Hover lifts 1px and brightens the glow.
+- **Ghost (btn-ghost):** paper haze (4% alpha) with hairline border; hover deepens to 8%.
+- **Text buttons (btn-text):** paper-muted, weight 600, no border.
 
-.glass-card:hover {
-  border-color: rgba(255,255,255,0.18);
-  box-shadow: 0 12px 40px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1);
-  transform: translateY(-2px);
-}
-```
+### Chips
+- **Style:** pill (999px), paper haze background, hairline border, paper-dim text, Fragment Mono 400. Tone chips tint by instrument color (violet/teal/coral/amber/rose/cobalt) with matching alpha backgrounds; small text uses the bright variants for AA.
 
-### Glass Button
-```css
-.glass-button {
-  background: rgba(255,255,255,0.06);
-  backdrop-filter: blur(20px) saturate(180%);
-  border: 1px solid rgba(255,255,255,0.15);
-  border-radius: 10px;
-  padding: 0.5rem 1.5rem;
-  font-weight: 600;
-  transition: all 0.2s ease;
-}
+### Cards / Containers — Glass Pane
+- **Corner Style:** rounded (16px).
+- **Background:** paper haze gradient (7% → 3%).
+- **Shadow Strategy:** glass shadow (see Elevation).
+- **Border:** 1px paper at 12%.
+- **Blur:** backdrop-filter blur(20px) saturate(140%).
+- **Internal Padding:** 16–24px.
 
-.glass-button:hover {
-  background: rgba(255,255,255,0.1);
-  border-color: rgba(255,255,255,0.25);
-}
+### Instrument Header (signature container)
+Every tool surface is a glass pane: an instrument header (LED + title, colored by tool) over a frosted body. Named states, patterned so color is never the only signal:
+- **OFF** — dim header, unlit LED.
+- **ATTRACT** — blinking title/LED (loading, empty, demo).
+- **PLAYING** — lit violet edge + glow (active surface).
+- **HIGH SCORE** — violet pulse (celebration, level-up, cleared board).
+- **OUT OF ORDER** — coral edge + diagonal hazard stripe (error, destructive).
 
-.glass-button:active {
-  transform: translateY(1px);
-}
-```
+### Inputs / Fields
+- **Style:** paper haze (5%), hairline border, 10px radius, paper text (16px floor — no iOS focus-zoom).
+- **Focus:** violet border, violet ring at 15% alpha, violet caret.
+- **Selection:** violet at 40% alpha with paper text.
 
-### Glow Button
-```css
-.glow-button {
-  background: linear-gradient(135deg, #A855F7 0%, #8B5CF6 100%);
-  border: 1px solid rgba(255,255,255,0.2);
-  box-shadow: 0 4px 20px rgba(168,85,247,0.4), inset 0 1px 0 rgba(255,255,255,0.2);
-  border-radius: 10px;
-  padding: 0.75rem 2rem;
-  font-weight: 700;
-  transition: all 0.3s ease;
-}
+### Navigation
+- **Desktop rail:** the instrument rail — tools stacked with 8px gaps; the active tool is violet-tinted with a tool-tone hairline band on its left edge; inactive are transparent with paper-muted LEDs that brighten on hover. Collapsible to an icon rail (w-20); smooth expo-out collapse animation; auto icon-rail at ≤1180px.
+- **Mobile bottom nav:** fixed bar of seven instruments, active one violet; labels in 10px Fragment Mono; ≥44px touch targets.
 
-.glow-button:hover {
-  box-shadow: 0 6px 30px rgba(168,85,247,0.6), inset 0 1px 0 rgba(255,255,255,0.3);
-  transform: translateY(-2px);
-}
-```
+### Save Lamp (signature component)
+The backend's truth in one LED: Observing (teal, lit), Recording… (violet, blinking), Offline (dim), Out of order (coral, click to retry), Offline · local (muted, guest). The dot carries the glow; the label sits beside it.
 
-### Glass Input
-```css
-.glass-input {
-  background: rgba(255,255,255,0.04);
-  backdrop-filter: blur(16px);
-  border: 1px solid rgba(255,255,255,0.1);
-  border-radius: 10px;
-  padding: 0.75rem 1rem;
-  transition: all 0.2s ease;
-}
+### Day Line (signature component)
+The day's progress as one unbroken track with a running light telling you where now is. The fill is the violet gradient, scaled via transform (no layout animation); the now-marker is a lit vertical rule.
 
-.glass-input:focus {
-  background: rgba(255,255,255,0.06);
-  border-color: var(--accent-violet);
-  box-shadow: 0 0 0 3px rgba(168,85,247,0.15);
-  outline: none;
-}
-```
+### BakaSur Rail (signature component)
+The intelligence presence — the one allowed persistent glow source. Collapsed: a violet orb tab. Expanded: identity header (violet LED + marquee), route-aware suggested questions derived from the REAL ledger (top quest, streak at risk, N open quests…), conversation, input. Mobile: bottom sheet (slide-up, Escape-to-close). The chat contract is `POST /api/v1/assistant/chat` `{message, history(last 6), context{route, route_name, date}}` → `result.reply`; guests get a route-aware local `demoReply` with "· demo data" badges. No new backend.
 
----
+## Do's and Don'ts
 
-## Background System
+### Do:
+- **Do** keep violet the only hot accent family — one primary action per viewport, the pane in front of you.
+- **Do** render every stat in Fragment Mono tabular figures (XP, streaks, levels, dates).
+- **Do** tint secondary text from the paper scale, never warm gray.
+- **Do** let the active pane pull focus: its numbers come forward, the world dims behind the overlay.
+- **Do** animate completion as the pane lighting + a star joining the tunnel — quick luminance settle, save lamp blinks.
+- **Do** keep the one shouting word at full size on every width.
+- **Do** name pane states (OFF / ATTRACT / PLAYING / HIGH SCORE / OUT OF ORDER) so color is never the only signal.
+- **Do** render tool colors only as hairline band edges — never as full fields.
+- **Do** darken the overlay before ever sacrificing text readability.
 
-### LightTunnel WebGL Animation
-- **Component:** `src/components/background/LightTunnel.tsx`
-- **Technology:** WebGL shader via OGL library
-- **Effect:** Animated fiber-optic tunnel with pulsing violet/cyan light
-- **Props:**
-  - `cableColor: #A855F7` (violet)
-  - `pulseColor: #C084FC` (lighter violet)
-  - `speed: 0.08` (slow, meditative)
-  - `flowDirection: 'outward'` (radiating from center)
-  - `cableCount: 24` (dense, immersive)
-  - `glow: 1.2` (enhanced luminosity)
-  - `mouseInteraction: true` (subtle parallax)
-
-### AppBackground Wrapper
-- **Component:** `src/components/background/AppBackground.tsx`
-- **Structure:** Fixed position, z-index 0, full viewport
-- **Gradient overlay:** Radial gradient from `#1a0b2e` (center) to `#050308` (edges)
-- **Vignette:** Darkens edges for focus and depth
-- **Accessibility:** Respects `prefers-reduced-motion`, disables animation
-
----
-
-## Layout Patterns
-
-### Sidebar (Desktop)
-- **Width:** 260px (expanded), 70px (collapsed)
-- **Background:** Glass with subtle gradient
-- **Navigation items:** Glass cards, active state has violet glow border
-- **Character stats:** Glass card with gradient background (violet → cyan)
-- **Logo:** Circular with glass border and subtle glow
-
-### Mobile Bottom Nav
-- **Position:** Fixed bottom, full width
-- **Background:** Glass with blur
-- **Active item:** Glass card with violet glow
-- **Icon size:** 20x20px
-- **Label:** 10px monospace font
-
-### Cards & Containers
-- **Border radius:** 12-16px (consistent rounding)
-- **Padding:** 16-24px (breathing room)
-- **Gap:** 16px between elements (consistent rhythm)
-- **Hover effects:** Subtle lift (translateY -2px), border brightens
-
----
-
-## Interaction Patterns
-
-### Hover States
-- **Buttons:** Lift up 2px, glow intensifies
-- **Cards:** Lift up 2px, border brightens to 0.18 opacity
-- **Navigation:** Background brightens, text color shifts to white
-
-### Active States
-- **Buttons:** Push down 1px, glow reduces
-- **Pressed:** Slight scale down (0.98)
-
-### Focus States
-- **Inputs:** Violet border + 3px violet glow ring
-- **Buttons:** 2px solid violet outline, 2px offset
-- **Interactive elements:** Visible focus ring for keyboard navigation
-
-### Transitions
-- **Duration:** 0.2s - 0.3s
-- **Easing:** `cubic-bezier(0.4, 0, 0.2, 1)` (smooth, natural)
-- **Properties:** transform, box-shadow, border-color, background
-
----
-
-## Accessibility
-
-### Contrast Ratios
-- **Primary text:** #F8FAFC on #050308 = 18.5:1 (AAA)
-- **Secondary text:** #CBD5E1 on #050308 = 13.2:1 (AAA)
-- **Muted text:** #94A3B8 on #050308 = 8.1:1 (AAA)
-- **Disabled text:** #64748B on #050308 = 5.2:1 (AA)
-- **Violet accent:** #A855F7 on #050308 = 4.8:1 (AA)
-
-### Reduced Motion
-- **Media query:** `@media (prefers-reduced-motion: reduce)`
-- **Behavior:** Disables LightTunnel animation, shows static gradient background
-- **Transitions:** Reduced to 0.01ms duration
-
-### Focus Indicators
-- **All interactive elements:** 2px solid violet outline, 2px offset
-- **Keyboard navigation:** Fully supported via tab order
-- **Screen readers:** ARIA labels on icon-only buttons
-
-### High Contrast Mode
-- **Detection:** `@media (prefers-contrast: high)`
-- **Adjustments:** Increased border opacity, enhanced text contrast
-
----
-
-## Performance Optimizations
-
-### WebGL
-- **DPR limit:** Capped at 2x (prevents excessive GPU load on 3x+ screens)
-- **Intersection Observer:** Animation pauses when component not visible
-- **Resize Observer:** Debounced canvas resize
-
-### CSS
-- **Backdrop-filter:** Heavy blur (24-32px) used sparingly
-- **Transform:** Hardware-accelerated (translate3d, scale)
-- **Will-change:** Applied to frequently animated elements
-- **Containment:** `contain: layout style paint` on isolated components
-
-### Assets
-- **Logo:** Optimized PNG with transparency
-- **Icons:** Lucide React (tree-shakeable, consistent stroke width)
-- **Fonts:** Inter with font-display: swap (prevents FOIT)
-
----
-
-## Browser Support
-
-### Minimum Requirements
-- **Chrome/Edge:** 88+ (full support)
-- **Firefox:** 103+ (full support)
-- **Safari:** 15.4+ (full support)
-- **iOS Safari:** 15.4+ (full support)
-
-### Fallbacks
-- **No WebGL:** Static gradient background (graceful degradation)
-- **No backdrop-filter:** Semi-transparent solid backgrounds
-- **No CSS custom properties:** Hard-coded values (shouldn't happen in supported browsers)
-
----
-
-## Component Inventory
-
-### Core Components
-- `AppBackground` — Fixed WebGL tunnel background
-- `LightTunnel` — WebGL shader component
-- `Layout` — Main app shell with sidebar/bottom nav
-- `Landing` — Landing page with glass cards
-
-### UI Components
-- Glass cards (`.glass-card`)
-- Glass buttons (`.glass-button`)
-- Glow buttons (`.glow-button`)
-- Glass inputs (`.glass-input`)
-- Navigation items (sidebar + mobile bottom nav)
-- Progress bars (glass style with gradient fill)
-- Badges (small glass pills)
-- Modals (glass overlay with blur)
-
-### Feature Components
-- `Habits` — Habit tracking with glass cards
-- `Tasks` — Kanban board with glass columns
-- `Eisenhower` — Matrix grid with glass quadrants
-- `Today` — Focus board with glass cards
-- `Journal` — Entry list with glass cards
-- `Journey` — Analytics dashboard with glass charts
-- `Notes` — Excalidraw canvas with glass toolbar
-- `Settings` — Modal with glass sections
-
----
-
-## Design Principles
-
-1. **Immersive depth:** Background is a living, breathing entity; UI floats above it
-2. **Glass as material:** Translucent, blurred, with subtle reflections and borders
-3. **Violet identity:** Primary accent creates brand recognition through glow and gradients
-4. **Minimal friction:** Every interaction is smooth, purposeful, and satisfying
-5. **ADHD-friendly:** Clear hierarchy, focused attention, no unnecessary motion
-6. **Playful rebellion:** Dark aesthetic with vibrant accents, technical yet approachable
-7. **Accessibility first:** High contrast, keyboard navigation, reduced motion support
-
----
-
-## File Structure
-
-```
-src/
-├── components/
-│   ├── background/
-│   │   ├── LightTunnel.tsx      # WebGL shader component
-│   │   ├── LightTunnel.css      # Container styles
-│   │   └── AppBackground.tsx    # Wrapper with gradient overlay
-│   ├── shared/
-│   │   ├── Layout.tsx           # Main app shell (glassmorphism)
-│   │   └── ...
-│   └── ...
-├── pages/
-│   ├── Landing.tsx              # Landing page (glass cards)
-│   └── ...
-├── index.css                    # Global design system
-└── App.tsx                      # Root with AppBackground mount
-```
-
----
-
-## Maintenance Notes
-
-### Adding New Components
-1. Use `.glass-card` or `.glass-button` base classes
-2. Apply `backdrop-filter: blur(24px)` for glass effect
-3. Use `rgba(255,255,255,0.03-0.08)` for backgrounds
-4. Add `border: 1px solid rgba(255,255,255,0.08)` for definition
-5. Include hover state with `translateY(-2px)` lift
-
-### Modifying Colors
-- All colors are CSS custom properties in `:root`
-- Change in one place, propagates everywhere
-- Test contrast ratios after changes
-
-### Performance Checklist
-- [ ] Limit backdrop-filter usage (expensive)
-- [ ] Use `will-change` sparingly
-- [ ] Test on mobile devices (3x DPR can kill performance)
-- [ ] Verify reduced-motion media query works
-- [ ] Check WebGL fallback renders correctly
-
----
-
-## Version History
-
-### v3.1 — Premium Glass Refinement (2026-08-16, user-pinned)
-- **Pinned direction (PRODUCT.md):** modern sleek glassmorphism, premium-tooling craft
-  bar (Linear · Vercel · Arc). Direction contract lives as the first comment in
-  `dist/index.html` (seed 510ebf7d).
-- **Sync State System — the backend made visible:** `SyncStatus` pill
-  (`src/components/shell/SyncStatus.tsx`) with five designed states — synced
-  (emerald), syncing (violet, spinner), offline (amber), error (danger, click to
-  retry), local-only (muted, guest). Used in the sidebar (compact + full) and the
-  ContextBar chip (`context-status` classes preserved). `OfflineBanner` replaces
-  the two legacy inline banners.
-- **Browser surfaces themed:** selection (violet), scrollbars (glass hairline),
-  caret (violet), `:focus-visible` violet outline, `text-wrap: balance/pretty`,
-  tabular numerals on all mono.
-- **Motion grammar:** `--ease-glass` (expo-out), `--duration-glass` 160ms /
-  `--duration-glass-slow` 320ms; glass surfaces transition border/shadow/
-  transform/background only.
-- **Light chips → glass-alpha equivalents:** `bg-red-50/blue-50/amber-50/
-  green-50/green-100/purple-100/pink-100/amber-100` remapped to hue-preserving
-  10-12% alpha tints; paired `text-*-600/700/800` → light 300/400-scale tints.
-  Eisenhower quadrant color-coding survives (hue kept, contrast gained).
-- **Documented gaps closed:** `.glass-surface` rule added; PageWorkspace banner
-  classes covered (`border-amber-400/red-400` → glass-alpha).
-- **A11y additive:** Today quest rows are keyboard-activatable (`role=button`,
-  Enter/Space, `aria-pressed`); Notes hover-reveal actions now visible on
-  `focus-within`/`focus-visible`.
-- Gates: `npm run build` ✓ · `test:pages` 10/10 ✓ · `tsc --noEmit` ✓ · headless
-  probe clean on all 7 routes (sync pill present everywhere).
-
-### v3.0 — Dark Glassmorphism (Current)
-- Implemented LightTunnel WebGL background
-- Complete glassmorphism design system
-- Replaced neo-brutalist aesthetic
-- Enhanced accessibility (focus states, reduced motion)
-- Optimized performance (DPR cap, intersection observer)
-
-### v2.0 — Neo-Brutalist (Previous)
-- Light theme with hard shadows
-- Black borders, bright accents
-- Geometric, bold aesthetic
-
----
-
-## Resources
-
-- **OGL Library:** https://github.com/oframe/ogl
-- **Lucide Icons:** https://lucide.dev
-- **Inter Font:** https://rsms.me/inter/
-- **React Bits:** https://reactbits.dev (LightTunnel inspiration)
+### Don't:
+- **Don't** use the retired worlds' colors — observatory aurora #6f5bd8, arcade gold #ffd24a, warm amber, or any warm gray.
+- **Don't** use gradient text; the brand word is solid paper or solid violet.
+- **Don't** bounce or confetti on completion; the pane light is the celebration.
+- **Don't** multiply glow across a screen; one hot pane, BakaSur ambient beside it.
+- **Don't** add backdrop-filter to the shell frame or any ancestor of fixed children.
+- **Don't** use white ink on the bright violet; white sits on the deep fill, dark ink on nothing.
+- **Don't** let the background move with cards or cause layout shift; the tunnel is the environment, the shell floats inside it.

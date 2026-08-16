@@ -1,19 +1,21 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useStore } from '../store/useStore';
-import { getTodayDateString, calculateDailyScore, isHabitCompleted, getDaysInCurrentMonth, formatDate } from '../lib/utils';
-import { calculateHabitStreak } from '../services/habits/calculateHabitStreak';
+import { getTodayDateString, isHabitCompleted, getDaysInCurrentMonth } from '../lib/utils';
+import { calculateHabitStreak, calculateBestStreak } from '../services/habits/calculateHabitStreak';
 import { Plus, Trash2, RefreshCw, Activity, Calendar } from 'lucide-react';
-import type { HabitType, StatType } from '../types';
+import { UndoToast } from '../components/shared/UndoToast';
+import type { Habit, HabitType, StatType } from '../types';
 
+/**
+ * Habits — the consistency instrument. Five tracker types, streaks as
+ * battery-backed memory, XP per check-in, floating score ticks.
+ */
 export const Habits: React.FC = () => {
   const {
     habits,
     habitLogs,
     currentQuote,
     stats,
-    settings,
-    tasks,
-    journal,
     toggleHabit,
     incrementCounterHabit,
     setNumericHabit,
@@ -21,12 +23,10 @@ export const Habits: React.FC = () => {
     setEnergyHabit,
     addHabit,
     deleteHabit,
-    refreshQuote,
-    theme
+    refreshQuote
   } = useStore();
 
   const todayStr = getTodayDateString();
-  const dailyScore = calculateDailyScore(todayStr, habits, habitLogs, tasks, journal);
 
   const getLast5Days = (): { date: string; label: string }[] => {
     const days = [];
@@ -63,18 +63,27 @@ export const Habits: React.FC = () => {
     y: number;
   }
   const [floatingXPs, setFloatingXPs] = useState<FloatingXP[]>([]);
-
-  interface ConfettiParticle {
-    id: number;
-    x: number;
-    color: string;
-    size: number;
-    delay: number;
-    shape: 'square' | 'circle';
-  }
-  const [confetti, setConfetti] = useState<ConfettiParticle[]>([]);
   const [showLevelUpModal, setShowLevelUpModal] = useState(false);
   const prevLevelRef = useRef(stats.level);
+
+  // Undo-toast for habit delete
+  const [pendingDelete, setPendingDelete] = useState<{ habit: typeof habits[0] } | null>(null);
+  const deleteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleDeleteHabit = useCallback((habit: typeof habits[0]) => {
+    // Cancel any pending delete
+    if (deleteTimerRef.current) clearTimeout(deleteTimerRef.current);
+    setPendingDelete({ habit });
+    deleteTimerRef.current = setTimeout(() => {
+      deleteHabit(habit.id);
+      setPendingDelete(null);
+    }, 5000);
+  }, [deleteHabit]);
+
+  const undoDeleteHabit = useCallback(() => {
+    if (deleteTimerRef.current) clearTimeout(deleteTimerRef.current);
+    setPendingDelete(null);
+  }, []);
 
   const triggerFloatingXP = (e: React.MouseEvent | React.FocusEvent | null, xp: number, statName: string) => {
     let x = window.innerWidth / 2;
@@ -102,28 +111,11 @@ export const Habits: React.FC = () => {
     }, 1000);
   };
 
-  const triggerConfetti = () => {
-    setShowLevelUpModal(true);
-    const activeAccent = theme === 'dark' ? (settings.accent_color_dark || '#FF90E8') : (settings.accent_color_light || '#FF90E8');
-    const colors = [activeAccent, '#FF90E8', '#22C55E', '#F59E0B', '#EF4444', '#6366F1', '#3B82F6'];
-    const shapes: ('square' | 'circle')[] = ['square', 'circle'];
-    const newParticles = Array.from({ length: 80 }).map((_, idx) => ({
-      id: idx,
-      x: Math.random() * 100,
-      color: colors[Math.floor(Math.random() * colors.length)],
-      size: Math.random() * 8 + 6,
-      delay: Math.random() * 1.5,
-      shape: shapes[Math.floor(Math.random() * shapes.length)]
-    }));
-    setConfetti(newParticles);
-    setTimeout(() => {
-      setConfetti([]);
-    }, 5000);
-  };
-
+  // Level up — the HIGH SCORE moment
   useEffect(() => {
     if (stats.level > prevLevelRef.current) {
-      triggerConfetti();
+      setShowLevelUpModal(true);
+      setTimeout(() => setShowLevelUpModal(false), 2600);
     }
     prevLevelRef.current = stats.level;
   }, [stats.level]);
@@ -145,12 +137,43 @@ export const Habits: React.FC = () => {
   };
 
   const statConfig = [
-    { name: 'Discipline', icon: '⚔️', value: stats.discipline, color: 'bg-indigo-500', barColor: '#6366F1' },
-    { name: 'Health', icon: '💪', value: stats.health, color: 'bg-success', barColor: '#22C55E' },
-    { name: 'Knowledge', icon: '🧠', value: stats.knowledge, color: 'bg-blue-500', barColor: '#3B82F6' },
-    { name: 'Creativity', icon: '🎨', value: stats.creativity, color: 'bg-accent-pink', barColor: 'var(--accent-pink)' },
-    { name: 'Career', icon: '💼', value: stats.career, color: 'bg-warning', barColor: '#F59E0B' }
+    { name: 'Discipline', icon: '⚔️', value: stats.discipline, barColor: 'var(--arcade-magenta)' },
+    { name: 'Health', icon: '💪', value: stats.health, barColor: 'var(--arcade-green)' },
+    { name: 'Knowledge', icon: '🧠', value: stats.knowledge, barColor: 'var(--arcade-cobalt)' },
+    { name: 'Creativity', icon: '🎨', value: stats.creativity, barColor: 'var(--arcade-red)' },
+    { name: 'Career', icon: '💼', value: stats.career, barColor: 'var(--arcade-gold)' }
   ];
+
+  // Stat-tone stroke colors — the existing bar grammar, reused for the
+  // weekly progress rings so the rhythm readout matches each habit's stat.
+  const statColor: Record<StatType, string> = {
+    discipline: 'var(--arcade-magenta)',
+    health: 'var(--arcade-green)',
+    knowledge: 'var(--arcade-cobalt)',
+    creativity: 'var(--arcade-red)',
+    career: 'var(--arcade-gold)'
+  };
+
+  // Calendar-week progress (Monday start, matching the store's week model):
+  // completed days ÷ days elapsed so far this week. Honest — never counts
+  // days that haven't happened yet.
+  const getWeekProgress = (habit: Habit) => {
+    const now = new Date();
+    const day = now.getDay();
+    const diff = now.getDate() - day + (day === 0 ? -6 : 1);
+    const weekStart = new Date(now);
+    weekStart.setDate(diff);
+    const daysElapsed = Math.floor((now.getTime() - weekStart.getTime()) / 86400000) + 1;
+    let done = 0;
+    for (let i = 0; i < daysElapsed; i++) {
+      const d = new Date(weekStart);
+      d.setDate(weekStart.getDate() + i);
+      const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      const log = habitLogs.find(l => l.habit_id === habit.id && l.date === dateStr);
+      if (isHabitCompleted(habit, log)) done += 1;
+    }
+    return { done, daysElapsed };
+  };
 
   const getLogForToday = (habitId: string) => {
     return habitLogs.find(l => l.habit_id === habitId && l.date === todayStr);
@@ -158,565 +181,358 @@ export const Habits: React.FC = () => {
 
   const daysInMonth = getDaysInCurrentMonth();
 
-  // Helper to render retro pixel block indicator
-  const renderRetroHUD = (value: number, barHex: string) => {
-    const progress = value % 100;
-    const filledBlocks = Math.round(progress / 10);
-    return (
-      <div className="flex gap-1 items-center">
-        {Array.from({ length: 10 }).map((_, i) => {
-          const filled = i < filledBlocks;
-          return (
-            <div
-              key={i}
-              className="w-3.5 h-3.5 border border-black dark:border-white transition-all"
-              style={{
-                backgroundColor: filled ? barHex : 'transparent',
-                boxShadow: filled ? 'none' : 'inset 1px 1px 0px rgba(0,0,0,0.1)'
-              }}
-            />
-          );
-        })}
-      </div>
-    );
-  };
-
   return (
     <div className="max-w-4xl mx-auto flex flex-col gap-6 relative">
-      
       {/* Floating XP Elements */}
       {floatingXPs.map(item => (
         <div
           key={item.id}
-          className="fixed animate-xp-float z-[9999] pointer-events-none font-black font-mono text-xs bg-black border border-white text-accent-pink px-2 py-0.5 rounded shadow-gumroad-sm flex items-center gap-1"
+          className="float-xp"
           style={{ left: `${item.x}px`, top: `${item.y}px`, transform: 'translate(-50%, -50%)' }}
         >
           +{item.xp} {item.statName.toUpperCase()} XP
         </div>
       ))}
 
-      {/* Confetti Celebration Overlay */}
-      {confetti.map(p => (
-        <div
-          key={p.id}
-          className="confetti-particle pointer-events-none"
-          style={{
-            left: `${p.x}vw`,
-            backgroundColor: p.color,
-            width: `${p.size}px`,
-            height: `${p.size}px`,
-            borderRadius: p.shape === 'circle' ? '50%' : '0px',
-            animationDelay: `${p.delay}s`,
-            border: '1px solid black'
-          }}
-        />
-      ))}
-
-      {/* Level Up Modal */}
+      {/* Level Up Modal — HIGH SCORE moment */}
       {showLevelUpModal && (
-        <div className="fixed inset-0 bg-black/70 z-[9999] flex items-center justify-center p-4 animate-fade-in text-black">
-          <div className="neo-card p-8 bg-white max-w-sm text-center flex flex-col gap-4 items-center relative overflow-hidden">
-            <div className="absolute top-0 inset-x-0 h-2 bg-gradient-to-r from-accent-pink via-success to-warning" />
-            <div className="text-6xl animate-bounce mt-2">🎉</div>
-            <h2 className="text-3xl font-black italic tracking-wider text-accent-pink">LEVEL UP!</h2>
-            <p className="font-bold text-sm">You have progressed to new heights!</p>
-            <div className="text-4xl font-black border-4 border-black px-6 py-2 rounded-lg bg-bg-primary shadow-gumroad inline-block my-2">
-              LVL {stats.level}
+        <div className="fixed inset-0 z-[999] flex items-center justify-center pointer-events-none">
+          <div className="cabinet cabinet--highscore animate-fade-in px-8 py-6 text-center" style={{ '--marquee-color': 'var(--arcade-gold)' } as React.CSSProperties}>
+            <div className="cabinet-marquee">
+              <span className="cabinet-led" aria-hidden="true" />
+              <span className="cabinet-marquee-title">HIGH SCORE</span>
             </div>
-            <p className="text-xs text-gray-500 font-mono">Consistency yields growth. Keep building yourself!</p>
-            <button
-              onClick={() => setShowLevelUpModal(false)}
-              className="neo-button bg-success text-white font-bold w-full mt-2 cursor-pointer"
-            >
-              Let's Go!
-            </button>
+            <div className="cabinet-screen">
+              <h3 className="marquee-title m-0" style={{ fontSize: '1.6rem', color: 'var(--arcade-gold)' }}>LEVEL {stats.level}!</h3>
+              <p className="m-0 mt-2 font-mono text-xs" style={{ color: 'var(--arcade-paper-dim)' }}>New high score on the board. Keep playing.</p>
+            </div>
           </div>
         </div>
       )}
-      
-      {/* Hero Section Widget */}
-      <section className="neo-card p-6 bg-white dark:bg-surface flex flex-col md:flex-row justify-between gap-6 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-24 h-24 bg-accent-pink/10 rounded-bl-full pointer-events-none" />
-        
-        <div className="flex-1 flex flex-col justify-between gap-4">
-          <div>
-            <span className="text-xs font-bold font-mono text-gray-500 uppercase tracking-widest">
-              Today / {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
-            </span>
-            <div className="flex items-baseline gap-2 mt-1">
-              <h2 className="text-4xl font-black m-0 tracking-tight">Level {stats.level}</h2>
-              <span className="text-sm font-mono text-gray-600 dark:text-gray-400 font-bold">
-                ({stats.xp} / {settings.xp_per_level} XP)
-              </span>
-            </div>
-            
-            {/* XP progress bar */}
-            <div className="w-full bg-bg-primary dark:bg-black/35 h-5 rounded-full border-2 border-black dark:border-white overflow-hidden relative mt-3 max-w-md shadow-gumroad-sm">
-              <div 
-                className="bg-accent-pink h-full border-r-2 border-black dark:border-white transition-all duration-300"
-                style={{ width: `${(stats.xp / settings.xp_per_level) * 100}%` }}
-              />
-            </div>
+
+      {/* Page Title */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 z-10">
+        <div>
+          <h2 className="marquee-title text-2xl sm:text-3xl m-0" style={{ color: 'var(--arcade-paper)' }}>Habits</h2>
+          <p className="font-mono text-xs mt-1.5 m-0" style={{ color: 'var(--arcade-paper-muted)' }}>
+            The save file — streaks are battery-backed memory.
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          {/* View toggle */}
+          <div className="flex rounded-lg overflow-hidden" style={{ border: '1px solid var(--obs-glass-12)' }} role="group" aria-label="View mode">
+            <button
+              type="button"
+              onClick={() => setViewMode('today')}
+              className={`px-3 py-1.5 font-mono text-[10px] font-bold cursor-pointer transition ${viewMode === 'today' ? 'chip chip--teal' : 'chip'}`}
+            >
+              <Activity className="w-3 h-3 inline mr-1" aria-hidden="true" /> Today
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('month')}
+              className={`px-3 py-1.5 font-mono text-[10px] font-bold cursor-pointer transition ${viewMode === 'month' ? 'chip chip--cobalt' : 'chip'}`}
+            >
+              <Calendar className="w-3 h-3 inline mr-1" aria-hidden="true" /> Month
+            </button>
           </div>
-
-          {/* Quote of the Day */}
-          {currentQuote && (
-            <div className="border-l-4 border-black dark:border-white pl-4 py-1 max-w-lg mt-1 relative group text-text-primary">
-              <p className="text-sm italic font-bold">
-                "{currentQuote.quote}"
-              </p>
-              <div className="flex items-center gap-2 mt-1">
-                <span className="text-xs text-gray-500 font-bold font-mono">
-                  — {currentQuote.author}
-                </span>
-                <button 
-                  onClick={refreshQuote}
-                  title="New Quote"
-                  className="inline-flex items-center justify-center p-1 rounded-md border border-transparent hover:border-black dark:hover:border-white hover:bg-gray-100 dark:hover:bg-gray-800 transition cursor-pointer"
-                >
-                  <RefreshCw className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Daily Score Circle */}
-        <div className="flex flex-col items-center justify-center neo-card p-6 bg-accent-pink/5 shrink-0 border-2 border-black dark:border-white w-full md:w-48 text-center text-text-primary">
-          <span className="text-xs font-bold font-mono text-gray-500 uppercase tracking-widest">Day Progress</span>
-          <div className="relative flex items-center justify-center my-3 bg-white dark:bg-black/20 rounded-full border-2 border-black w-24 h-24 shadow-gumroad-sm">
-            <span className="text-3xl font-black font-mono">{dailyScore}%</span>
-          </div>
-          <span className="text-[10px] text-gray-600 dark:text-gray-400 font-bold uppercase tracking-wider font-mono">Completion Score</span>
-        </div>
-      </section>
-
-      {/* Character HUD Stats */}
-      <section className="neo-card p-6 bg-white dark:bg-surface">
-        <h3 className="text-md font-black uppercase tracking-wider border-b-2 border-black dark:border-white pb-2 mb-4 flex items-center gap-2">
-          <Activity className="w-5 h-5 text-accent-pink" />
-          <span>Character Stats</span>
-        </h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
-          {statConfig.map(stat => {
-            const statLvl = Math.floor(stat.value / 100) + 1;
-            const progress = stat.value % 100;
-            return (
-              <div key={stat.name} className="p-4 bg-bg-primary dark:bg-black/10 rounded-lg border-2 border-black dark:border-white shadow-gumroad-sm flex flex-col gap-2">
-                <div className="flex justify-between items-center border-b border-black/10 dark:border-white/10 pb-1">
-                  <span className="font-black text-sm text-black dark:text-white flex items-center gap-1">
-                    <span>{stat.icon}</span>
-                    <span className="truncate max-w-[80px]">{stat.name}</span>
-                  </span>
-                  <span className="text-[10px] font-mono font-black bg-black text-white px-1.5 py-0.2 rounded border border-black shadow-gumroad-sm">
-                    Lvl {statLvl}
-                  </span>
-                </div>
-                
-                {/* HUD Pixel Block Progression */}
-                <div className="py-1">
-                  {renderRetroHUD(stat.value, stat.barColor)}
-                </div>
-
-                <div className="flex justify-between items-center text-[9px] font-mono font-bold text-gray-500 mt-0.5">
-                  <span>Progress</span>
-                  <span>{progress} / 100 XP</span>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </section>
-
-      {/* View Toggle and Actions */}
-      <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-4">
-        {/* Toggle View Mode */}
-        <div className="flex border-2 border-black dark:border-white rounded-lg overflow-hidden shadow-gumroad-sm bg-white shrink-0">
-          <button
-            onClick={() => setViewMode('today')}
-            className={`px-4 py-2.5 font-bold font-mono text-sm flex items-center justify-center gap-2 border-r-2 border-black dark:border-white transition cursor-pointer flex-1 sm:flex-initial ${
-              viewMode === 'today' ? 'bg-accent-pink text-black' : 'hover:bg-gray-100 bg-white text-black'
-            }`}
-          >
-            <Activity className="w-4 h-4" />
-            <span>Today's Trackers</span>
-          </button>
-          <button
-            onClick={() => setViewMode('month')}
-            className={`px-4 py-2.5 font-bold font-mono text-sm flex items-center justify-center gap-2 transition cursor-pointer flex-1 sm:flex-initial ${
-              viewMode === 'month' ? 'bg-accent-pink text-black' : 'hover:bg-gray-100 bg-white text-black'
-            }`}
-          >
-            <Calendar className="w-4 h-4" />
-            <span>Month View Grid</span>
+          <button type="button" id="add-habit-btn" onClick={() => setShowAddForm(s => !s)} className="insert-coin !py-2 !px-3 !text-xs">
+            <Plus className="w-4 h-4" aria-hidden="true" /> <span>Habit</span>
           </button>
         </div>
-
-        {/* Add Habit Toggle */}
-        <button
-          id="add-habit-btn"
-          onClick={() => setShowAddForm(!showAddForm)}
-          className="neo-button flex items-center justify-center gap-2 py-2.5"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Add Custom Tracker</span>
-        </button>
       </div>
 
-      {/* Add Custom Habit Form */}
+      {/* Add Habit Form */}
       {showAddForm && (
-        <form onSubmit={handleAddHabit} className="neo-card p-6 bg-white dark:bg-surface flex flex-col gap-4 text-text-primary">
-          <h4 className="text-md font-black border-b border-black dark:border-white pb-2 uppercase tracking-wide">Create Custom Tracker</h4>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="flex flex-col gap-1">
-              <label className="text-xs font-bold font-mono">Habit Name</label>
-              <input
-                type="text"
-                value={newHabitName}
-                onChange={e => setNewHabitName(e.target.value)}
-                placeholder="e.g. Code portfolio"
-                className="neo-input"
-                maxLength={200}
-                required
-              />
-            </div>
-
-            <div className="flex flex-col gap-1">
-              <label className="text-xs font-bold font-mono">Tracker Type</label>
-              <select
-                value={newHabitType}
-                onChange={e => setNewHabitType(e.target.value as HabitType)}
-                className="neo-input font-mono bg-surface text-text-primary"
-              >
-                <option value="checkbox">Checkbox (Check off)</option>
-                <option value="counter">Counter (Increments, e.g. Book Pages)</option>
-                <option value="numeric">Number (Daily inputs, e.g. Sleep Hours)</option>
-                <option value="mood">Mood (😞 😐 🙂)</option>
-                <option value="energy">Energy (Low / Med / High)</option>
-              </select>
-            </div>
-
-            <div className="flex flex-col gap-1">
-              <label className="text-xs font-bold font-mono">RPG Stat Tag</label>
-              <select
-                value={newHabitStat}
-                onChange={e => setNewHabitStat(e.target.value as StatType)}
-                className="neo-input font-mono bg-surface text-text-primary"
-              >
-                <option value="discipline">⚔️ Discipline</option>
-                <option value="health">💪 Health</option>
-                <option value="knowledge">🧠 Knowledge</option>
-                <option value="creativity">🎨 Creativity</option>
-                <option value="career">💼 Career</option>
-              </select>
-            </div>
+        <form onSubmit={handleAddHabit} className="cabinet cabinet--playing animate-fade-in z-10" style={{ '--marquee-color': 'var(--arcade-green)' } as React.CSSProperties}>
+          <div className="cabinet-marquee">
+            <span className="cabinet-led" aria-hidden="true" />
+            <span className="cabinet-marquee-title">New instrument</span>
           </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="cabinet-screen !p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
             <div className="flex flex-col gap-1">
-              <label className="text-xs font-bold font-mono">Display Emoji Icon</label>
-              <input
-                type="text"
-                value={newHabitIcon}
-                onChange={e => setNewHabitIcon(e.target.value)}
-                placeholder="e.g. 💻"
-                className="neo-input text-center"
-                maxLength={2}
-                required
-              />
+              <label className="font-mono text-[9px] font-bold uppercase" style={{ color: 'var(--arcade-paper-muted)' }}>Name</label>
+              <input value={newHabitName} onChange={e => setNewHabitName(e.target.value)} placeholder="e.g. Morning workout" className="arcade-input !py-2 !text-sm" />
             </div>
-
             <div className="flex flex-col gap-1">
-              <label className="text-xs font-bold font-mono">Base XP Reward</label>
-              <input
-                type="number"
-                value={newHabitXP}
-                onChange={e => setNewHabitXP(Number(e.target.value))}
-                min={1}
-                className="neo-input font-mono"
-                required
-              />
+              <label className="font-mono text-[9px] font-bold uppercase" style={{ color: 'var(--arcade-paper-muted)' }}>Type</label>
+              <select value={newHabitType} onChange={e => setNewHabitType(e.target.value as HabitType)} className="arcade-input !py-2 !text-sm">
+                <option value="checkbox">Checkbox</option>
+                <option value="counter">Counter</option>
+                <option value="numeric">Numeric</option>
+                <option value="mood">Mood</option>
+                <option value="energy">Energy</option>
+              </select>
             </div>
-
-            <div className="flex items-end">
-              <button type="submit" className="neo-button w-full bg-success text-white">
-                Create Tracker
+            <div className="flex flex-col gap-1">
+              <label className="font-mono text-[9px] font-bold uppercase" style={{ color: 'var(--arcade-paper-muted)' }}>Icon</label>
+              <input value={newHabitIcon} onChange={e => setNewHabitIcon(e.target.value)} maxLength={2} className="arcade-input !py-2 !text-sm text-center" aria-label="Habit icon emoji" />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="font-mono text-[9px] font-bold uppercase" style={{ color: 'var(--arcade-paper-muted)' }}>XP</label>
+              <input type="number" value={newHabitXP} onChange={e => setNewHabitXP(Number(e.target.value))} min={1} className="arcade-input !py-2 !text-sm" />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="font-mono text-[9px] font-bold uppercase" style={{ color: 'var(--arcade-paper-muted)' }}>Stat</label>
+              <select value={newHabitStat} onChange={e => setNewHabitStat(e.target.value as StatType)} className="arcade-input !py-2 !text-sm">
+                <option value="health">Health</option>
+                <option value="discipline">Discipline</option>
+                <option value="knowledge">Knowledge</option>
+                <option value="creativity">Creativity</option>
+                <option value="career">Career</option>
+              </select>
+            </div>
+            <div className="sm:col-span-2 lg:col-span-5 flex justify-end gap-2">
+              <button type="button" onClick={() => setShowAddForm(false)} className="btn-ghost !text-xs">Cancel</button>
+              <button type="submit" disabled={!newHabitName.trim()} className="insert-coin !py-2 !px-4 !text-xs">
+                <span className="coin-slot" aria-hidden="true" /> Start tracking
               </button>
             </div>
           </div>
         </form>
       )}
 
-      {/* Main Trackers View */}
-      {viewMode === 'today' ? (
-        <div id="habit-list-container" className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {habits.map((habit, index) => {
-            const todayLog = getLogForToday(habit.id);
-            const streak = calculateHabitStreak(habit, habitLogs);
-            const completed = isHabitCompleted(habit, todayLog);
-            
-            return (
-              <div 
-                key={habit.id} 
-                id={index === 0 ? "habit-first-row" : undefined}
-                className={`neo-card p-6 flex flex-col justify-between gap-4 text-text-primary transition-all ${
-                  completed 
-                    ? 'border-success bg-success/5 dark:bg-success/5 shadow-none translate-x-[1px] translate-y-[1px]' 
-                    : 'bg-white dark:bg-surface'
-                }`}
-              >
-                <div className="flex justify-between items-start">
-                  <div className="flex items-center gap-3">
-                    <span className="text-4xl p-2 bg-bg-primary dark:bg-black/25 rounded-lg border-2 border-black text-black dark:text-white shrink-0 shadow-gumroad-sm">
-                      {habit.icon}
-                    </span>
-                    <div>
-                      <h4 className="font-black text-lg leading-tight">{habit.name}</h4>
-                      <span className="text-[10px] font-mono font-black text-gray-500 dark:text-gray-300 capitalize bg-bg-primary dark:bg-black/35 border border-black dark:border-white/20 px-2 py-0.5 rounded mt-1.5 inline-block text-black">
-                        {habit.stat} (+{habit.xp} XP)
-                      </span>
-                    </div>
-                  </div>
-                  
-                  <button
-                    onClick={() => deleteHabit(habit.id)}
-                    title="Delete Tracker"
-                    className="p-1 rounded text-gray-400 hover:text-danger hover:bg-danger/5 transition border border-transparent hover:border-black dark:hover:border-white cursor-pointer"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-
-                {/* 5-day mini-timeline streaks */}
-                <div className="flex items-center gap-3 py-2 border-y border-black/10 dark:border-white/10">
-                  <span className="text-[10px] font-black font-mono text-gray-500 dark:text-gray-400 uppercase">History:</span>
-                  <div className="flex gap-2">
-                    {getLast5Days().map(({ date, label }) => {
-                      const log = habitLogs.find(l => l.habit_id === habit.id && l.date === date);
-                      const completedDay = isHabitCompleted(habit, log);
-                      return (
-                        <div
-                          key={date}
-                          title={`${formatDate(date)}: ${completedDay ? 'Completed' : 'Incomplete'}`}
-                          className={`w-7 h-7 rounded-full border-2 border-black flex items-center justify-center font-mono text-[10px] font-black transition-all shadow-gumroad-sm ${
-                            completedDay 
-                              ? 'bg-accent-pink text-black' 
-                              : 'bg-bg-primary dark:bg-black/35 text-gray-500 dark:text-gray-400'
-                          }`}
-                        >
-                          {label}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Habit Interaction Controls based on Type */}
-                <div className="flex items-center justify-between gap-3 pt-1">
-                  {habit.type === 'checkbox' && (
-                    <button
-                      onClick={(e) => {
-                        const isCompleted = isHabitCompleted(habit, todayLog);
-                        toggleHabit(habit.id, todayStr);
-                        if (!isCompleted) {
-                          triggerFloatingXP(e, habit.xp, habit.stat);
-                        }
-                      }}
-                      className={`neo-button text-sm w-full font-black min-h-[48px] py-2.5 transition-all cursor-pointer ${
-                        completed 
-                          ? 'bg-success text-white border-black shadow-none translate-x-[1px] translate-y-[1px]' 
-                          : 'bg-white text-black border-black hover:bg-accent-pink'
-                      }`}
-                    >
-                      {completed ? '✓ DONE TODAY' : '[ MARK DONE ]'}
-                    </button>
-                  )}
-
-                  {habit.type === 'counter' && (
-                    <div className="flex items-center justify-between w-full">
-                      <div className="flex items-center border-2 border-black dark:border-white rounded-lg overflow-hidden bg-white text-black shadow-gumroad-sm min-h-[48px]">
-                        <button
-                          onClick={() => incrementCounterHabit(habit.id, todayStr, -1)}
-                          className="px-4 py-2.5 font-black bg-bg-primary hover:bg-gray-100 border-r-2 border-black cursor-pointer min-h-[48px] flex items-center justify-center active:scale-95 transition"
-                        >
-                          -
-                        </button>
-                        <span className="px-5 font-mono font-black text-sm">
-                          {todayLog ? todayLog.value : 0}
-                        </span>
-                        <button
-                          onClick={(e) => {
-                            incrementCounterHabit(habit.id, todayStr, 1);
-                            triggerFloatingXP(e, habit.xp, habit.stat);
-                          }}
-                          className="px-4 py-2.5 font-black bg-bg-primary hover:bg-gray-100 border-l-2 border-black cursor-pointer min-h-[48px] flex items-center justify-center active:scale-95 transition"
-                        >
-                          +
-                        </button>
-                      </div>
-                      <span className="text-xs font-mono font-black text-gray-500">
-                        Total XP: +{(Number(todayLog?.value) || 0) * habit.xp}
-                      </span>
-                    </div>
-                  )}
-
-                  {habit.type === 'numeric' && (
-                    <div className="flex items-center justify-between w-full gap-4">
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="number"
-                          step="0.5"
-                          min="0"
-                          placeholder="0.0"
-                          value={todayLog ? todayLog.value : ''}
-                          onChange={e => setNumericHabit(habit.id, todayStr, Number(e.target.value) || 0)}
-                          onBlur={(e) => {
-                            if (Number(e.target.value) > 0 && !todayLog) {
-                              triggerFloatingXP(e, habit.xp, habit.stat);
-                            }
-                          }}
-                          className="neo-input w-24 text-center font-mono py-1.5 px-2"
-                        />
-                        <span className="text-xs font-black text-gray-600 dark:text-gray-400 font-mono">
-                          {habit.id === 'h4' ? 'hours' : 'value'}
-                        </span>
-                      </div>
-                      <span className="text-xs font-mono font-black text-gray-500">
-                        {todayLog ? `+${habit.xp} XP` : '0 XP'}
-                      </span>
-                    </div>
-                  )}
-
-                  {habit.type === 'mood' && (
-                    <div className="flex justify-between items-center w-full">
-                      <div className="flex gap-2">
-                        {['😞', '😐', '🙂'].map(emoji => (
-                          <button
-                            key={emoji}
-                            onClick={(e) => {
-                              const isCurrentlyEmoji = todayLog?.value === emoji;
-                              setMoodHabit(habit.id, todayStr, isCurrentlyEmoji ? '' : emoji);
-                              if (!isCurrentlyEmoji) {
-                                triggerFloatingXP(e, habit.xp, habit.stat);
-                              }
-                            }}
-                            className={`text-2xl p-2 rounded-lg border-2 border-black transition cursor-pointer ${
-                              todayLog?.value === emoji ? 'bg-accent-pink shadow-gumroad-sm translate-x-[-1px] translate-y-[-1px]' : 'bg-white hover:bg-gray-50'
-                            }`}
-                          >
-                            {emoji}
-                          </button>
-                        ))}
-                      </div>
-                      <span className="text-xs font-mono font-black text-gray-500">
-                        {todayLog ? `+${habit.xp} XP` : '0 XP'}
-                      </span>
-                    </div>
-                  )}
-
-                  {habit.type === 'energy' && (
-                    <div className="flex justify-between items-center w-full">
-                      <div className="flex gap-1.5">
-                        {['Low', 'Medium', 'High'].map(level => (
-                          <button
-                            key={level}
-                            onClick={(e) => {
-                              const isCurrentlyLevel = todayLog?.value === level;
-                              setEnergyHabit(habit.id, todayStr, isCurrentlyLevel ? '' : level);
-                              if (!isCurrentlyLevel) {
-                                triggerFloatingXP(e, habit.xp, habit.stat);
-                              }
-                            }}
-                            className={`text-xs font-mono font-black px-2.5 py-1.5 rounded border-2 border-black transition text-black cursor-pointer ${
-                              todayLog?.value === level ? 'bg-accent-pink shadow-gumroad-sm translate-x-[-1px] translate-y-[-1px]' : 'bg-white hover:bg-gray-50'
-                            }`}
-                          >
-                            {level}
-                          </button>
-                        ))}
-                      </div>
-                      <span className="text-xs font-mono font-black text-gray-500">
-                        {todayLog ? `+${habit.xp} XP` : '0 XP'}
-                      </span>
-                    </div>
-                  )}
-
-                  {/* Streak display */}
-                  {streak > 0 && (
-                    <div className="flex items-center gap-1 bg-orange-100 border-2 border-black text-orange-800 px-2 py-1 rounded font-mono font-black text-xs shadow-gumroad-sm">
-                      <span>🔥</span>
-                      <span>{streak}d Streak</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            );
-          })}
+      {/* Quote strip */}
+      {currentQuote && (
+        <div className="cabinet cabinet--attract z-10" style={{ '--marquee-color': 'var(--arcade-gold)' } as React.CSSProperties}>
+          <div className="cabinet-marquee">
+            <span className="cabinet-led" aria-hidden="true" />
+            <span className="cabinet-marquee-title">Quote of the day</span>
+            <button type="button" onClick={refreshQuote} className="icon-button icon-button-small !ml-auto" aria-label="Refresh quote" title="Refresh quote">
+              <RefreshCw className="w-3.5 h-3.5" aria-hidden="true" />
+            </button>
+          </div>
+          <div className="cabinet-screen !py-3 flex items-center justify-between gap-3">
+            <p className="m-0 text-sm italic" style={{ color: 'var(--arcade-paper-dim)' }}>“{currentQuote.quote}”</p>
+            <span className="font-mono text-[10px] shrink-0" style={{ color: 'var(--arcade-paper-muted)' }}>— {currentQuote.author}</span>
+          </div>
         </div>
-      ) : (
-        /* Month View Grid */
-        <section className="neo-card p-6 bg-white dark:bg-surface overflow-hidden text-text-primary">
-          <h3 className="text-md font-black border-b-2 border-black dark:border-white pb-2 mb-4 flex items-center gap-2">
-            <Calendar className="w-5 h-5 text-accent-pink" />
-            <span>Monthly Grid Calendar Tracker</span>
-          </h3>
-          <div className="overflow-x-auto no-scrollbar pb-2">
-            <table className="min-w-full border-collapse">
-              <thead>
-                <tr>
-                  <th className="p-2 border-2 border-black bg-bg-primary text-black text-left text-xs font-black font-mono uppercase min-w-[150px]">
-                    Habit Trackers
-                  </th>
-                  {daysInMonth.map(dayStr => {
-                    const dateObj = new Date(dayStr);
-                    const dayNum = dateObj.getDate();
-                    return (
-                      <th key={dayStr} className="p-1.5 border-2 border-black bg-bg-primary text-black text-center text-[10px] font-mono font-black w-8">
-                        {dayNum}
-                      </th>
-                    );
-                  })}
-                </tr>
-              </thead>
-              <tbody>
-                {habits.map(habit => (
-                  <tr key={habit.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
-                    <td className="p-2 border-2 border-black font-bold text-xs flex items-center gap-1.5 bg-white text-black">
-                      <span>{habit.icon}</span>
-                      <span className="truncate max-w-[120px]">{habit.name}</span>
-                    </td>
-                    {daysInMonth.map(dayStr => {
-                      const log = habitLogs.find(l => l.habit_id === habit.id && l.date === dayStr);
-                      const completedDay = isHabitCompleted(habit, log);
-                      return (
-                        <td 
-                          key={dayStr} 
-                          title={`${habit.name} - ${formatDate(dayStr)} (Click to toggle)`}
-                          onClick={() => toggleHabit(habit.id, dayStr)}
-                          className={`p-0 border-2 border-black text-center h-8 transition-colors cursor-pointer select-none ${
-                            completedDay ? 'bg-accent-pink' : 'bg-white dark:bg-surface hover:bg-accent-pink/20 dark:hover:bg-accent-pink/30'
-                          }`}
-                        >
-                          {completedDay && <span className="text-[10px] font-black text-black dark:text-black">✓</span>}
-                        </td>
-                      );
-                    })}
-                  </tr>
+      )}
+
+      {/* Habit List */}
+      <div id="habit-list-container" className="flex flex-col gap-3 z-10">
+        {habits.length === 0 ? (
+          <div className="attract-state">
+            <span className="text-4xl" aria-hidden="true">🎮</span>
+            <div className="attract-dots" aria-hidden="true"><span /><span /><span /></div>
+            <h3>No cabinets installed</h3>
+            <p>Add your first habit — a checkbox, counter, numeric, mood, or energy tracker. Each one earns XP and builds a stat.</p>
+            <button type="button" onClick={() => setShowAddForm(true)} className="insert-coin mt-2">
+              <Plus className="w-4 h-4" aria-hidden="true" /> <span>Add your first habit</span>
+            </button>
+          </div>
+        ) : (
+          <>
+            {/* Stat bars — the character status panel */}
+            <div className="cabinet cabinet--off" style={{ '--marquee-color': 'var(--arcade-cobalt)' } as React.CSSProperties}>
+              <div className="cabinet-marquee">
+                <span className="cabinet-led" aria-hidden="true" />
+                <span className="cabinet-marquee-title">Character status</span>
+                <span className="ml-auto font-mono text-[10px] score-readout" style={{ color: 'var(--arcade-gold)' }}>LVL {stats.level}</span>
+              </div>
+              <div className="cabinet-screen !p-4 grid grid-cols-1 sm:grid-cols-5 gap-3">
+                {statConfig.map(stat => (
+                  <div key={stat.name} className="flex flex-col gap-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold" style={{ color: 'var(--arcade-paper-dim)' }}>{stat.icon} {stat.name}</span>
+                      <span className="font-mono text-[10px] score-readout" style={{ color: stat.barColor }}>{stat.value}</span>
+                    </div>
+                    <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(0,0,0,0.4)', border: '1px solid var(--obs-glass-8)' }}>
+                      <div className="h-full rounded-full transition-all duration-300" style={{ width: `${Math.min(100, (stat.value / 200) * 100)}%`, background: stat.barColor, boxShadow: `0 0 8px ${stat.barColor}` }} />
+                    </div>
+                  </div>
                 ))}
-              </tbody>
-            </table>
-          </div>
-          <div className="flex items-center gap-4 mt-4 text-xs font-mono font-bold text-gray-500">
-            <div className="flex items-center gap-1.5">
-              <div className="w-4 h-4 bg-accent-pink border border-black rounded" />
-              <span>Completed</span>
+              </div>
             </div>
-            <div className="flex items-center gap-1.5">
-              <div className="w-4 h-4 bg-white border border-black rounded" />
-              <span>Incomplete</span>
+
+            {habits.map(habit => {
+              const log = getLogForToday(habit.id);
+              const streak = calculateHabitStreak(habit, habitLogs);
+              const bestStreak = calculateBestStreak(habit, habitLogs);
+              const { done: weekDone, daysElapsed: weekElapsed } = getWeekProgress(habit);
+              const isCompleted = isHabitCompleted(habit, log);
+              const last5 = getLast5Days();
+
+              return (
+                <div key={habit.id} className="cabinet cabinet--playing" style={{ '--marquee-color': 'var(--arcade-green)' } as React.CSSProperties}>
+                  <div className="cabinet-marquee">
+                    <span className="cabinet-led" aria-hidden="true" />
+                    <span className="cabinet-marquee-title min-w-0 truncate">{habit.icon} {habit.name}</span>
+                    <span className="ml-auto flex items-center gap-2 shrink-0">
+                      {/* Weekly rhythm ring — stat-tone stroke, days done this week */}
+                      <div
+                        className="progress-ring"
+                        role="img"
+                        aria-label={`${weekDone} of ${weekElapsed} days completed this week`}
+                        title={`${weekDone}/${weekElapsed} days this week`}
+                        style={{ '--ring-progress': weekElapsed > 0 ? weekDone / weekElapsed : 0, '--ring-color': statColor[habit.stat] } as React.CSSProperties}
+                      >
+                        <span>{weekDone}</span>
+                      </div>
+                      <span className="font-mono text-[9px]" style={{ color: 'var(--arcade-paper-disabled)' }} title={`Longest streak ever: ${bestStreak} days`}>
+                        best {bestStreak}
+                      </span>
+                      <span className={`font-mono text-[10px] chip ${streak >= 7 ? 'chip--aurora' : isCompleted ? 'chip--teal' : ''}`}>
+                        🔥 {streak} streak
+                      </span>
+                    </span>
+                  </div>
+                  <div className="cabinet-screen !p-4">
+                    {/* Habit Controls — by type */}
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                      <div className="flex-1 flex items-center gap-2">
+                        {habit.type === 'checkbox' && (
+                          <button
+                            type="button"
+                            onClick={(e) => { toggleHabit(habit.id, todayStr); if (!isCompleted) triggerFloatingXP(e, habit.xp, habit.stat); }}
+                            className={`insert-coin !py-2 !px-4 !text-xs ${isCompleted ? '!bg-arcade-green !border-arcade-green' : ''}`}
+                            aria-pressed={isCompleted}
+                          >
+                            <span className="coin-slot" aria-hidden="true" />
+                            {isCompleted ? 'Checked in' : 'Check in'}
+                          </button>
+                        )}
+                        {habit.type === 'counter' && (
+                          <div className="flex items-center gap-2">
+                            <button type="button" onClick={() => { incrementCounterHabit(habit.id, todayStr, -1); }} className="btn-ghost !py-1.5 !px-3" aria-label={`Decrease ${habit.name}`}>−</button>
+                            <span className="score-readout text-lg min-w-[3ch] text-center" style={{ color: 'var(--arcade-gold)' }}>{Number(log?.value) || 0}</span>
+                            <button type="button" onClick={(e) => { incrementCounterHabit(habit.id, todayStr, 1); triggerFloatingXP(e, habit.xp, habit.stat); }} className="btn-ghost !py-1.5 !px-3" aria-label={`Increase ${habit.name}`}>+</button>
+                          </div>
+                        )}
+                        {habit.type === 'numeric' && (
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-[10px]" style={{ color: 'var(--arcade-paper-muted)' }}>Value</span>
+                            <input
+                              type="number"
+                              value={Number(log?.value) || ''}
+                              onChange={e => setNumericHabit(habit.id, todayStr, Number(e.target.value) || 0)}
+                              className="arcade-input !py-1.5 !w-24 !text-sm"
+                              placeholder="0"
+                              aria-label={`${habit.name} value`}
+                            />
+                          </div>
+                        )}
+                        {habit.type === 'mood' && (
+                          <div className="flex gap-1.5" role="group" aria-label={`${habit.name} mood`}>
+                            {['😞', '😐', '🙂', '😄'].map(emoji => (
+                              <button
+                                key={emoji}
+                                type="button"
+                                onClick={(e) => { const isCurrent = log?.value === emoji; setMoodHabit(habit.id, todayStr, isCurrent ? '' : emoji); if (!isCurrent) triggerFloatingXP(e, habit.xp, habit.stat); }}
+                                className={`w-10 h-10 rounded-lg text-lg cursor-pointer transition hover:scale-110 ${log?.value === emoji ? 'chip chip--magenta' : 'chip'}`}
+                                aria-label={`Set mood to ${emoji}`}
+                                aria-pressed={log?.value === emoji}
+                              >
+                                {emoji}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                        {habit.type === 'energy' && (
+                          <div className="flex gap-1.5" role="group" aria-label={`${habit.name} energy level`}>
+                            {['low', 'med', 'high'].map(level => (
+                              <button
+                                key={level}
+                                type="button"
+                                onClick={(e) => { const isCurrent = log?.value === level; setEnergyHabit(habit.id, todayStr, isCurrent ? '' : level); if (!isCurrent) triggerFloatingXP(e, habit.xp, habit.stat); }}
+                                className={`px-3 py-2 rounded-lg text-xs font-bold font-mono cursor-pointer transition hover:scale-105 uppercase ${log?.value === level ? 'chip chip--aurora' : 'chip'}`}
+                                aria-label={`Set energy to ${level}`}
+                                aria-pressed={log?.value === level}
+                              >
+                                {level}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="font-mono text-[10px] chip" style={{ color: 'var(--arcade-gold)' }}>+{habit.xp} XP</span>
+                        <span className="font-mono text-[10px]" style={{ color: 'var(--arcade-paper-muted)' }}>{habit.stat}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteHabit(habit)}
+                          className="icon-button icon-button-small hover:!text-danger"
+                          aria-label={`Delete ${habit.name}`}
+                          title="Delete habit"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Week strip */}
+                    <div className="mt-3 pt-3 flex items-end gap-1.5" style={{ borderTop: '1px solid var(--obs-glass-7)' }} aria-label="Last 5 days">
+                      {last5.map(day => {
+                        const dayLog = habitLogs.find(l => l.habit_id === habit.id && l.date === day.date);
+                        const done = isHabitCompleted(habit, dayLog);
+                        return (
+                          <button
+                            key={day.date}
+                            type="button"
+                            onClick={() => toggleHabit(habit.id, day.date)}
+                            className="flex-1 flex flex-col items-center gap-1 rounded-md py-1.5 cursor-pointer transition hover:scale-105"
+                            style={{ background: done ? 'rgba(61,220,132,0.1)' : 'rgba(242,242,242,0.03)', border: `1px solid ${done ? 'rgba(61,220,132,0.3)' : 'var(--obs-glass-7)'}` }}
+                            aria-label={`Toggle ${habit.name} on ${day.date}`}
+                            aria-pressed={done}
+                          >
+                            <span className="font-mono text-[9px]" style={{ color: done ? 'var(--arcade-green)' : 'var(--arcade-paper-muted)' }}>{day.label}</span>
+                            <span className="w-4 h-4 rounded-sm" style={{ background: done ? 'var(--arcade-green)' : 'transparent', border: done ? 'none' : '1px solid rgba(242,242,242,0.2)', boxShadow: done ? '0 0 6px var(--arcade-green)' : 'none' }} aria-hidden="true" />
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </>
+        )}
+      </div>
+
+      {/* Undo toast for deletes */}
+      {pendingDelete && (
+        <UndoToast
+          message={`"${pendingDelete.habit.name}" removing — tap Undo to keep`}
+          onUndo={undoDeleteHabit}
+        />
+      )}
+
+      {/* Month view */}
+      {viewMode === 'month' && habits.length > 0 && (
+        <div className="cabinet cabinet--off z-10" style={{ '--marquee-color': 'var(--arcade-cobalt)' } as React.CSSProperties}>
+          <div className="cabinet-marquee">
+            <span className="cabinet-led" aria-hidden="true" />
+            <span className="cabinet-marquee-title">Month grid</span>
+          </div>
+          <div className="cabinet-screen !p-4">
+            <div className="grid grid-cols-7 gap-1.5">
+              {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => (
+                <span key={i} className="text-center font-mono text-[9px]" style={{ color: 'var(--arcade-paper-disabled)' }}>{d}</span>
+              ))}
+              {daysInMonth.map(dateStr => {
+                const isToday = dateStr === todayStr;
+                const completedCount = habits.filter(h => isHabitCompleted(h, habitLogs.find(l => l.habit_id === h.id && l.date === dateStr))).length;
+                const pct = habits.length > 0 ? Math.round((completedCount / habits.length) * 100) : 0;
+                return (
+                  <div
+                    key={dateStr}
+                    className={`aspect-square rounded-md flex items-center justify-center text-[10px] font-mono font-bold cursor-default ${isToday ? 'chip chip--aurora' : ''}`}
+                    style={{
+                      background: pct >= 80 ? 'rgba(61,220,132,0.25)' : pct >= 40 ? 'rgba(139, 92, 246,0.18)' : pct > 0 ? 'rgba(63,123,255,0.14)' : 'rgba(242,242,242,0.03)',
+                      border: `1px solid ${isToday ? 'rgba(139, 92, 246,0.5)' : 'rgba(242,242,242,0.06)'}`,
+                      boxShadow: isToday ? '0 0 10px rgba(139, 92, 246,0.25)' : 'none',
+                      color: isToday ? 'var(--arcade-gold)' : pct > 0 ? 'var(--arcade-paper-dim)' : 'var(--arcade-paper-disabled)',
+                    }}
+                    title={`${dateStr} — ${completedCount}/${habits.length} habits (${pct}%)`}
+                  >
+                    {Number(dateStr.slice(8))}
+                  </div>
+                );
+              })}
             </div>
           </div>
-        </section>
+        </div>
       )}
     </div>
   );

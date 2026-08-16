@@ -49,7 +49,7 @@ export interface JournalEntry {
   date: string; // YYYY-MM-DD
   highlight: string;
   notes: string;
-  mood: '😞' | '😐' | '🙂' | '';
+  mood: '😞' | '😐' | '🙂' | '😄' | '';
   quote_id: string;
   quote_text?: string;
   quote_author?: string;

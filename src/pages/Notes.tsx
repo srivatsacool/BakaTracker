@@ -8,6 +8,7 @@ import {
   Copy,
   Archive,
   RotateCcw,
+  Sparkles,
   Pencil,
   Check,
   X,
@@ -17,6 +18,8 @@ import {
   PenTool,
 } from 'lucide-react';
 import { useApiClient } from '../api/authFetch';
+import { useAuth } from '../features/auth';
+import { authConfig } from '../features/auth/config';
 import {
   listNotebooks,
   createNotebook,
@@ -39,8 +42,18 @@ function formatDate(iso: string | null): string {
     + ', ' + d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
 }
 
+/**
+ * Notes — the sketch booth. Notebooks of Excalidraw pages, with the full
+ * page lifecycle: create, rename, duplicate, archive, restore.
+ */
 export const Notes: React.FC = () => {
   const apiClient = useApiClient();
+  const { user, login } = useAuth();
+  // Guests have no backend account — Notes lives on your own instance. The
+  // demo shows a designed attract state instead of firing REST (which would
+  // 401 with an empty token): see the isGuest render branch below.
+  const isGuest = user?.provider === 'guest';
+  const canConvert = Boolean(authConfig.domain && authConfig.clientId);
 
   const [notebooks, setNotebooks] = useState<Notebook[] | null>(null);
   const [pagesByNb, setPagesByNb] = useState<Record<string, Page[]>>({});
@@ -58,15 +71,17 @@ export const Notes: React.FC = () => {
   const [renameInput, setRenameInput] = useState<HTMLInputElement | null>(null);
 
   const loadNotebooks = useCallback(async () => {
+    if (isGuest) return;
     try {
       setNotebooks(await listNotebooks(apiClient));
     } catch (err) {
       setLoadError(err instanceof Error ? err.message : 'Could not load notebooks.');
     }
-  }, [apiClient]);
+  }, [apiClient, isGuest]);
 
   const loadPages = useCallback(
     async (nbId: string) => {
+      if (isGuest) return;
       try {
         const pages = await listPages(apiClient, nbId);
         setPagesByNb(prev => ({ ...prev, [nbId]: pages }));
@@ -74,10 +89,11 @@ export const Notes: React.FC = () => {
         setLoadError(err instanceof Error ? err.message : 'Could not load pages.');
       }
     },
-    [apiClient],
+    [apiClient, isGuest],
   );
 
   useEffect(() => {
+    if (isGuest) return;
     let cancelled = false;
     (async () => {
       try {
@@ -92,7 +108,7 @@ export const Notes: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [apiClient]);
+  }, [apiClient, isGuest]);
 
   const runBusy = async (id: string, fn: () => Promise<void>) => {
     setBusy(true);
@@ -207,11 +223,10 @@ export const Notes: React.FC = () => {
     return (
       <li
         key={page.id}
-        className={`group flex items-center gap-2 rounded-lg border-2 px-2.5 py-2 transition ${
-          archived
-            ? 'border-border-primary bg-bg-primary/50 opacity-60'
-            : 'border-border-primary bg-surface shadow-gumroad-sm'
+        className={`group flex items-center gap-2 rounded-lg px-2.5 py-2 transition border ${
+          archived ? 'opacity-60' : ''
         }`}
+        style={{ borderColor: archived ? 'rgba(242,242,242,0.06)' : 'rgba(242,242,242,0.1)', background: archived ? 'rgba(242,242,242,0.02)' : 'rgba(242,242,242,0.04)' }}
       >
         {isRenaming ? (
           <form
@@ -226,75 +241,77 @@ export const Notes: React.FC = () => {
               value={renameValue}
               onChange={e => setRenameValue(e.target.value)}
               onBlur={() => void commitRename(page)}
-              className="w-full min-w-0 flex-1 rounded-md border-2 border-border-primary bg-bg-primary px-2 py-1 font-mono text-xs font-bold focus:outline-none focus:border-accent-pink"
+              className="w-full min-w-0 flex-1 rounded-md px-2 py-1 font-mono text-xs font-bold arcade-input !py-1.5"
               maxLength={300}
               autoFocus
             />
-            <button type="submit" aria-label="Save name" className="p-1 text-green-600">
-              <Check className="h-4 w-4" />
+            <button type="submit" aria-label="Save name" className="p-1 cursor-pointer" style={{ color: 'var(--arcade-green)' }}>
+              <Check className="w-4 h-4" />
             </button>
             <button
               type="button"
               aria-label="Cancel rename"
               onClick={() => setRenamingPage(null)}
-              className="p-1 text-gray-400"
+              className="p-1 cursor-pointer"
+              style={{ color: 'var(--arcade-paper-muted)' }}
             >
-              <X className="h-4 w-4" />
+              <X className="w-4 h-4" />
             </button>
           </form>
         ) : (
           <>
             {page.kind === 'excalidraw' ? (
-              <PenTool className="h-4 w-4 shrink-0 text-accent-pink" />
+              <PenTool className="w-4 h-4 shrink-0" style={{ color: 'var(--arcade-magenta)' }} aria-hidden="true" />
             ) : (
-              <FileText className="h-4 w-4 shrink-0 text-gray-400" />
+              <FileText className="w-4 h-4 shrink-0" style={{ color: 'var(--arcade-paper-muted)' }} aria-hidden="true" />
             )}
             <Link
               to={`/notes/${page.id}`}
-              className="min-w-0 flex-1 truncate font-mono text-xs font-bold hover:text-accent-pink"
+              className="min-w-0 flex-1 truncate font-mono text-xs font-bold no-underline hover:text-arcade-magenta"
+              style={{ color: 'var(--arcade-paper)' }}
             >
               {page.title || 'Untitled'}
             </Link>
-            <span className="hidden shrink-0 font-mono text-[10px] font-bold text-gray-400 sm:inline">
+            <span className="hidden shrink-0 font-mono text-[10px] font-bold sm:inline" style={{ color: 'var(--arcade-paper-muted)' }}>
               {formatDate(page.updated_at)}
             </span>
             {isBusy ? (
-              <Loader2 className="h-4 w-4 shrink-0 animate-spin text-accent-pink" />
+              <Loader2 className="w-4 h-4 shrink-0 animate-spin" style={{ color: 'var(--arcade-magenta)' }} aria-hidden="true" />
             ) : (
-              <span className="flex shrink-0 items-center gap-0.5 sm:opacity-0 sm:transition sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 sm:group-focus-visible:opacity-100">
+              <span className="flex shrink-0 items-center gap-0.5 sm:opacity-0 sm:transition sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 sm:group-focus-visible:opacity-100" style={{ opacity: 0 }}>
                 <button
                   type="button"
                   aria-label="Rename page"
                   onClick={() => startRename(page)}
-                  className="rounded p-1.5 hover:bg-bg-primary"
+                  className="icon-button icon-button-small"
                 >
-                  <Pencil className="h-3.5 w-3.5" />
+                  <Pencil className="w-3.5 h-3.5" />
                 </button>
                 <button
                   type="button"
                   aria-label="Duplicate page"
                   onClick={() => void handleDuplicatePage(page)}
-                  className="rounded p-1.5 hover:bg-bg-primary"
+                  className="icon-button icon-button-small"
                 >
-                  <Copy className="h-3.5 w-3.5" />
+                  <Copy className="w-3.5 h-3.5" />
                 </button>
                 {archived ? (
                   <button
                     type="button"
                     aria-label="Restore page"
                     onClick={() => void handleRestorePage(page)}
-                    className="rounded p-1.5 hover:bg-bg-primary"
+                    className="icon-button icon-button-small"
                   >
-                    <RotateCcw className="h-3.5 w-3.5" />
+                    <RotateCcw className="w-3.5 h-3.5" />
                   </button>
                 ) : (
                   <button
                     type="button"
                     aria-label="Archive page"
                     onClick={() => void handleArchivePage(page)}
-                    className="rounded p-1.5 hover:bg-bg-primary"
+                    className="icon-button icon-button-small"
                   >
-                    <Archive className="h-3.5 w-3.5" />
+                    <Archive className="w-3.5 h-3.5" />
                   </button>
                 )}
               </span>
@@ -309,68 +326,101 @@ export const Notes: React.FC = () => {
     <div className="mx-auto max-w-4xl">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <NotebookPen className="h-7 w-7 text-accent-pink" />
-          <h1 className="m-0 text-2xl font-black">Notebooks</h1>
+          <NotebookPen className="w-6 h-6" style={{ color: 'var(--arcade-magenta)' }} aria-hidden="true" />
+          <h1 className="marquee-title m-0 text-2xl" style={{ color: 'var(--arcade-paper)' }}>Notebooks</h1>
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setShowArchived(s => !s)}
-            className={`flex items-center gap-1.5 rounded-lg border-2 border-border-primary px-3 py-1.5 font-mono text-xs font-bold shadow-gumroad-sm transition hover:translate-x-[1px] hover:translate-y-[1px] ${
-              showArchived ? 'bg-accent-pink text-white' : 'bg-surface'
-            }`}
-          >
-            <Archive className="h-3.5 w-3.5" />
-            {showArchived ? 'Hide archived' : 'Show archived'}
-          </button>
-          <button
-            type="button"
-            onClick={() => setCreatingNotebook(true)}
-            className="flex items-center gap-1.5 rounded-lg border-2 border-border-primary bg-accent-pink px-3 py-1.5 font-mono text-xs font-bold text-white shadow-gumroad-sm transition hover:translate-x-[1px] hover:translate-y-[1px]"
-          >
-            <Plus className="h-3.5 w-3.5" />
-            New notebook
-          </button>
-        </div>
+        {!isGuest && (
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShowArchived(s => !s)}
+              className={`btn-ghost !text-xs ${showArchived ? '!text-arcade-gold' : ''}`}
+            >
+              <Archive className="w-3.5 h-3.5" aria-hidden="true" />
+              {showArchived ? 'Hide archived' : 'Show archived'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setCreatingNotebook(true)}
+              className="insert-coin !py-2 !px-3 !text-xs"
+            >
+              <Plus className="w-3.5 h-3.5" aria-hidden="true" />
+              New notebook
+            </button>
+          </div>
+        )}
       </div>
 
-      {loadError && (
-        <div className="neo-card mb-6 p-4">
-          <p className="m-0 font-mono text-xs font-bold text-red-600">{loadError}</p>
-          <button
-            type="button"
-            onClick={() => void loadNotebooks()}
-            className="mt-2 rounded-lg border-2 border-border-primary bg-surface px-3 py-1 font-mono text-xs font-bold shadow-gumroad-sm"
-          >
-            Retry
-          </button>
+      {isGuest ? (
+        /* Guest attract state (UX gap #2): guests have no backend account, so
+           Notebooks/Pages REST would 401. Instead of a raw error cabinet, the
+           demo hands over to a designed conversion surface — same language as
+           the guest UserMenu ("Create your own BakaTracker"). */
+        <div className="notes-guest-attract">
+          <div className="attract-state p-10">
+            <NotebookPen className="mx-auto mb-3 w-8 h-8" style={{ color: 'var(--arcade-magenta)' }} aria-hidden="true" />
+            <div className="attract-dots" aria-hidden="true"><span /><span /><span /></div>
+            <h3>Notes live on your own instance</h3>
+            <p>
+              Sketches autosave to your BakaTracker — and this demo&apos;s canvas stays right here
+              on this device. Create your own instance to keep every drawing in your own cabinet.
+            </p>
+            {canConvert ? (
+              <button
+                type="button"
+                onClick={() => void login()}
+                className="insert-coin mt-3 !text-xs"
+              >
+                <Sparkles className="w-3.5 h-3.5" aria-hidden="true" />
+                Create your own BakaTracker
+              </button>
+            ) : (
+              <p>
+                Sign-in is unavailable right now — drawings stay on this device.
+              </p>
+            )}
+          </div>
         </div>
-      )}
+      ) : (
+        <>
+          {loadError && (
+            <div className="cabinet cabinet--ooo mb-6 p-4">
+              <p className="m-0 font-mono text-xs font-bold" style={{ color: 'var(--arcade-red)' }}>{loadError}</p>
+              <button
+                type="button"
+                onClick={() => void loadNotebooks()}
+                className="btn-ghost !text-xs mt-2"
+              >
+                Retry
+              </button>
+            </div>
+          )}
 
       {creatingNotebook && (
         <form
           onSubmit={e => void handleCreateNotebook(e)}
-          className="neo-card mb-6 flex items-center gap-2 p-4"
+          className="cabinet cabinet--playing mb-6 flex items-center gap-2 p-4 animate-fade-in"
+          style={{ '--marquee-color': 'var(--arcade-magenta)' } as React.CSSProperties}
         >
           <input
             value={newNbName}
             onChange={e => setNewNbName(e.target.value)}
             placeholder="Notebook name…"
             autoFocus
-            className="min-w-0 flex-1 rounded-lg border-2 border-border-primary bg-bg-primary px-3 py-1.5 font-mono text-xs font-bold focus:outline-none focus:border-accent-pink"
+            className="min-w-0 flex-1 arcade-input !py-2 !text-xs"
             maxLength={60}
           />
           <button
             type="submit"
             disabled={busy || !newNbName.trim()}
-            className="rounded-lg border-2 border-border-primary bg-accent-pink px-3 py-1.5 font-mono text-xs font-bold text-white shadow-gumroad-sm transition hover:translate-x-[1px] hover:translate-y-[1px] disabled:opacity-50"
+            className="insert-coin !py-2 !px-3 !text-xs disabled:opacity-50"
           >
-            {busy && busyId === 'nb:new' ? <Loader2 className="inline h-3.5 w-3.5 animate-spin" /> : 'Create'}
+            {busy && busyId === 'nb:new' ? <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" /> : 'Create'}
           </button>
           <button
             type="button"
             onClick={() => setCreatingNotebook(false)}
-            className="rounded-lg border-2 border-border-primary bg-surface px-3 py-1.5 font-mono text-xs font-bold shadow-gumroad-sm"
+            className="btn-ghost !text-xs"
           >
             Cancel
           </button>
@@ -378,23 +428,24 @@ export const Notes: React.FC = () => {
       )}
 
       {notebooks === null ? (
-        <div className="neo-card p-8 text-center">
-          <Loader2 className="mx-auto mb-2 h-6 w-6 animate-spin text-accent-pink" />
-          <p className="m-0 font-mono text-xs font-bold text-gray-500">Loading notebooks…</p>
+        <div className="cabinet cabinet--attract p-8 text-center">
+          <Loader2 className="mx-auto mb-2 w-6 h-6 animate-spin" style={{ color: 'var(--arcade-magenta)' }} aria-hidden="true" />
+          <p className="m-0 font-mono text-xs font-bold" style={{ color: 'var(--arcade-paper-muted)' }}>Loading notebooks…</p>
         </div>
       ) : notebooks.length === 0 ? (
-        <div className="neo-card p-10 text-center">
-          <NotebookPen className="mx-auto mb-3 h-8 w-8 text-accent-pink" />
-          <p className="m-0 text-lg font-black">No notebooks yet</p>
-          <p className="mx-auto mt-1 max-w-sm font-mono text-xs font-bold text-gray-500">
+        <div className="attract-state p-10">
+          <NotebookPen className="mx-auto mb-3 w-8 h-8" style={{ color: 'var(--arcade-magenta)' }} aria-hidden="true" />
+          <div className="attract-dots" aria-hidden="true"><span /><span /><span /></div>
+          <h3>No notebooks yet</h3>
+          <p className="mx-auto max-w-sm">
             Create a notebook to start sketching — drawings autosave to your BakaTracker.
           </p>
           <button
             type="button"
             onClick={() => setCreatingNotebook(true)}
-            className="mt-4 flex items-center gap-1.5 rounded-lg border-2 border-border-primary bg-accent-pink px-3 py-1.5 font-mono text-xs font-bold text-white shadow-gumroad-sm transition hover:translate-x-[1px] hover:translate-y-[1px]"
+            className="insert-coin mt-3 !text-xs"
           >
-            <Plus className="h-3.5 w-3.5" />
+            <Plus className="w-3.5 h-3.5" aria-hidden="true" />
             New notebook
           </button>
         </div>
@@ -407,19 +458,19 @@ export const Notes: React.FC = () => {
             const archivedCount = (pages ?? []).filter(p => p.archived_at !== null).length;
 
             return (
-              <section key={nb.id} className="neo-card overflow-hidden">
-                <div className="flex items-center gap-2 border-b-2 border-border-primary bg-surface px-4 py-3">
+              <section key={nb.id} className="cabinet cabinet--off overflow-hidden" style={{ '--marquee-color': 'var(--arcade-magenta)' } as React.CSSProperties}>
+                <div className="flex items-center gap-2 px-4 py-3" style={{ borderBottom: '1px solid var(--obs-glass-8)', background: 'rgba(242,242,242,0.03)' }}>
                   <button
                     type="button"
                     onClick={() => setOpenNb(prev => ({ ...prev, [nb.id]: !prev[nb.id] }))}
                     aria-label={open ? 'Collapse notebook' : 'Expand notebook'}
-                    className="p-1"
+                    className="icon-button icon-button-small"
                   >
-                    {open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                    {open ? <ChevronDown className="w-4 h-4" aria-hidden="true" /> : <ChevronRight className="w-4 h-4" aria-hidden="true" />}
                   </button>
-                  <h2 className="m-0 min-w-0 flex-1 truncate text-base font-black">{nb.name}</h2>
+                  <h2 className="m-0 min-w-0 flex-1 truncate marquee-title text-base" style={{ color: 'var(--arcade-paper)' }}>{nb.name}</h2>
                   {pages !== undefined && (
-                    <span className="shrink-0 font-mono text-[10px] font-bold text-gray-400">
+                    <span className="shrink-0 font-mono text-[10px] font-bold" style={{ color: 'var(--arcade-paper-muted)' }}>
                       {visible.length} page{visible.length === 1 ? '' : 's'}
                       {archivedCount > 0 && ` · ${archivedCount} archived`}
                     </span>
@@ -428,9 +479,9 @@ export const Notes: React.FC = () => {
                     type="button"
                     onClick={() => void handleCreatePage(nb)}
                     disabled={busy}
-                    className="flex shrink-0 items-center gap-1 rounded-lg border-2 border-border-primary bg-surface px-2 py-1 font-mono text-[10px] font-bold shadow-gumroad-sm transition hover:translate-x-[1px] hover:translate-y-[1px] disabled:opacity-50"
+                    className="btn-ghost !py-1 !px-2 !text-[10px] disabled:opacity-50"
                   >
-                    <Plus className="h-3 w-3" />
+                    <Plus className="w-3 h-3" aria-hidden="true" />
                     Page
                   </button>
                   <button
@@ -438,22 +489,22 @@ export const Notes: React.FC = () => {
                     onClick={() => void handleDeleteNotebook(nb)}
                     disabled={busy}
                     aria-label={`Delete ${nb.name}`}
-                    className="shrink-0 rounded-lg border-2 border-border-primary bg-surface p-1.5 text-gray-500 shadow-gumroad-sm transition hover:translate-x-[1px] hover:translate-y-[1px] hover:text-red-500 disabled:opacity-50"
+                    className="icon-button icon-button-small hover:!text-danger"
                   >
-                    <Trash2 className="h-3.5 w-3.5" />
+                    <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
 
                 {open && (
-                  <div className="bg-bg-primary px-3 py-3">
+                  <div className="px-3 py-3">
                     {pages === undefined ? (
                       <PageListLoader onReady={() => void loadPages(nb.id)} />
                     ) : visible.length === 0 ? (
-                      <p className="m-0 py-2 text-center font-mono text-xs font-bold text-gray-400">
+                      <p className="m-0 py-2 text-center font-mono text-xs font-bold" style={{ color: 'var(--arcade-paper-muted)' }}>
                         {showArchived ? 'Nothing here.' : 'No pages yet — add one above.'}
                       </p>
                     ) : (
-                      <ul className="flex flex-col gap-2">{visible.map(pageRow)}</ul>
+                      <ul className="flex flex-col gap-2 m-0 p-0 list-none">{visible.map(pageRow)}</ul>
                     )}
                   </div>
                 )}
@@ -461,6 +512,8 @@ export const Notes: React.FC = () => {
             );
           })}
         </div>
+      )}
+        </>
       )}
     </div>
   );
@@ -475,8 +528,8 @@ const PageListLoader: React.FC<{ onReady: () => void }> = ({ onReady }) => {
     onReady();
   }, [onReady]);
   return (
-    <p className="m-0 py-2 text-center font-mono text-xs font-bold text-gray-400">
-      <Loader2 className="mr-1 inline h-3.5 w-3.5 animate-spin" /> Loading pages…
+    <p className="m-0 py-2 text-center font-mono text-xs font-bold" style={{ color: 'var(--arcade-paper-muted)' }}>
+      <Loader2 className="mr-1 inline w-3.5 h-3.5 animate-spin" aria-hidden="true" /> Loading pages…
     </p>
   );
 };

@@ -17,9 +17,9 @@ export default defineConfig({
     manifest: {
       name: 'BakaTracker',
       short_name: 'BakaTracker',
-      description: 'ADHD-friendly minimalist life RPG planner',
-      theme_color: '#050308',
-      background_color: '#050308',
+      description: 'ADHD-friendly minimalist life RPG planner — your life as a coin-op arcade',
+      theme_color: '#060714',
+      background_color: '#060714',
       display: 'standalone',
       orientation: 'portrait',
       icons: [

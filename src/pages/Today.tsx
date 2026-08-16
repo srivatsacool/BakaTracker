@@ -1,16 +1,44 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { useStore } from '../store/useStore';
 import type { Task, TaskStatus } from '../types';
-import { ChevronLeft, ChevronRight, Star, Calendar, Award, CheckSquare, Square } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Award, CheckSquare, Square, Flame } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { calculateDailyScore, isHabitCompleted, getTodayDateString } from '../lib/utils';
+import { calculateHabitStreak } from '../services/habits/calculateHabitStreak';
 
+/**
+ * Today — the daily cockpit. One lit pane: the starred quests board.
+ * Around it, real-data modules (score, habits, journal, XP, priority quest)
+ * drawn straight from the store — nothing fabricated. Completing a quest
+ * lights the pane (the one authored moment).
+ */
 export const Today: React.FC = () => {
-  const { tasks, moveTask, toggleTodayTask } = useStore();
+  const { tasks, habits, habitLogs, journal, stats, settings, moveTask } = useStore();
 
   const todayTasks = tasks.filter(t => t.today);
   const activeTasks = todayTasks.filter(t => t.status !== 'done');
   const doingTasks = todayTasks.filter(t => t.status === 'doing');
   const doneTasks = todayTasks.filter(t => t.status === 'done');
+
+  // --- Cockpit modules — all derived from real store slices ---
+  const todayStr = getTodayDateString();
+  const activeHabits = habits.filter(h => h.active);
+  const todayLogs = habitLogs.filter(l => l.date === todayStr);
+  const habitsDone = activeHabits.filter(h => isHabitCompleted(h, todayLogs.find(l => l.habit_id === h.id))).length;
+  const dailyScore = calculateDailyScore(todayStr, habits, habitLogs, tasks, journal);
+  const todayJournal = journal.find(j => j.date === todayStr);
+  const journalLogged = !!(todayJournal && todayJournal.highlight.trim());
+  const topStreak = activeHabits
+    .map(h => ({ habit: h, streak: calculateHabitStreak(h, habitLogs) }))
+    .sort((a, b) => b.streak - a.streak)[0];
+  const xpPerLevel = Math.max(1, settings.xp_per_level || 100);
+  const xpProgress = Math.min(100, Math.max(0, (stats.xp / xpPerLevel) * 100));
+  const xpToNext = Math.max(0, xpPerLevel - stats.xp);
+  const openQuests = todayTasks.filter(t => t.status !== 'done');
+  // Priority quest: the first quest in Doing, else the highest-XP open quest.
+  const priorityQuest = openQuests.find(t => t.status === 'doing') || [...openQuests].sort((a, b) => b.xp - a.xp)[0];
+  const scoreTone = dailyScore >= 80 ? 'var(--arcade-green)' : dailyScore >= 40 ? 'var(--arcade-gold)' : 'var(--arcade-red)';
+  const hasAnyData = activeHabits.length > 0 || todayTasks.length > 0 || journal.length > 0;
 
   const [activeMobileTab, setActiveMobileTab] = useState<'today' | 'doing' | 'done'>('today');
 
@@ -22,6 +50,11 @@ export const Today: React.FC = () => {
     y: number;
   }
   const [floatingXPs, setFloatingXPs] = useState<FloatingXP[]>([]);
+  const [starBursts, setStarBursts] = useState<{ id: number; x: number; y: number }[]>([]);
+  const [paneLit, setPaneLit] = useState(false);
+  // Completion-moment ids (react-hooks/purity: Date.now()/Math.random() are
+  // banned in component scope, so ids come from a stable counter).
+  const fxIdRef = useRef(0);
 
   const triggerFloatingXP = (e: React.MouseEvent | null, xp: number, statName: string) => {
     let x = window.innerWidth / 2;
@@ -37,7 +70,7 @@ export const Today: React.FC = () => {
     }
 
     const newXP = {
-      id: Date.now() + Math.random(),
+      id: ++fxIdRef.current,
       xp,
       statName,
       x,
@@ -47,6 +80,26 @@ export const Today: React.FC = () => {
     setTimeout(() => {
       setFloatingXPs(prev => prev.filter(item => item.id !== newXP.id));
     }, 1000);
+  };
+
+  /** The one authored moment: completing a quest lights the pane and a star joins the night. */
+  const lightThePane = (e: React.MouseEvent | null, xp: number, statName: string) => {
+    triggerFloatingXP(e, xp, statName);
+    // pane lights
+    setPaneLit(false);
+    requestAnimationFrame(() => setPaneLit(true));
+    // a star joins the night at the completion point
+    let x = window.innerWidth / 2;
+    let y = window.innerHeight / 2;
+    if (e && 'clientX' in e && e.clientX) {
+      x = e.clientX;
+      y = e.clientY;
+    }
+    const star = { id: ++fxIdRef.current, x, y };
+    setStarBursts(prev => [...prev, star]);
+    setTimeout(() => {
+      setStarBursts(prev => prev.filter(s => s.id !== star.id));
+    }, 650);
   };
 
   const shiftStatus = (task: Task, direction: 'left' | 'right', e?: React.MouseEvent) => {
@@ -80,10 +133,10 @@ export const Today: React.FC = () => {
     }
   };
 
-  const columns: { id: 'todo' | 'doing' | 'done'; label: string; bg: string; mobileTab: 'today' | 'doing' | 'done' }[] = [
-    { id: 'todo', label: 'Today\'s Focus', bg: 'bg-white', mobileTab: 'today' },
-    { id: 'doing', label: 'Doing Now', bg: 'bg-warning/5', mobileTab: 'doing' },
-    { id: 'done', label: 'Finished', bg: 'bg-success/5', mobileTab: 'done' }
+  const columns: { id: 'todo' | 'doing' | 'done'; label: string; mobileTab: 'today' | 'doing' | 'done' }[] = [
+    { id: 'todo', label: 'Today\'s Focus', mobileTab: 'today' },
+    { id: 'doing', label: 'Doing Now', mobileTab: 'doing' },
+    { id: 'done', label: 'Finished', mobileTab: 'done' }
   ];
 
   const getColumnTasks = (colId: 'todo' | 'doing' | 'done') => {
@@ -94,275 +147,456 @@ export const Today: React.FC = () => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto flex flex-col gap-6 relative">
-      {/* Floating XP Elements */}
+    <div className="max-w-4xl mx-auto flex flex-col gap-8 relative pb-12">
+      {/* Floating XP Elements — the pane-light score ticker */}
       {floatingXPs.map(item => (
         <div
           key={item.id}
-          className="fixed animate-xp-float z-[9999] pointer-events-none font-black font-mono text-xs bg-black border border-white text-accent-pink px-2 py-0.5 rounded shadow-gumroad-sm flex items-center gap-1"
+          className="float-xp"
           style={{ left: `${item.x}px`, top: `${item.y}px`, transform: 'translate(-50%, -50%)' }}
         >
           +{item.xp} {item.statName.toUpperCase()} XP
         </div>
       ))}
 
+      {/* Star bursts — a star joins the night on completion */}
+      {starBursts.map(star => (
+        <div
+          key={star.id}
+          className="star-join fixed z-30 pointer-events-none"
+          style={{ left: `${star.x}px`, top: `${star.y}px`, transform: 'translate(-50%, -50%)', color: 'var(--arcade-gold)', fontSize: '20px', lineHeight: 1 }}
+          aria-hidden="true"
+        >
+          ✦
+        </div>
+      ))}
+
       {/* Spotlight Backdrop Dimmer (focus helper) */}
-      {doingTasks.length > 0 && <div className="spotlight-overlay" />}
+      {doingTasks.length > 0 && (
+        <div
+          className="fixed inset-0 z-0 pointer-events-none"
+          style={{ background: 'radial-gradient(ellipse 45% 40% at 50% 45%, transparent 0%, rgba(8,7,15,0.55) 100%)' }}
+          aria-hidden="true"
+        />
+      )}
 
       {/* Page Title */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 z-10 text-text-primary">
+      <div className={`flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 z-10 ${paneLit ? 'pane-light' : ''}`}>
         <div>
-          <h2 className="text-3xl font-black tracking-tight">Today's Focus Board</h2>
-          <p className="text-xs text-gray-500 font-mono">Execution mode. No clutter, only action.</p>
+          <h2 className="marquee-title text-2xl sm:text-3xl m-0" style={{ color: 'var(--arcade-paper)' }}>Today's Focus Board</h2>
+          <p className="font-mono text-xs mt-1.5 m-0" style={{ color: 'var(--arcade-paper-muted)' }}>Execution mode. No clutter, only action.</p>
+          {/* The Day Line — one unbroken track, the running light shows where now is */}
+          <div className="day-line mt-3 max-w-md">
+            <div className="day-line-track" role="img" aria-label={`${doneTasks.length} of ${todayTasks.length} quests complete`}>
+              <div
+                className="day-line-fill"
+                style={{ '--day-line-progress': todayTasks.length > 0 ? doneTasks.length / todayTasks.length : 0 } as React.CSSProperties}
+              />
+              <div
+                className="day-line-now"
+                style={{ '--day-line-now': `${todayTasks.length > 0 ? (doneTasks.length / todayTasks.length) * 100 : 0}%` } as React.CSSProperties}
+              />
+            </div>
+            <span className="font-mono text-[10px] score-readout shrink-0" style={{ color: 'var(--arcade-gold)' }}>
+              {doneTasks.length}/{todayTasks.length}
+            </span>
+          </div>
         </div>
-        
+
         {/* Quick Celebration Widget */}
         {todayTasks.length > 0 && activeTasks.length === 0 && (
-          <div className="flex items-center gap-2 bg-success/15 border-2 border-success text-success px-4 py-2 rounded-lg font-mono font-bold text-sm shadow-gumroad-sm">
-            <Award className="w-5 h-5 animate-bounce text-success" />
-            <span>Daily Board Cleared! +10 XP</span>
+          <div className="flex items-center gap-2 px-4 py-2 rounded-lg font-mono font-bold text-sm chip chip--teal">
+            <Award className="w-5 h-5" aria-hidden="true" />
+            <span>Daily Board Cleared!</span>
           </div>
         )}
       </div>
 
+      {/* Priority Quest Callout — the machine points at the one quest to start */}
+      {priorityQuest && (
+        <section className="quest-callout z-10">
+          <span className="quest-callout-led" aria-hidden="true" />
+          <div className="quest-callout-body">
+            <span className="quest-callout-kicker">Your most important quest</span>
+            <span className="quest-callout-title">{getAreaEmoji(priorityQuest.area)} {priorityQuest.title}</span>
+            <span className="font-mono text-[10px] score-readout" style={{ color: 'var(--arcade-gold)' }}>
+              +{priorityQuest.xp} XP · {priorityQuest.area}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={(e) => {
+              moveTask(priorityQuest.id, 'done');
+              lightThePane(e, priorityQuest.xp, priorityQuest.area);
+            }}
+            className="insert-coin !py-2 !px-4 !text-xs"
+            aria-label={`Complete ${priorityQuest.title}`}
+          >
+            <CheckSquare className="w-4 h-4" aria-hidden="true" />
+            Complete
+          </button>
+        </section>
+      )}
+
       {/* Empty Board State */}
       {todayTasks.length === 0 ? (
-        <section className="neo-card p-10 bg-white text-center flex flex-col items-center gap-4 max-w-lg mx-auto mt-8 z-10 text-black">
-          <span className="text-5xl">🎯</span>
-          <h3 className="text-lg font-black leading-none">Your Board is Clear</h3>
-          <p className="text-sm text-gray-500 max-w-sm">
+        <section className="attract-state max-w-lg mx-auto mt-8 z-10">
+          <span className="text-4xl" aria-hidden="true">🎯</span>
+          <div className="attract-dots" aria-hidden="true"><span /><span /><span /></div>
+          <h3>Your Board is Clear</h3>
+          <p>
             You don't have any tasks set for today. Separate planning from execution: browse your master board and star the tasks you want to tackle today.
           </p>
-          <Link
-            to="/tasks"
-            className="neo-button mt-2 inline-flex items-center gap-2"
-          >
+          <Link to="/tasks" className="insert-coin mt-2 no-underline">
             <span>Go to Master Planner</span>
-            <ChevronRight className="w-4 h-4 text-black" />
+            <ChevronRight className="w-4 h-4" aria-hidden="true" />
           </Link>
         </section>
       ) : (
         <>
           {/* Today's Quests Checklist Panel */}
-          <section className="neo-card p-6 bg-white dark:bg-surface border-2 border-black dark:border-white z-10 text-text-primary">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b-2 border-black dark:border-white pb-3 mb-4">
-              <div>
-                <h3 className="text-lg font-black uppercase tracking-wider flex items-center gap-2">
-                  <span>Today's Quests</span>
-                </h3>
-                <p className="text-xs text-gray-500 font-mono">Quick list for rapid checking</p>
-              </div>
-
-              {/* Progress Count */}
-              <div className="flex items-center gap-3 shrink-0">
-                <span className="font-mono text-xs font-bold text-gray-600 dark:text-gray-400">Progress</span>
-                <div className="bg-bg-primary dark:bg-black/35 px-3 py-1 rounded border-2 border-black font-mono font-black text-sm text-black dark:text-white shadow-gumroad-sm">
-                  {doneTasks.length} / {todayTasks.length}
-                </div>
-              </div>
+          <section className="cabinet cabinet--playing z-10" style={{ '--marquee-color': 'var(--arcade-gold)' } as React.CSSProperties}>
+            <div className="cabinet-marquee">
+              <span className="cabinet-led" aria-hidden="true" />
+              <span className="cabinet-marquee-title">Today's Quests</span>
+              <span className="ml-auto font-mono text-[10px] score-readout" style={{ color: 'var(--arcade-gold)' }}>
+                {doneTasks.length} / {todayTasks.length}
+              </span>
             </div>
+            <div className="cabinet-screen !p-5">
+              <div className="flex flex-col gap-4">
+                {todayTasks.map(task => {
+                  const isCompleted = task.status === 'done';
+                  return (
+                    <div
+                      key={task.id}
+                      onClick={(e) => {
+                        const nextStatus = isCompleted ? 'todo' : 'done';
+                        moveTask(task.id, nextStatus);
+                        if (nextStatus === 'done') {
+                          lightThePane(e, task.xp, task.area);
+                        }
+                      }}
+                      role="button"
+                      tabIndex={0}
+                      aria-pressed={isCompleted}
+                      aria-label={`${task.title} — ${isCompleted ? 'mark as to do' : 'complete quest'}`}
+                      onKeyDown={(e) => {
+                        if (e.key !== 'Enter' && e.key !== ' ') return;
+                        e.preventDefault();
+                        const nextStatus = isCompleted ? 'todo' : 'done';
+                        moveTask(task.id, nextStatus);
+                        if (nextStatus === 'done') {
+                          lightThePane(null, task.xp, task.area);
+                        }
+                      }}
+                      className={`p-3.5 rounded-lg flex items-center gap-3 cursor-pointer select-none transition-all border ${
+                        isCompleted
+                          ? 'opacity-60'
+                          : 'hover:bg-white/5'
+                      }`}
+                      style={{
+                        background: isCompleted ? 'rgba(61,220,132,0.05)' : 'rgba(242,242,242,0.03)',
+                        borderColor: isCompleted ? 'rgba(61,220,132,0.3)' : 'rgba(242,242,242,0.1)',
+                      }}
+                    >
+                      {/* Retro Checkbox Box */}
+                      <div className="shrink-0">
+                        {isCompleted ? (
+                          <CheckSquare className="w-5 h-5" style={{ color: 'var(--arcade-green)' }} aria-hidden="true" />
+                        ) : (
+                          <Square className="w-5 h-5" style={{ color: 'var(--arcade-paper-disabled)' }} aria-hidden="true" />
+                        )}
+                      </div>
 
-            {/* Quests List */}
-            <div className="flex flex-col gap-3">
-              {todayTasks.map(task => {
-                const isCompleted = task.status === 'done';
-                return (
-                  <div
-                    key={task.id}
-                    onClick={(e) => {
-                      const nextStatus = isCompleted ? 'todo' : 'done';
-                      moveTask(task.id, nextStatus);
-                      if (nextStatus === 'done') {
-                        triggerFloatingXP(e, task.xp, task.area);
-                      }
-                    }}
-                    role="button"
-                    tabIndex={0}
-                    aria-pressed={isCompleted}
-                    aria-label={`${task.title} — ${isCompleted ? 'mark as to do' : 'complete quest'}`}
-                    onKeyDown={(e) => {
-                      if (e.key !== 'Enter' && e.key !== ' ') return;
-                      e.preventDefault();
-                      const nextStatus = isCompleted ? 'todo' : 'done';
-                      moveTask(task.id, nextStatus);
-                      if (nextStatus === 'done') {
-                        triggerFloatingXP(null, task.xp, task.area);
-                      }
-                    }}
-                    className={`p-3 border-2 rounded-lg flex items-center gap-3 cursor-pointer select-none transition-all ${
-                      isCompleted 
-                        ? 'border-success bg-success/5 dark:bg-success/5 opacity-65 line-through' 
-                        : 'border-black dark:border-white hover:bg-gray-50 dark:hover:bg-white/5 bg-white dark:bg-surface'
-                    }`}
-                  >
-                    {/* Retro Checkbox Box */}
-                    <div className="shrink-0">
-                      {isCompleted ? (
-                        <CheckSquare className="w-5 h-5 text-success fill-success/10" />
-                      ) : (
-                        <Square className="w-5 h-5 text-black dark:text-white" />
-                      )}
-                    </div>
+                      {/* Task Details */}
+                      <div className="flex-1 min-w-0">
+                        <p className={`m-0 text-sm font-bold truncate ${isCompleted ? 'line-through' : ''}`} style={{ color: isCompleted ? 'var(--arcade-paper-muted)' : 'var(--arcade-paper)' }}>
+                          {task.title}
+                        </p>
+                        <p className="m-0 font-mono text-[10px] mt-0.5" style={{ color: 'var(--arcade-paper-muted)' }}>
+                          {getAreaEmoji(task.area)} {task.area} · +{task.xp} XP
+                        </p>
+                      </div>
 
-                    <div className="flex-1 min-w-0">
-                      <p className="font-black text-sm truncate">
-                        {getAreaEmoji(task.area)} {task.title}
-                      </p>
-                    </div>
-
-                    <div className="flex items-center gap-2 shrink-0">
-                      <span className="text-[10px] font-bold font-mono bg-bg-primary dark:bg-black/35 text-gray-600 dark:text-gray-300 px-2 py-0.5 rounded border border-black/10 dark:border-white/10 text-black">
-                        +{task.xp} XP
-                      </span>
-                      <span className="text-xs capitalize font-bold font-mono text-gray-400">
-                        ({task.status === 'backlog' ? 'todo' : task.status})
+                      {/* Status */}
+                      <span className="shrink-0 font-mono text-[10px] font-bold uppercase" style={{ color: isCompleted ? 'var(--arcade-green)' : 'var(--arcade-paper-disabled)' }}>
+                        {isCompleted ? 'Done' : 'Open'}
                       </span>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Progress Bar Visualizer */}
-            <div className="w-full bg-bg-primary dark:bg-black/35 h-3 rounded-full border-2 border-black dark:border-white overflow-hidden relative mt-4">
-              <div 
-                className="bg-accent-pink h-full transition-all duration-300"
-                style={{ width: `${(doneTasks.length / todayTasks.length) * 100}%` }}
-              />
+                  );
+                })}
+              </div>
             </div>
           </section>
 
-          {/* Mobile Tab Selectors */}
-          <div className="sm:hidden flex border-2 border-black rounded-lg overflow-hidden bg-white shadow-gumroad-sm z-10 text-black">
+          {/* Kanban Columns (Desktop) */}
+          <div className="hidden md:grid grid-cols-3 gap-6 z-10">
             {columns.map(col => {
               const colTasks = getColumnTasks(col.id);
+              const isActiveTab = activeMobileTab === col.mobileTab;
               return (
-                <button
+                <section
                   key={col.id}
-                  onClick={() => setActiveMobileTab(col.mobileTab)}
-                  className={`flex-1 py-2.5 text-xs font-black font-mono text-center border-r last:border-r-0 border-black transition ${
-                    activeMobileTab === col.mobileTab ? 'bg-accent-pink text-black' : 'bg-white text-gray-500'
-                  }`}
+                  className={`cabinet ${col.id === 'done' ? 'cabinet--highscore' : 'cabinet--off'} ${isActiveTab ? '' : ''}`}
+                  style={{ '--marquee-color': col.id === 'done' ? 'var(--arcade-green)' : 'var(--arcade-cobalt)' } as React.CSSProperties}
                 >
-                  {col.label.split(' ')[0]} ({colTasks.length})
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Kanban Columns */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 min-h-[400px]">
-            {columns.map(col => {
-              const colTasks = getColumnTasks(col.id);
-              const isTabActive = activeMobileTab === col.mobileTab;
-
-              return (
-                <div
-                  key={col.id}
-                  className={`flex flex-col neo-card p-4 border-2 border-black bg-white dark:bg-surface text-text-primary ${
-                    isTabActive ? 'flex' : 'hidden sm:flex'
-                  } ${col.id === 'doing' && doingTasks.length > 0 ? 'spotlight-active' : ''}`}
-                >
-                  {/* Column Header */}
-                  <div className="flex justify-between items-center border-b-2 border-black dark:border-white pb-2 mb-4">
-                    <span className="font-black text-sm font-mono uppercase tracking-wider">{col.label}</span>
-                    <span className="bg-black text-white px-2 py-0.5 rounded font-mono text-xs font-bold border border-black shadow-gumroad-sm">
-                      {colTasks.length}
-                    </span>
+                  <div className="cabinet-marquee">
+                    <span className="cabinet-led" aria-hidden="true" />
+                    <span className="cabinet-marquee-title">{col.label}</span>
+                    <span className="ml-auto font-mono text-[10px] score-readout" style={{ color: 'var(--arcade-paper-muted)' }}>{colTasks.length}</span>
                   </div>
-
-                  {/* Tasks List */}
-                  <div className="flex flex-col gap-4 flex-1 overflow-y-auto no-scrollbar max-h-[500px]">
+                  <div className="cabinet-screen !p-4 flex flex-col gap-3 min-h-[120px]">
                     {colTasks.length === 0 ? (
-                      <div className="text-center py-12 text-gray-400 text-xs font-mono border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-lg">
-                        Empty
-                      </div>
+                      <p className="m-0 py-4 text-center font-mono text-[10px]" style={{ color: 'var(--arcade-paper-disabled)' }}>
+                        No quests here
+                      </p>
                     ) : (
                       colTasks.map(task => (
                         <div
                           key={task.id}
-                          className={`neo-card p-4 bg-white dark:bg-surface border-2 border-black dark:border-white shadow-gumroad-sm flex flex-col gap-3 relative transition-all text-text-primary ${
-                            task.status === 'done' ? 'opacity-50 line-through decoration-black dark:decoration-white decoration-2' : ''
-                          } ${
-                            task.status === 'doing' ? 'spotlight-active spotlight-pulse ring-2 ring-accent-pink' : ''
-                          }`}
+                          className="rounded-lg p-3 flex flex-col gap-2"
+                          style={{ background: 'rgba(242,242,242,0.03)', border: '1px solid var(--obs-glass-9)' }}
                         >
-                          {/* Remove from Today button */}
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              toggleTodayTask(task.id);
-                            }}
-                            className="absolute top-3 right-3 p-1 rounded-full text-amber-500 hover:text-gray-300 transition cursor-pointer"
-                            title="Remove from Today's Board"
-                          >
-                            <Star className="w-3.5 h-3.5 fill-amber-400 stroke-black dark:stroke-white" />
-                          </button>
-
-                          <div className="pr-6">
-                            <h4 className="font-black text-sm leading-snug break-words">
-                              {getAreaEmoji(task.area)} {task.title}
-                            </h4>
-                            {task.notes && (
-                              <p className="text-[11px] text-gray-500 dark:text-gray-400 font-medium mt-1 whitespace-pre-wrap break-words">
-                                {task.notes}
-                              </p>
-                            )}
-                          </div>
-
-                          {/* Metadata */}
-                          <div className="flex flex-wrap gap-1.5 items-center">
-                            <span className="text-[9px] font-bold font-mono bg-bg-primary dark:bg-black/35 text-gray-600 dark:text-gray-300 px-2 py-0.5 rounded border border-black/10 dark:border-white/10 text-black">
-                              +{task.xp} XP
-                            </span>
-                            {task.due_date && (
-                              <span className="text-[9px] font-bold font-mono bg-danger/10 text-danger px-2 py-0.5 rounded border border-danger/20 flex items-center gap-1">
-                                <Calendar className="w-2.5 h-2.5 text-danger" />
-                                {task.due_date}
-                              </span>
-                            )}
-                          </div>
-
-                          {/* Status Actions */}
-                          <div className="flex justify-between items-center border-t border-black/10 dark:border-white/10 pt-2 mt-1">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                shiftStatus(task, 'left');
-                              }}
-                              disabled={task.status === 'todo' || task.status === 'backlog'}
-                              className="p-1.5 rounded border border-black dark:border-white disabled:opacity-30 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-800 bg-white dark:bg-surface text-black dark:text-white cursor-pointer shadow-gumroad-sm hover:translate-x-[-1px] hover:translate-y-[-1px]"
-                              title="Move Left"
-                            >
-                              <ChevronLeft className="w-3.5 h-3.5" />
-                            </button>
-                            
-                            <span className="text-[10px] font-bold font-mono text-gray-400 capitalize">
-                              {task.status === 'backlog' ? 'todo' : task.status}
-                            </span>
-                            
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                shiftStatus(task, 'right', e);
-                              }}
-                              disabled={task.status === 'done'}
-                              className="p-1.5 rounded border border-black dark:border-white disabled:opacity-30 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-800 bg-white dark:bg-surface text-black dark:text-white cursor-pointer shadow-gumroad-sm hover:translate-x-[-1px] hover:translate-y-[-1px]"
-                              title="Move Right"
-                            >
-                              <ChevronRight className="w-3.5 h-3.5" />
-                            </button>
+                          <p className="m-0 text-xs font-bold" style={{ color: 'var(--arcade-paper)' }}>{task.title}</p>
+                          <div className="flex items-center justify-between">
+                            <span className="font-mono text-[9px] score-readout" style={{ color: 'var(--arcade-gold)' }}>+{task.xp} XP</span>
+                            <div className="flex gap-1">
+                              {col.id !== 'todo' && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => shiftStatus(task, 'left', e)}
+                                  className="icon-button icon-button-small"
+                                  aria-label={`Move ${task.title} left`}
+                                >
+                                  <ChevronLeft className="w-3.5 h-3.5" aria-hidden="true" />
+                                </button>
+                              )}
+                              {col.id !== 'done' && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => shiftStatus(task, 'right', e)}
+                                  className="icon-button icon-button-small"
+                                  aria-label={`Move ${task.title} right`}
+                                >
+                                  <ChevronRight className="w-3.5 h-3.5" aria-hidden="true" />
+                                </button>
+                              )}
+                            </div>
                           </div>
                         </div>
                       ))
                     )}
                   </div>
-                </div>
+                </section>
+              );
+            })}
+          </div>
+
+          {/* Mobile Column Tabs */}
+          <div className="md:hidden flex gap-2 z-10">
+            {columns.map(col => (
+              <button
+                key={col.id}
+                type="button"
+                onClick={() => setActiveMobileTab(col.mobileTab)}
+                className={`flex-1 rounded-lg px-3 py-2 font-mono text-[10px] font-bold cursor-pointer transition ${
+                  activeMobileTab === col.mobileTab ? 'chip chip--cobalt' : 'chip'
+                }`}
+              >
+                {col.label} ({getColumnTasks(col.id).length})
+              </button>
+            ))}
+          </div>
+
+          {/* Mobile Column Content */}
+          <div className="md:hidden z-10">
+            {columns.filter(col => col.mobileTab === activeMobileTab).map(col => {
+              const colTasks = getColumnTasks(col.id);
+              return (
+                <section key={col.id} className="cabinet cabinet--off" style={{ '--marquee-color': col.id === 'done' ? 'var(--arcade-green)' : 'var(--arcade-cobalt)' } as React.CSSProperties}>
+                  <div className="cabinet-marquee">
+                    <span className="cabinet-led" aria-hidden="true" />
+                    <span className="cabinet-marquee-title">{col.label}</span>
+                  </div>
+                  <div className="cabinet-screen !p-4 flex flex-col gap-3">
+                    {colTasks.length === 0 ? (
+                      <p className="m-0 py-4 text-center font-mono text-[10px]" style={{ color: 'var(--arcade-paper-disabled)' }}>No quests here</p>
+                    ) : (
+                      colTasks.map(task => (
+                        <div key={task.id} className="rounded-lg p-3 flex flex-col gap-2" style={{ background: 'rgba(242,242,242,0.03)', border: '1px solid var(--obs-glass-9)' }}>
+                          <p className="m-0 text-xs font-bold" style={{ color: 'var(--arcade-paper)' }}>{task.title}</p>
+                          <div className="flex items-center justify-between">
+                            <span className="font-mono text-[9px] score-readout" style={{ color: 'var(--arcade-gold)' }}>+{task.xp} XP</span>
+                            <div className="flex gap-1">
+                              {col.id !== 'todo' && (
+                                <button type="button" onClick={(e) => shiftStatus(task, 'left', e)} className="icon-button icon-button-small" aria-label={`Move ${task.title} left`}>
+                                  <ChevronLeft className="w-3.5 h-3.5" aria-hidden="true" />
+                                </button>
+                              )}
+                              {col.id !== 'done' && (
+                                <button type="button" onClick={(e) => shiftStatus(task, 'right', e)} className="icon-button icon-button-small" aria-label={`Move ${task.title} right`}>
+                                  <ChevronRight className="w-3.5 h-3.5" aria-hidden="true" />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </section>
               );
             })}
           </div>
         </>
       )}
+
+      {/* Cockpit Modules — every number from the store, nothing fabricated.
+          F11: one premium dock — a quiet instrument header over the 2-col
+          module grid (stacked on mobile). The quest board above stays the
+          one lit surface; these sit dim behind it. */}
+      <div className="f11-cockpit-dock z-10">
+        <div className="f11-cockpit-head">
+          <span className="f11-cockpit-led" aria-hidden="true" />
+          <h3 className="f11-cockpit-title">Today's instruments</h3>
+          <span className="f11-cockpit-kicker">score · habits · journal · level</span>
+        </div>
+        <div className="cockpit-grid">
+        {/* Daily Score */}
+        <section className="cabinet cabinet--off" style={{ '--marquee-color': 'var(--arcade-gold)' } as React.CSSProperties}>
+          <div className="cabinet-marquee">
+            <span className="cabinet-led" aria-hidden="true" />
+            <span className="cabinet-marquee-title">Daily Score</span>
+            <span className="ml-auto font-mono text-[10px] score-readout" style={{ color: scoreTone }}>{dailyScore}%</span>
+          </div>
+          <div className="cabinet-screen !p-5 flex flex-col gap-3">
+            {hasAnyData ? (
+              <>
+                <div className="flex items-end justify-between">
+                  <span className="marquee-title text-3xl leading-none" style={{ color: scoreTone }}>{dailyScore}%</span>
+                  <span className="font-mono text-[9px] uppercase" style={{ color: 'var(--arcade-paper-muted)' }}>today</span>
+                </div>
+                <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(233,230,242,0.06)', border: '1px solid rgba(233,230,242,0.1)' }}>
+                  <div
+                    className="h-full rounded-full transition-all duration-500"
+                    style={{ width: `${dailyScore}%`, background: `linear-gradient(90deg, var(--arcade-gold-deep), ${scoreTone})`, boxShadow: `0 0 8px ${scoreTone}` }}
+                  />
+                </div>
+                <div className="flex flex-wrap gap-x-3 gap-y-1 font-mono text-[9px]" style={{ color: 'var(--arcade-paper-muted)' }}>
+                  <span>Habits {activeHabits.length > 0 ? `${habitsDone}/${activeHabits.length}` : '—'}</span>
+                  <span>Quests {todayTasks.length > 0 ? `${doneTasks.length}/${todayTasks.length}` : '—'}</span>
+                  <span>Journal {journalLogged ? '✓' : '—'}</span>
+                </div>
+              </>
+            ) : (
+              <p className="m-0 font-mono text-[10px] leading-relaxed" style={{ color: 'var(--arcade-paper-muted)' }}>
+                A blank slate. Star a quest or check in a habit to light the meter.
+              </p>
+            )}
+          </div>
+        </section>
+
+        {/* Habits — N/M done today + the streak that matters */}
+        <section className="cabinet cabinet--off" style={{ '--marquee-color': 'var(--arcade-green)' } as React.CSSProperties}>
+          <div className="cabinet-marquee">
+            <span className="cabinet-led" aria-hidden="true" />
+            <span className="cabinet-marquee-title">Habits</span>
+            <span className="ml-auto font-mono text-[10px] score-readout" style={{ color: 'var(--arcade-green)' }}>
+              {activeHabits.length > 0 ? `${habitsDone}/${activeHabits.length} today` : '—'}
+            </span>
+          </div>
+          <div className="cabinet-screen !p-5 flex flex-col gap-3">
+            {activeHabits.length > 0 ? (
+              <>
+                <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(233,230,242,0.06)', border: '1px solid rgba(233,230,242,0.1)' }}>
+                  <div
+                    className="h-full rounded-full transition-all duration-500"
+                    style={{ width: `${(habitsDone / activeHabits.length) * 100}%`, background: 'linear-gradient(90deg, var(--arcade-gold-deep), var(--arcade-green))', boxShadow: '0 0 8px var(--arcade-green)' }}
+                  />
+                </div>
+                {topStreak && topStreak.streak > 0 ? (
+                  <p className="m-0 font-mono text-[10px] leading-relaxed" style={{ color: 'var(--arcade-paper-dim)' }}>
+                    <Flame className="w-3 h-3 inline -mt-0.5 mr-1" style={{ color: 'var(--arcade-gold)' }} aria-hidden="true" />
+                    {topStreak.habit.icon} {topStreak.habit.name} — {topStreak.streak}-day streak.
+                    {isHabitCompleted(topStreak.habit, todayLogs.find(l => l.habit_id === topStreak.habit.id))
+                      ? ' Still burning.'
+                      : ' Log it today to keep it.'}
+                  </p>
+                ) : (
+                  <p className="m-0 font-mono text-[10px] leading-relaxed" style={{ color: 'var(--arcade-paper-muted)' }}>
+                    No streaks yet — consistency is the machine.
+                  </p>
+                )}
+                <Link to="/habits" className="btn-text !p-0 !text-[10px] no-underline self-start" style={{ color: 'var(--arcade-gold)' }}>
+                  Check in on Habits →
+                </Link>
+              </>
+            ) : (
+              <p className="m-0 font-mono text-[10px] leading-relaxed" style={{ color: 'var(--arcade-paper-muted)' }}>
+                No habits yet — build your instruments.
+              </p>
+            )}
+          </div>
+        </section>
+
+        {/* Journal — today's entry status */}
+        <section className="cabinet cabinet--off" style={{ '--marquee-color': 'var(--arcade-magenta)' } as React.CSSProperties}>
+          <div className="cabinet-marquee">
+            <span className="cabinet-led" aria-hidden="true" />
+            <span className="cabinet-marquee-title">Journal</span>
+            {journalLogged && (
+              <span className="ml-auto font-mono text-[10px] chip chip--teal">Today's highlight: ✓ logged</span>
+            )}
+          </div>
+          <div className="cabinet-screen !p-5 flex flex-col gap-3">
+            {journalLogged ? (
+              <>
+                <p className="m-0 text-xs leading-relaxed" style={{ color: 'var(--arcade-paper-dim)' }}>
+                  “{todayJournal!.highlight}”{todayJournal!.mood ? ` ${todayJournal!.mood}` : ''}
+                </p>
+                <Link to="/journal" className="btn-text !p-0 !text-[10px] no-underline self-start" style={{ color: 'var(--arcade-gold)' }}>
+                  Read the diary →
+                </Link>
+              </>
+            ) : (
+              <>
+                <p className="m-0 font-mono text-[10px] leading-relaxed" style={{ color: 'var(--arcade-paper-muted)' }}>
+                  End the day with one sentence. It counts toward today's score.
+                </p>
+                <Link to="/journal" className="btn-text !p-0 !text-[10px] no-underline self-start" style={{ color: 'var(--arcade-gold)' }}>
+                  Write it →
+                </Link>
+              </>
+            )}
+          </div>
+        </section>
+
+        {/* XP / Level — same readout as the shell */}
+        <section className="cabinet cabinet--off" style={{ '--marquee-color': 'var(--arcade-cobalt)' } as React.CSSProperties}>
+          <div className="cabinet-marquee">
+            <span className="cabinet-led" aria-hidden="true" />
+            <span className="cabinet-marquee-title">Level</span>
+            <span className="ml-auto font-mono text-[10px] score-readout" style={{ color: 'var(--arcade-gold)' }}>LVL {stats.level}</span>
+          </div>
+          <div className="cabinet-screen !p-5 flex flex-col gap-3">
+            <div className="flex items-center justify-between">
+              <span className="score-readout text-sm" style={{ color: 'var(--arcade-paper)' }}>{stats.xp} / {xpPerLevel} XP</span>
+              <span className="font-mono text-[9px]" style={{ color: 'var(--arcade-paper-muted)' }}>{xpToNext} to next</span>
+            </div>
+            <div className="h-1.5 rounded-full overflow-hidden relative" style={{ background: 'rgba(233,230,242,0.06)', border: '1px solid rgba(139,92,246,0.25)' }}>
+              <div
+                className="h-full rounded-full transition-all duration-300"
+                style={{ width: `${xpProgress}%`, background: 'linear-gradient(90deg, var(--arcade-gold-deep), var(--arcade-gold))', boxShadow: '0 0 8px rgba(139, 92, 246, 0.5)' }}
+              />
+            </div>
+            <p className="m-0 font-mono text-[9px] leading-relaxed" style={{ color: 'var(--arcade-paper-muted)' }}>
+              Starred quests, habit check-ins and journal entries feed this bar.
+            </p>
+          </div>
+        </section>
+        </div>
+      </div>
     </div>
   );
 };

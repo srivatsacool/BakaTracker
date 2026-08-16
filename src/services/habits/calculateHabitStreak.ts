@@ -57,3 +57,32 @@ export function calculateHabitStreak(habit: Habit, logs: HabitLog[]): number {
 
   return streak;
 }
+
+/**
+ * Longest consecutive-day run ever recorded for a habit (derived from logs).
+ * Pure helper — used by the Habits rhythm readout and the Journey
+ * streak leaderboard. No store logic.
+ */
+export function calculateBestStreak(habit: Habit, logs: HabitLog[]): number {
+  const dates = logs
+    .filter(l => l.habit_id === habit.id && isHabitCompleted(habit, l))
+    .map(l => l.date)
+    .sort(); // ascending YYYY-MM-DD (lexicographic = chronological)
+
+  if (dates.length === 0) return 0;
+
+  let best = 1;
+  let run = 1;
+  for (let i = 1; i < dates.length; i++) {
+    const prev = new Date(`${dates[i - 1]}T00:00:00`);
+    const cur = new Date(`${dates[i]}T00:00:00`);
+    const diffDays = Math.round((cur.getTime() - prev.getTime()) / 86400000);
+    if (diffDays === 1) {
+      run += 1;
+      if (run > best) best = run;
+    } else {
+      run = 1;
+    }
+  }
+  return best;
+}

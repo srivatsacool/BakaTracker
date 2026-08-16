@@ -36,10 +36,10 @@ function App() {
 
   return (
     <BrowserRouter>
-      {/* LightTunnel animated background — fixed, behind everything */}
+      {/* Arcade lobby background — fixed, behind everything */}
       <AppBackground />
 
-      {/* App content — floats above the tunnel */}
+      {/* App content — floats above the lobby */}
       <Suspense fallback={<RouteFallback />}>
         <Routes>
           <Route path="/" element={<Landing />} />
@@ -60,13 +60,13 @@ function App() {
   );
 }
 
-/** Minimal glass loading state for lazy route chunks. */
+/** Arcade loading state for lazy route chunks — the attract screen. */
 function RouteFallback() {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="glass-card px-6 py-4 flex items-center gap-3">
-        <Loader2 className="w-5 h-5 text-accent-violet animate-spin" aria-hidden="true" />
-        <span className="text-sm font-mono text-text-secondary">Loading…</span>
+      <div className="cabinet cabinet--attract px-6 py-4 flex items-center gap-3">
+        <Loader2 className="w-5 h-5 animate-spin" style={{ color: 'var(--arcade-gold)' }} aria-hidden="true" />
+        <span className="text-sm font-mono" style={{ color: 'var(--arcade-paper-dim)' }}>Opening your Life OS…</span>
       </div>
     </div>
   );
