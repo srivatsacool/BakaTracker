@@ -15,7 +15,7 @@
  * wired into the UI. Never set this in production.
  */
 import { Hono } from "hono";
-import { cors } from "hono/cors";
+
 import type { Env } from "../env";
 import type { OAuthHelpers } from "@cloudflare/workers-oauth-provider";
 import { ToolRegistry, ToolRegistryError } from "../registry";
@@ -27,6 +27,7 @@ import { applySyncPush, pullOps } from "../storage/sync";
 import { SyncPush } from "../domain/schemas";
 import { MAX_FILE_SIZE, NotebookInput, CreatePageInput, UpdatePageInput, ReorderPageInput, SaveSceneInput, PAGE_SCENE_MAX_BYTES, PAGE_POSITION_STEP } from "../domain/schemas";
 import type { Props } from "../auth/props";
+import { cors } from "hono/cors";
 import { isAllowedCorsOrigin, isLocalDevOrigin } from "../auth/app-origin";
 import { handleNoteSummarize, handleNoteExplain, handleNoteAsk, handleNoteExtractTasks, handleNoteExtractConcepts, handleNoteGenerateQuestions, buildAiService } from "./notes-ai";
 import { handleAssistantChat } from "./assistant";

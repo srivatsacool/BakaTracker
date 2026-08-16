@@ -61,7 +61,29 @@ const oauthProvider = new OAuthProvider({
  * directly unit-tested (injected clock + fake AI/delivery).
  */
 export default {
-  fetch: (request: Request, env: Env, ctx: ExecutionContext) => oauthProvider.fetch(request, env, ctx),
+  fetch: async (request: Request, env: Env, ctx: ExecutionContext) => {
+    const res = await oauthProvider.fetch(request, env, ctx);
+    // Add CORS headers to ALL responses for /api/v1/* routes.
+    // This runs AFTER OAuthProvider, so its headers survive.
+    const url = new URL(request.url);
+    if (url.pathname.startsWith("/api/v1/")) {
+      const origin = request.headers.get("Origin");
+      const allowed = env.CORS_ALLOWED_ORIGINS?.split(",").map(s => s.trim()) || [];
+      const appOrig = env.APP_ORIGIN?.trim();
+      const isAllowed = origin && ((appOrig && origin === appOrig) || allowed.includes(origin));
+      const reflectOrigin = isAllowed ? origin : (allowed[0] || appOrig);
+      if (reflectOrigin) {
+        const newRes = new Response(res.body, res);
+        newRes.headers.set("Access-Control-Allow-Origin", reflectOrigin);
+        newRes.headers.set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+        newRes.headers.set("Access-Control-Allow-Headers", "Authorization, Content-Type, X-User-Sub");
+        newRes.headers.set("Access-Control-Max-Age", "86400");
+        newRes.headers.set("Vary", "Origin");
+        return newRes;
+      }
+    }
+    return res;
+  },
   scheduled: async (_controller: ScheduledController, env: Env, ctx: ExecutionContext) => {
     const summary = await runNotificationEvaluation(env, ctx);
     console.log(`[baka:scheduled] evaluated=${summary.users_evaluated} candidates=${summary.candidates_found} delivered=${summary.delivered} suppressed=${summary.suppressed} failed=${summary.failed}`);
