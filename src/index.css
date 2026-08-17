@@ -1630,6 +1630,57 @@ select.obs-input {
   50%, 100% { opacity: 0; }
 }
 
+/* --- Landing hero copy — the tagline paragraph (live accepted variant,
+   session 87979df3, typeset pass). Airy rhythm, paper white at 0.7 alpha
+   per user preference: all landing secondary text shares this register. --- */
+.landing-hero-copy {
+  margin: 20px 0 0;
+  max-width: 38rem;
+  font-size: 0.95rem;
+  line-height: 1.85;
+  letter-spacing: 0.015em;
+  color: rgba(233, 230, 242, 0.7);
+}
+.landing-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 18px 24px;
+  border-top: 1px solid rgba(139, 92, 246, 0.14);
+}
+.landing-footer-kicker {
+  font-family: var(--font-instrument);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--obs-paper);
+}
+.landing-footer-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(139, 92, 246, 0.28);
+  background: rgba(139, 92, 246, 0.06);
+  font-family: var(--font-instrument);
+  font-size: 0.775rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--obs-aurora-bright);
+  text-decoration: none;
+  transition: border-color 160ms cubic-bezier(0.16, 1, 0.3, 1), background 160ms ease, box-shadow 160ms ease;
+}
+.landing-footer-link:hover {
+  border-color: rgba(167, 139, 250, 0.6);
+  background: rgba(139, 92, 246, 0.12);
+  box-shadow: 0 0 16px rgba(139, 92, 246, 0.22);
+}
+
 /* ============================================================================
    F7 — PAGES: habits rhythm, journal calm room, journey progression
    ============================================================================ */

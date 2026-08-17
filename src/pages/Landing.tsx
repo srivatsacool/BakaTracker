@@ -313,7 +313,7 @@ export const Landing: React.FC = () => {
         {/* ============ HERO — the real app floating in the tunnel ============ */}
         <section className="px-5 pt-14 pb-10 md:pt-20 md:pb-14 flex flex-col lg:flex-row gap-10 lg:gap-12 max-w-6xl mx-auto">
           <div className="flex-1 min-w-0 flex flex-col justify-center">
-            <div className="flex items-center gap-2 font-mono text-[11px] mb-5" style={{ color: 'var(--arcade-paper-muted)' }}>
+            <div className="flex items-center gap-2 font-mono text-[11px] mb-5" style={{ color: 'rgba(233,230,242,0.7)' }}>
               <span className="w-2 h-2 rounded-full" style={{ background: 'var(--arcade-gold)', boxShadow: '0 0 10px var(--arcade-gold)', animation: 'attract-blink 2s ease-in-out infinite' }} aria-hidden="true" />
               BakaTracker · A personal life operating system
             </div>
@@ -321,10 +321,10 @@ export const Landing: React.FC = () => {
               Your life. Your quests.<br />
               <span className="marquee-title--glow">Your system.</span>
             </h1>
-            <p className="mt-5 max-w-xl text-[0.95rem] leading-relaxed" style={{ color: 'var(--arcade-paper-dim)' }}>
-              A personal life operating system for tasks, habits, notes, journaling, progression, and AI — one calm workspace for
-              the whole day. Capture what is in front of you, complete the next quest, and watch the pattern appear.
-            </p>
+            <p className="landing-hero-copy">
+                          A personal life operating system for tasks, habits, notes, journaling, progression, and AI — one calm workspace for
+                          the whole day. Capture what is in front of you, complete the next quest, and watch the pattern appear.
+                        </p>
             <div className="mt-7 flex flex-col sm:flex-row gap-3">
               <button type="button" className="insert-coin insert-coin--blink" onClick={launchDemo}>
                 <span className="coin-slot" aria-hidden="true" /> TRY LIVE DEMO <ArrowRight className="w-4 h-4" aria-hidden="true" />
@@ -333,7 +333,7 @@ export const Landing: React.FC = () => {
                 <Shield className="w-4 h-4" aria-hidden="true" /> {isAuthConfigured ? 'SIGN IN / CREATE YOUR INSTANCE' : 'Configure sign-in to continue'}
               </button>
             </div>
-            <div className="mt-7 flex flex-wrap gap-5 font-mono text-[11px]" style={{ color: 'var(--arcade-paper-muted)' }}>
+            <div className="mt-7 flex flex-wrap gap-5 font-mono text-[11px]" style={{ color: 'rgba(233,230,242,0.7)' }}>
               <span className="flex items-center gap-1.5"><CloudOff className="w-3.5 h-3.5" style={{ color: 'var(--arcade-cobalt)' }} aria-hidden="true" /> Works locally first</span>
               <span className="flex items-center gap-1.5"><LockKeyhole className="w-3.5 h-3.5" style={{ color: 'var(--arcade-cobalt)' }} aria-hidden="true" /> Your data stays yours</span>
               <span className="flex items-center gap-1.5"><Sparkles className="w-3.5 h-3.5" style={{ color: 'var(--arcade-gold)' }} aria-hidden="true" /> AI attends, you decide</span>
@@ -353,7 +353,7 @@ export const Landing: React.FC = () => {
               <div className="cabinet-screen flex flex-col gap-3" style={{ padding: 14 }}>
                 {/* screen header — real daily score from the store */}
                 <div className="flex items-center justify-between gap-3">
-                  <small className="font-mono text-[9px] tracking-[0.18em] uppercase" style={{ color: 'var(--arcade-paper-muted)' }}>Today's focus</small>
+                  <small className="font-mono text-[9px] tracking-[0.18em] uppercase" style={{ color: 'rgba(233,230,242,0.7)' }}>Today's focus</small>
                   <span className="chip chip--aurora score-readout">{dailyScore}% daily score</span>
                 </div>
 
@@ -377,7 +377,7 @@ export const Landing: React.FC = () => {
                 {/* Quest list — real Today quest rows, click toggles the real store */}
                 <div className="flex flex-col gap-1.5">
                   {previewQuests.length === 0 ? (
-                    <p className="m-0 py-3 text-center font-mono text-[10px]" style={{ color: 'var(--arcade-paper-disabled)' }}>
+                    <p className="m-0 py-3 text-center font-mono text-[10px]" style={{ color: 'rgba(233,230,242,0.7)' }}>
                       No quests yet — the path ahead is waiting.
                     </p>
                   ) : (
@@ -406,13 +406,13 @@ export const Landing: React.FC = () => {
                           {isDone ? (
                             <CheckSquare className="w-4 h-4 shrink-0" style={{ color: 'var(--arcade-green)' }} aria-hidden="true" />
                           ) : (
-                            <Square className="w-4 h-4 shrink-0" style={{ color: 'var(--arcade-paper-disabled)' }} aria-hidden="true" />
+                            <Square className="w-4 h-4 shrink-0" style={{ color: 'rgba(233,230,242,0.7)' }} aria-hidden="true" />
                           )}
                           <div className="min-w-0 flex-1">
                             <p className="m-0 text-[11px] font-bold truncate" style={{ color: isDone ? 'var(--arcade-paper-muted)' : 'var(--arcade-paper)', textDecoration: isDone ? 'line-through' : 'none' }}>
                               {task.title}
                             </p>
-                            <p className="m-0 font-mono text-[9px] mt-0.5 truncate" style={{ color: 'var(--arcade-paper-muted)' }}>
+                            <p className="m-0 font-mono text-[9px] mt-0.5 truncate" style={{ color: 'rgba(233,230,242,0.7)' }}>
                               {getAreaEmoji(task.area)} {task.area} · +{task.xp} XP
                             </p>
                           </div>
@@ -439,13 +439,13 @@ export const Landing: React.FC = () => {
                       }}
                     />
                   </div>
-                  <span className="font-mono text-[9px] score-readout shrink-0" style={{ color: 'var(--arcade-paper-muted)' }}>{stats.xp} / {settings.xp_per_level} XP</span>
+                  <span className="font-mono text-[9px] score-readout shrink-0" style={{ color: 'rgba(233,230,242,0.7)' }}>{stats.xp} / {settings.xp_per_level} XP</span>
                 </div>
 
                 {/* Habit chips — real habits, checkbox ones toggle the real store */}
                 {previewHabits.length > 0 && (
                   <div>
-                    <small className="block font-mono text-[9px] tracking-[0.18em] uppercase mb-1.5" style={{ color: 'var(--arcade-paper-muted)' }}>Habits tonight</small>
+                    <small className="block font-mono text-[9px] tracking-[0.18em] uppercase mb-1.5" style={{ color: 'rgba(233,230,242,0.7)' }}>Habits tonight</small>
                     <div className="flex flex-wrap gap-1.5">
                       {previewHabits.map(habit => {
                         const done = habitDoneFor(habit);
@@ -486,16 +486,16 @@ export const Landing: React.FC = () => {
                   <div className="min-w-0">
                     <div className="flex items-center gap-1.5 mb-0.5">
                       <b className="text-[10px]" style={{ color: 'var(--arcade-paper)' }}>BakaSur</b>
-                      <small className="font-mono text-[8px]" style={{ color: 'var(--arcade-paper-muted)' }}>attendant · live readout</small>
+                      <small className="font-mono text-[8px]" style={{ color: 'rgba(233,230,242,0.7)' }}>attendant · live readout</small>
                     </div>
-                    <p className="m-0 text-[10px] leading-relaxed" style={{ color: 'var(--arcade-paper-dim)' }}>{bakasurLine}</p>
+                    <p className="m-0 text-[10px] leading-relaxed" style={{ color: 'rgba(233,230,242,0.7)' }}>{bakasurLine}</p>
                   </div>
                 </div>
 
                 {/* footer — the honesty contract */}
                 <div className="flex items-center justify-between gap-3 pt-1">
                   <span className="save-lamp is-local" title="Preview data lives in this browser until you sign in"><span className="lamp-dot" aria-hidden="true" /> Offline · local</span>
-                  <small className="font-mono text-[8px]" style={{ color: 'var(--arcade-paper-muted)' }}>This is the real app — click a quest</small>
+                  <small className="font-mono text-[8px]" style={{ color: 'rgba(233,230,242,0.7)' }}>This is the real app — click a quest</small>
                 </div>
               </div>
             </div>
@@ -509,7 +509,7 @@ export const Landing: React.FC = () => {
               <span className="font-mono text-[10px] uppercase tracking-[0.2em]" style={{ color: 'var(--arcade-gold)' }}>Why it exists · the daily loop</span>
               <h2 className="marquee-title mt-2" style={{ fontSize: 'clamp(1.4rem, 3vw, 2rem)' }}>One system, from first light to weekly review.</h2>
             </div>
-            <p className="max-w-sm text-sm" style={{ color: 'var(--arcade-paper-muted)' }}>
+            <p className="max-w-sm text-sm" style={{ color: 'rgba(233,230,242,0.7)' }}>
               Productivity tools become another project. BakaTracker reduces the day to one quiet loop — capture, commit,
               check in, understand — a minute a day, and forgiving of rest.
             </p>
@@ -529,7 +529,7 @@ export const Landing: React.FC = () => {
                       <Icon className="w-5 h-5" />
                     </span>
                     <h3 className="marquee-title m-0 mb-1.5" style={{ fontSize: '1rem' }}>{step.title}</h3>
-                    <p className="m-0 text-[0.8rem] leading-relaxed" style={{ color: 'var(--arcade-paper-muted)' }}>{step.text}</p>
+                    <p className="m-0 text-[0.8rem] leading-relaxed" style={{ color: 'rgba(233,230,242,0.7)' }}>{step.text}</p>
                   </div>
                 </article>
               );
@@ -540,7 +540,7 @@ export const Landing: React.FC = () => {
             {['Anything you log', 'XP', '5 attributes', 'Level', 'Streaks · heatmaps', 'BakaSur reads the ledger'].map((item, i) => (
               <span key={item} className="flex items-center gap-2">
                 <span className="chip chip--aurora">{item}</span>
-                {i < 5 && <ArrowRight className="w-3.5 h-3.5 shrink-0" style={{ color: 'var(--arcade-paper-disabled)' }} aria-hidden="true" />}
+                {i < 5 && <ArrowRight className="w-3.5 h-3.5 shrink-0" style={{ color: 'rgba(233,230,242,0.7)' }} aria-hidden="true" />}
               </span>
             ))}
           </div>
@@ -553,7 +553,7 @@ export const Landing: React.FC = () => {
               <span className="font-mono text-[10px] uppercase tracking-[0.2em]" style={{ color: 'var(--arcade-gold)' }}>What it can do · the instrument row</span>
               <h2 className="marquee-title mt-2" style={{ fontSize: 'clamp(1.4rem, 3vw, 2rem)' }}>Every tool is a pane in reach.</h2>
             </div>
-            <p className="max-w-sm text-sm" style={{ color: 'var(--arcade-paper-muted)' }}>Each surface has one job. Together they make a lightweight personal operating system.</p>
+            <p className="max-w-sm text-sm" style={{ color: 'rgba(233,230,242,0.7)' }}>Each surface has one job. Together they make a lightweight personal operating system.</p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {features.map(feature => {
@@ -568,7 +568,7 @@ export const Landing: React.FC = () => {
                     <span className="flex items-center justify-center w-9 h-9 rounded-lg mb-2.5" style={{ color: feature.accent, background: `${feature.accent}14`, border: `1px solid ${feature.accent}44` }} aria-hidden="true">
                       <Icon className="w-4 h-4" />
                     </span>
-                    <p className="m-0 text-[0.8rem] leading-relaxed" style={{ color: 'var(--arcade-paper-muted)' }}>{feature.text}</p>
+                    <p className="m-0 text-[0.8rem] leading-relaxed" style={{ color: 'rgba(233,230,242,0.7)' }}>{feature.text}</p>
                   </div>
                 </article>
               );
@@ -589,13 +589,13 @@ export const Landing: React.FC = () => {
                 <span className="cabinet-marquee-title">A task manager answers…</span>
               </div>
               <div className="cabinet-screen flex flex-col gap-2.5 !py-5">
-                <p className="m-0 text-sm font-bold" style={{ color: 'var(--arcade-paper-dim)' }}>“What's on my list?”</p>
+                <p className="m-0 text-sm font-bold" style={{ color: 'rgba(233,230,242,0.7)' }}>“What's on my list?”</p>
                 {[
                   'One more app to maintain, one more inbox to feed',
                   'Completion is a checkbox and the list is the product',
                   'The pattern behind your days stays invisible',
                 ].map(item => (
-                  <span key={item} className="flex items-center gap-2 font-mono text-xs" style={{ color: 'var(--arcade-paper-muted)' }}>
+                  <span key={item} className="flex items-center gap-2 font-mono text-xs" style={{ color: 'rgba(233,230,242,0.7)' }}>
                     <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: 'var(--arcade-paper-disabled)' }} aria-hidden="true" /> {item}
                   </span>
                 ))}
@@ -615,7 +615,7 @@ export const Landing: React.FC = () => {
                   'BakaSur reasons over your ledger, so context never gets lost',
                   'Local-first and self-hostable: your records live on your instance',
                 ].map(item => (
-                  <span key={item} className="flex items-center gap-2 font-mono text-xs" style={{ color: 'var(--arcade-paper-dim)' }}>
+                  <span key={item} className="flex items-center gap-2 font-mono text-xs" style={{ color: 'rgba(233,230,242,0.7)' }}>
                     <Check className="w-4 h-4 shrink-0" style={{ color: 'var(--arcade-green)' }} aria-hidden="true" /> {item}
                   </span>
                 ))}
@@ -635,7 +635,7 @@ export const Landing: React.FC = () => {
               <div className="flex flex-col justify-center">
                 <span className="font-mono text-[10px] uppercase tracking-[0.2em]" style={{ color: 'var(--arcade-cobalt)' }}>See the loop before you sign in</span>
                 <h2 className="marquee-title mt-2 mb-3" style={{ fontSize: 'clamp(1.3rem, 3vw, 1.8rem)' }}>{activeWalkthrough.title}</h2>
-                <p className="m-0 text-sm leading-relaxed mb-5" style={{ color: 'var(--arcade-paper-dim)' }}>{activeWalkthrough.description}</p>
+                <p className="m-0 text-sm leading-relaxed mb-5" style={{ color: 'rgba(233,230,242,0.7)' }}>{activeWalkthrough.description}</p>
                 <button type="button" className="insert-coin self-start" onClick={launchDemo}>TRY LIVE DEMO <ArrowRight className="w-4 h-4" aria-hidden="true" /></button>
               </div>
               <div>
@@ -643,13 +643,13 @@ export const Landing: React.FC = () => {
                   <span className="flex items-center gap-2 font-mono text-[11px] font-bold" style={{ color: 'var(--arcade-paper)' }}>
                     <ActiveIcon className="w-4 h-4" style={{ color: activeWalkthrough.accent }} aria-hidden="true" /> {activeWalkthrough.label}
                   </span>
-                  <span className="font-mono text-[10px] score-readout" style={{ color: 'var(--arcade-paper-muted)' }}>{activeStep + 1} / {walkthrough.length}</span>
+                  <span className="font-mono text-[10px] score-readout" style={{ color: 'rgba(233,230,242,0.7)' }}>{activeStep + 1} / {walkthrough.length}</span>
                 </div>
                 <div className="rounded-lg p-5 flex items-center gap-4" style={{ background: 'rgba(233,230,242,0.03)', border: '1px solid rgba(233,230,242,0.07)' }}>
                   <span className="w-0.5 self-stretch rounded-sm" style={{ background: activeWalkthrough.accent, opacity: 0.8 }} aria-hidden="true" />
                   <div>
                     <b className="block text-sm" style={{ color: 'var(--arcade-paper)' }}>{activeWalkthrough.fact}</b>
-                    <span className="font-mono text-[10px]" style={{ color: 'var(--arcade-paper-muted)' }}>{activeWalkthrough.factSub}</span>
+                    <span className="font-mono text-[10px]" style={{ color: 'rgba(233,230,242,0.7)' }}>{activeWalkthrough.factSub}</span>
                   </div>
                 </div>
                 <div className="flex items-center justify-between mt-4">
@@ -679,7 +679,7 @@ export const Landing: React.FC = () => {
             <div>
               <span className="font-mono text-[10px] uppercase tracking-[0.2em]" style={{ color: 'var(--arcade-gold)' }}>Create your own instance</span>
               <h2 className="marquee-title mt-2 mb-3" style={{ fontSize: 'clamp(1.4rem, 3vw, 2rem)' }}>Your records should belong to you.</h2>
-              <p className="m-0 text-sm leading-relaxed mb-6 max-w-md" style={{ color: 'var(--arcade-paper-dim)' }}>
+              <p className="m-0 text-sm leading-relaxed mb-6 max-w-md" style={{ color: 'rgba(233,230,242,0.7)' }}>
                 BakaTracker is designed to be self-hostable, local-first, and open source. Sign in to create your own instance —
                 your records, your storage, your pace.
               </p>
@@ -690,7 +690,7 @@ export const Landing: React.FC = () => {
                   'Controlled AI actions with explicit boundaries',
                   'MIT-licensed and self-hostable',
                 ].map(item => (
-                  <span key={item} className="flex items-center gap-2 font-mono text-xs" style={{ color: 'var(--arcade-paper-dim)' }}>
+                  <span key={item} className="flex items-center gap-2 font-mono text-xs" style={{ color: 'rgba(233,230,242,0.7)' }}>
                     <Check className="w-4 h-4" style={{ color: 'var(--arcade-green)' }} aria-hidden="true" /> {item}
                   </span>
                 ))}
@@ -707,7 +707,7 @@ export const Landing: React.FC = () => {
               <div className="cabinet-screen flex flex-col items-start gap-4" style={{ padding: 24 }}>
                 <LockKeyhole className="w-7 h-7" style={{ color: 'var(--arcade-gold)' }} aria-hidden="true" />
                 <strong className="marquee-title" style={{ fontSize: '1.1rem' }}>Your records. Your data. Your pace.</strong>
-                <span className="text-sm leading-relaxed" style={{ color: 'var(--arcade-paper-muted)' }}>No subscription wall. No productivity guilt. Just a clear place to continue.</span>
+                <span className="text-sm leading-relaxed" style={{ color: 'rgba(233,230,242,0.7)' }}>No subscription wall. No productivity guilt. Just a clear place to continue.</span>
                 <a href="https://github.com/srivatsacool/BakaTracker" target="_blank" rel="noreferrer" className="btn-ghost no-underline">
                   <GithubIcon className="w-4 h-4" aria-hidden="true" /> View the repository <ArrowRight className="w-4 h-4" aria-hidden="true" />
                 </a>
@@ -721,7 +721,7 @@ export const Landing: React.FC = () => {
           <div className="max-w-2xl mx-auto flex flex-col items-center gap-4">
             <img src="/logo.png" alt="BakaTracker" className="w-14 h-14 rounded-xl object-cover" style={{ border: '1px solid rgba(139,92,246,0.4)', boxShadow: '0 0 28px rgba(139,92,246,0.3)' }} />
             <h2 className="marquee-title" style={{ fontSize: 'clamp(1.6rem, 4vw, 2.4rem)' }}>Start with one quest.</h2>
-            <p className="text-sm max-w-md" style={{ color: 'var(--arcade-paper-muted)' }}>Open the live demo, walk the system, and decide if it earns a place in your day.</p>
+            <p className="text-sm max-w-md" style={{ color: 'rgba(233,230,242,0.7)' }}>Open the live demo, walk the system, and decide if it earns a place in your day.</p>
             <div className="flex flex-col sm:flex-row gap-3 mt-2">
               <button type="button" className="insert-coin insert-coin--blink" onClick={launchDemo}><Play className="w-4 h-4" aria-hidden="true" /> TRY LIVE DEMO</button>
               <button type="button" className="btn-ghost" onClick={launchLogin} disabled={!isAuthConfigured}><Shield className="w-4 h-4" aria-hidden="true" /> {isAuthConfigured ? 'SIGN IN / CREATE YOUR INSTANCE' : 'Sign-in unavailable'}</button>
@@ -730,13 +730,12 @@ export const Landing: React.FC = () => {
         </section>
       </main>
 
-      <footer className="px-5 py-6 flex items-center justify-center gap-2 font-mono text-[11px]" style={{ color: 'var(--arcade-paper-disabled)', borderTop: '1px solid rgba(233,230,242,0.07)' }}>
-        <span>Built with care by build.srivatsa</span>
-        <span aria-hidden="true">·</span>
-        <a href="https://github.com/srivatsacool/BakaTracker" target="_blank" rel="noreferrer" className="landing-anchor no-underline" style={{ color: 'inherit' }}>
-          <GithubIcon className="w-3.5 h-3.5 inline mr-1" aria-hidden="true" /> Open source on GitHub
-        </a>
-      </footer>
+      <footer className="landing-footer">
+              <span className="landing-footer-kicker">Built with care by build.srivatsa</span>
+              <a href="https://github.com/srivatsacool/BakaTracker" target="_blank" rel="noreferrer" className="landing-footer-link">
+                <GithubIcon className="w-3.5 h-3.5" aria-hidden="true" /> Open source on GitHub
+              </a>
+            </footer>
     </div>
   );
 };
