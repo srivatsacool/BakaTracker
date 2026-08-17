@@ -12,7 +12,7 @@ export class WorkersAIProvider implements AIProvider {
   /**
    * @param ai     the `env.AI` binding
    * @param model  text-generation model override (default verified on the
-   *               account: `@cf/deepseek-ai/deepseek-v4-flash-0731`)
+   *               account: `@cf/meta/llama-3.2-1b-instruct`)
    * @param embedModel  embedding model for the future Vectorize pipeline
    *                    (default `@cf/baai/bge-base-en-v1.5`, 768-d)
    */
@@ -20,7 +20,7 @@ export class WorkersAIProvider implements AIProvider {
     private ai: Ai,
     options: { model?: string; embedModel?: string } = {},
   ) {
-    this.model = options.model ?? "@cf/deepseek-ai/deepseek-v4-flash-0731";
+    this.model = options.model ?? "@cf/meta/llama-3.2-1b-instruct";
     this.embedModel = options.embedModel ?? "@cf/baai/bge-base-en-v1.5";
   }
 
