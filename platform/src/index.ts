@@ -71,10 +71,16 @@ export default {
       const allowed = env.CORS_ALLOWED_ORIGINS?.split(",").map(s => s.trim()) || [];
       const appOrig = env.APP_ORIGIN?.trim();
       const isAllowed = origin && ((appOrig && origin === appOrig) || allowed.includes(origin));
-      const reflectOrigin = isAllowed ? origin : (allowed[0] || appOrig);
-      if (reflectOrigin) {
+      // Reflect ONLY the caller's own origin when it is on the allowlist.
+      // Disallowed origins get NO Access-Control-Allow-Origin — the browser
+      // then blocks the read. Never fall back to echoing the first allowed
+      // origin: a mismatched ACAO is a CORS contract violation and leaks the
+      // allowlist to probing origins (the hono cors() allowlist below is the
+      // same rule; this wrapper only survives responses the OAuth provider
+      // produced before the REST app's middleware ran).
+      if (isAllowed && origin) {
         const newRes = new Response(res.body, res);
-        newRes.headers.set("Access-Control-Allow-Origin", reflectOrigin);
+        newRes.headers.set("Access-Control-Allow-Origin", origin);
         newRes.headers.set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
         newRes.headers.set("Access-Control-Allow-Headers", "Authorization, Content-Type, X-User-Sub");
         newRes.headers.set("Access-Control-Max-Age", "86400");

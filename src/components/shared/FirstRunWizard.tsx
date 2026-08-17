@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useStore } from '../../store/useStore';
+import { useShallow } from 'zustand/react/shallow';
 import { useNavigate } from 'react-router-dom';
 import { useAppTour } from '../../lib/useAppTour';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
@@ -14,7 +15,12 @@ type WizardStep = 1 | 2 | 3 | 4;
  * runs go through FirstRunSetup's persona picker).
  */
 export const FirstRunWizard: React.FC = () => {
-  const { addHabit, addTask, loadDemoData, habits } = useStore();
+  const { addHabit, addTask, loadDemoData, habits } = useStore(useShallow(s => ({
+    addHabit: s.addHabit,
+    addTask: s.addTask,
+    loadDemoData: s.loadDemoData,
+    habits: s.habits,
+  })));
   const navigate = useNavigate();
   const { startTour } = useAppTour(navigate);
 
@@ -190,6 +196,7 @@ export const FirstRunWizard: React.FC = () => {
                   value={habitName}
                   onChange={e => setHabitName(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && handleAddHabit()}
+                  maxLength={100}
                   className="arcade-input col-span-2 !text-sm"
                 />
                 <select value={habitType} onChange={e => setHabitType(e.target.value as HabitType)} className="arcade-input !text-sm font-mono">
@@ -211,6 +218,7 @@ export const FirstRunWizard: React.FC = () => {
                   value={habitXP}
                   onChange={e => setHabitXP(Number(e.target.value))}
                   min={1}
+                  max={1000}
                   className="arcade-input !text-sm font-mono"
                   placeholder="XP"
                 />

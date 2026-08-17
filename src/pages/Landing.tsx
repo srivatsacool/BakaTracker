@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../features/auth';
 import { authConfig } from '../features/auth/config';
 import { useStore } from '../store/useStore';
+import { useShallow } from 'zustand/react/shallow';
 import type { Habit, Task } from '../types';
 import { calculateDailyScore, getTodayDateString, isHabitCompleted } from '../lib/utils';
 import { calculateHabitStreak } from '../services/habits/calculateHabitStreak';
@@ -73,7 +74,17 @@ const getAreaEmoji = (area: string) => {
 export const Landing: React.FC = () => {
   const { isAuthenticated, isLoading, login, user } = useAuth();
   const navigate = useNavigate();
-  const { habits, habitLogs, tasks, journal, stats, settings, moveTask, toggleHabit, loadDemoData } = useStore();
+  const { habits, habitLogs, tasks, journal, stats, settings, moveTask, toggleHabit, loadDemoData } = useStore(useShallow(s => ({
+    habits: s.habits,
+    habitLogs: s.habitLogs,
+    tasks: s.tasks,
+    journal: s.journal,
+    stats: s.stats,
+    settings: s.settings,
+    moveTask: s.moveTask,
+    toggleHabit: s.toggleHabit,
+    loadDemoData: s.loadDemoData,
+  })));
   const [activeStep, setActiveStep] = useState(0);
 
   const today = getTodayDateString();
@@ -287,13 +298,16 @@ export const Landing: React.FC = () => {
             <a href="#ownership" className="landing-anchor landing-nav-link no-underline" style={{ fontSize: '0.72rem', letterSpacing: '0.14em', textTransform: 'uppercase', fontWeight: 700 }}>Your instance</a>
           </nav>
           <div className="flex items-center gap-3">
-            <button type="button" className="btn-text !text-xs" style={{ fontWeight: 700 }} onClick={launchLogin} disabled={!isAuthConfigured} title={isAuthConfigured ? 'Sign in or create your own BakaTracker instance' : 'Sign-in is not configured on this deployment'}>
-              {isAuthConfigured ? 'Sign in / Create your instance' : 'Sign in unavailable'}
-            </button>
-            <button type="button" className="insert-coin !py-2 !px-4 !text-xs insert-coin--blink" onClick={launchDemo}><Play className="w-3.5 h-3.5" aria-hidden="true" /> TRY LIVE DEMO</button>
-          </div>
-        </div>
-      </header>
+                      <button type="button" className="landing-signin" onClick={launchLogin} disabled={!isAuthConfigured} title={isAuthConfigured ? 'Sign in or create your own BakaTracker instance' : 'Sign-in is not configured on this deployment'}>
+                        <span className="landing-signin-bracket" aria-hidden="true">[</span>
+                        <span className="landing-signin-label">{isAuthConfigured ? 'Sign in' : 'Sign-in unavailable'}</span>
+                        <span className="landing-signin-cursor" aria-hidden="true" />
+                        <span className="landing-signin-bracket" aria-hidden="true">]</span>
+                      </button>
+                      <button type="button" className="insert-coin !py-2 !px-4 !text-xs insert-coin--blink" onClick={launchDemo}><Play className="w-3.5 h-3.5" aria-hidden="true" /> TRY LIVE DEMO</button>
+                    </div>
+                  </div>
+                </header>
 
       <main id="top">
         {/* ============ HERO — the real app floating in the tunnel ============ */}

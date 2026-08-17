@@ -1,6 +1,7 @@
 import React from 'react';
 import { Check, CloudOff, RefreshCw, WifiOff } from 'lucide-react';
 import { useStore } from '../../store/useStore';
+import { useShallow } from 'zustand/react/shallow';
 import { useAuth } from '../../features/auth';
 
 interface SyncStatusProps {
@@ -15,7 +16,11 @@ interface SyncStatusProps {
  * OUT OF ORDER. Error state is actionable: click retries the sync.
  */
 export const SyncStatus: React.FC<SyncStatusProps> = ({ compact = false }) => {
-  const { syncStatus, syncError, syncWithSheets } = useStore();
+  const { syncStatus, syncError, syncWithSheets } = useStore(useShallow(s => ({
+    syncStatus: s.syncStatus,
+    syncError: s.syncError,
+    syncWithSheets: s.syncWithSheets,
+  })));
   const { user } = useAuth();
   const [isOffline, setIsOffline] = React.useState(() => !navigator.onLine);
 

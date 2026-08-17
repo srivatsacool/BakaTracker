@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { CalendarDays, Check, Clock3, CloudOff, RefreshCw, Sun, Target, Zap, WifiOff } from 'lucide-react';
 import { useStore } from '../../store/useStore';
+import { useShallow } from 'zustand/react/shallow';
 import { useAuth } from '../../features/auth';
 import { calculateDailyScore, getTodayDateString } from '../../lib/utils';
 
@@ -20,7 +21,17 @@ export const ContextBar: React.FC<ContextBarProps> = ({
   onToggleAssistant,
   assistantCollapsed,
 }) => {
-  const { stats, settings, habits, habitLogs, tasks, journal, syncStatus, syncError, syncWithSheets } = useStore();
+  const { stats, settings, habits, habitLogs, tasks, journal, syncStatus, syncError, syncWithSheets } = useStore(useShallow(s => ({
+    stats: s.stats,
+    settings: s.settings,
+    habits: s.habits,
+    habitLogs: s.habitLogs,
+    tasks: s.tasks,
+    journal: s.journal,
+    syncStatus: s.syncStatus,
+    syncError: s.syncError,
+    syncWithSheets: s.syncWithSheets,
+  })));
   const { user } = useAuth();
   const [now, setNow] = useState(() => new Date());
 

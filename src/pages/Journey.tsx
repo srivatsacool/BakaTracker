@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useStore } from '../store/useStore';
+import { useShallow } from 'zustand/react/shallow';
 import { isHabitCompleted } from '../lib/utils';
 import { calculateHabitStreak, calculateBestStreak } from '../services/habits/calculateHabitStreak';
 import { calculateDailyScore } from '../services/stats/calculateDailyScore';
@@ -74,7 +75,16 @@ const ACTIVITY_CURSOR = { fill: 'rgba(139,92,246,0.08)' };
  * character stats, weekly recap, and insights. Read mode.
  */
 export const Journey: React.FC = () => {
-  const { habits, habitLogs, tasks, journal, stats, events, character, weeklyStats } = useStore();
+  const { habits, habitLogs, tasks, journal, stats, events, character, weeklyStats } = useStore(useShallow(s => ({
+    habits: s.habits,
+    habitLogs: s.habitLogs,
+    tasks: s.tasks,
+    journal: s.journal,
+    stats: s.stats,
+    events: s.events,
+    character: s.character,
+    weeklyStats: s.weeklyStats,
+  })));
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [showExportModal, setShowExportModal] = useState(false);
 

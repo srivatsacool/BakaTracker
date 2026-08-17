@@ -1565,6 +1565,71 @@ select.obs-input {
   }
 }
 
+/* --- Sign-in / Create instance — the statement instrument chip (live
+   accepted variant, session c4ed8f5a, bolder pass). The calm counterweight
+   grew up: larger Fragment Mono statement type, violet-tinted glass box,
+   blinking cursor, and a violet hairline that draws itself on hover. Glow
+   stays scarce — one small LED. --- */
+.landing-signin {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 7px;
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(139, 92, 246, 0.35);
+  background: rgba(139, 92, 246, 0.07);
+  color: var(--obs-aurora-bright);
+  font-family: var(--font-instrument);
+  font-size: 0.98rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 200ms ease, border-color 200ms ease, color 200ms ease, box-shadow 200ms ease;
+  position: relative;
+}
+.landing-signin::after {
+  content: "";
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  bottom: 6px;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--obs-aurora), transparent);
+  transform: scaleX(0.6);
+  opacity: 0.6;
+  transition: transform 280ms cubic-bezier(0.16, 1, 0.3, 1), opacity 280ms ease;
+}
+.landing-signin:hover {
+  background: rgba(139, 92, 246, 0.14);
+  border-color: rgba(167, 139, 250, 0.7);
+  color: var(--obs-paper);
+  box-shadow: 0 0 28px rgba(139, 92, 246, 0.35);
+}
+.landing-signin:hover::after { transform: scaleX(1); opacity: 1; }
+.landing-signin:focus-visible {
+  outline: 2px solid var(--obs-aurora);
+  outline-offset: 3px;
+}
+.landing-signin:disabled { opacity: 0.5; cursor: not-allowed; }
+.landing-signin .landing-signin-bracket {
+  color: var(--obs-aurora);
+  font-weight: 400;
+}
+.landing-signin .landing-signin-cursor {
+  display: inline-block;
+  width: 0.55em;
+  height: 1.05em;
+  background: var(--obs-aurora-bright);
+  vertical-align: baseline;
+  animation: landing-signin-blink 1s steps(2) infinite;
+  box-shadow: 0 0 10px rgba(167, 139, 250, 0.7);
+}
+@keyframes landing-signin-blink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+
 /* ============================================================================
    F7 — PAGES: habits rhythm, journal calm room, journey progression
    ============================================================================ */

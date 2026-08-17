@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useStore } from '../store/useStore';
+import { useShallow } from 'zustand/react/shallow';
 import { getTodayDateString, isHabitCompleted, getDaysInCurrentMonth } from '../lib/utils';
 import { calculateHabitStreak, calculateBestStreak } from '../services/habits/calculateHabitStreak';
 import { Plus, Trash2, RefreshCw, Activity, Calendar } from 'lucide-react';
@@ -24,7 +25,20 @@ export const Habits: React.FC = () => {
     addHabit,
     deleteHabit,
     refreshQuote
-  } = useStore();
+  } = useStore(useShallow(s => ({
+    habits: s.habits,
+    habitLogs: s.habitLogs,
+    currentQuote: s.currentQuote,
+    stats: s.stats,
+    toggleHabit: s.toggleHabit,
+    incrementCounterHabit: s.incrementCounterHabit,
+    setNumericHabit: s.setNumericHabit,
+    setMoodHabit: s.setMoodHabit,
+    setEnergyHabit: s.setEnergyHabit,
+    addHabit: s.addHabit,
+    deleteHabit: s.deleteHabit,
+    refreshQuote: s.refreshQuote,
+  })));
 
   const todayStr = getTodayDateString();
 
@@ -252,7 +266,7 @@ export const Habits: React.FC = () => {
           <div className="cabinet-screen !p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
             <div className="flex flex-col gap-1">
               <label className="font-mono text-[9px] font-bold uppercase" style={{ color: 'var(--arcade-paper-muted)' }}>Name</label>
-              <input value={newHabitName} onChange={e => setNewHabitName(e.target.value)} placeholder="e.g. Morning workout" className="arcade-input !py-2 !text-sm" />
+              <input value={newHabitName} onChange={e => setNewHabitName(e.target.value)} placeholder="e.g. Morning workout" maxLength={100} className="arcade-input !py-2 !text-sm" />
             </div>
             <div className="flex flex-col gap-1">
               <label className="font-mono text-[9px] font-bold uppercase" style={{ color: 'var(--arcade-paper-muted)' }}>Type</label>
@@ -270,7 +284,7 @@ export const Habits: React.FC = () => {
             </div>
             <div className="flex flex-col gap-1">
               <label className="font-mono text-[9px] font-bold uppercase" style={{ color: 'var(--arcade-paper-muted)' }}>XP</label>
-              <input type="number" value={newHabitXP} onChange={e => setNewHabitXP(Number(e.target.value))} min={1} className="arcade-input !py-2 !text-sm" />
+              <input type="number" value={newHabitXP} onChange={e => setNewHabitXP(Number(e.target.value))} min={1} max={1000} className="arcade-input !py-2 !text-sm" />
             </div>
             <div className="flex flex-col gap-1">
               <label className="font-mono text-[9px] font-bold uppercase" style={{ color: 'var(--arcade-paper-muted)' }}>Stat</label>

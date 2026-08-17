@@ -1,5 +1,6 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { useStore } from '../store/useStore';
+import { useShallow } from 'zustand/react/shallow';
 import type { Task, TaskStatus, TaskArea } from '../types';
 import { Plus, Search, Star, ChevronLeft, ChevronRight, Calendar, Trash2, CheckCircle2, Zap } from 'lucide-react';
 import { UndoToast } from '../components/shared/UndoToast';
@@ -9,14 +10,29 @@ import { UndoToast } from '../components/shared/UndoToast';
  * Backlog → Todo → Doing → Done, with areas, due dates, XP, today stars.
  */
 export const Tasks: React.FC = () => {
-  const { tasks, addTask, moveTask, toggleTodayTask, deleteTask } = useStore();
+  const { tasks, addTask, moveTask, toggleTodayTask, deleteTask } = useStore(useShallow(s => ({
+    tasks: s.tasks,
+    addTask: s.addTask,
+    moveTask: s.moveTask,
+    toggleTodayTask: s.toggleTodayTask,
+    deleteTask: s.deleteTask,
+  })));
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedArea, setSelectedArea] = useState<TaskArea | 'all'>('all');
 
-  // Undo-toast for task delete
+  // Undo-toast for task delete. The 5s grace timer must be cleared on
+  // unmount: otherwise navigation within the window still fires the delete
+  // (the user left the board, so the toast and its Undo are gone — the
+  // removal would be un-missable and irreversible).
   const [pendingDelete, setPendingDelete] = useState<{ title: string; id: string } | null>(null);
   const deleteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    return () => {
+      if (deleteTimerRef.current) clearTimeout(deleteTimerRef.current);
+      deleteTimerRef.current = null;
+    };
+  }, []);
 
   const handleDeleteTask = useCallback((task: { id: string; title: string }) => {
     if (deleteTimerRef.current) clearTimeout(deleteTimerRef.current);
@@ -234,30 +250,38 @@ export const Tasks: React.FC = () => {
       )}
 
       {/* Search + Area Filters */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'var(--arcade-paper-disabled)' }} aria-hidden="true" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            placeholder="Search quests…"
-            className="arcade-input !pl-9"
-            aria-label="Search tasks"
-          />
-        </div>
-        <div className="flex gap-1.5 flex-wrap">
-          {areas.map(a => (
-            <button
-              key={a}
-              type="button"
-              onClick={() => setSelectedArea(a)}
-              className={`chip cursor-pointer ${selectedArea === a ? 'chip--aurora' : ''}`}
-              style={{ textTransform: 'capitalize' }}
-            >
-              {a}
-            </button>
-          ))}
+      <div className="flex flex-col gap-3">
+        {tasks.length > 0 && filteredTasks.length === 0 && (
+          <p className="m-0 px-4 py-3 rounded-lg font-mono text-[10px]" style={{ color: 'var(--arcade-red)', background: 'rgba(248,113,113,0.06)', border: '1px solid rgba(248,113,113,0.25)' }} role="status">
+            No quests match “{searchQuery.trim() || 'this area'}” — clear the search or pick another area.
+          </p>
+        )}
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'var(--arcade-paper-disabled)' }} aria-hidden="true" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder="Search quests…"
+              className="arcade-input !pl-9"
+              maxLength={120}
+              aria-label="Search tasks"
+            />
+          </div>
+          <div className="flex gap-1.5 flex-wrap">
+            {areas.map(a => (
+              <button
+                key={a}
+                type="button"
+                onClick={() => setSelectedArea(a)}
+                className={`chip cursor-pointer ${selectedArea === a ? 'chip--aurora' : ''}`}
+                style={{ textTransform: 'capitalize' }}
+              >
+                {a}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -283,7 +307,7 @@ export const Tasks: React.FC = () => {
                       style={{ background: 'rgba(242,242,242,0.03)', border: '1px solid var(--obs-glass-9)' }}
                     >
                       <div className="flex items-start justify-between gap-2">
-                        <p className={`m-0 text-xs font-bold ${task.status === 'done' ? 'line-through' : ''}`} style={{ color: 'var(--arcade-paper)' }}>{task.title}</p>
+                        <p className={`m-0 text-xs font-bold truncate min-w-0 ${task.status === 'done' ? 'line-through' : ''}`} style={{ color: 'var(--arcade-paper)' }} title={task.title}>{task.title}</p>
                         <span
                           className={`w-2 h-2 rounded-full shrink-0 mt-0.5 ${task.today ? '' : 'opacity-30'}`}
                           style={{ background: 'var(--arcade-gold)', boxShadow: task.today ? '0 0 8px var(--arcade-gold)' : 'none' }}
@@ -369,7 +393,7 @@ export const Tasks: React.FC = () => {
                 ) : (
                   colTasks.map(task => (
                     <div key={task.id} className="rounded-lg p-3 flex flex-col gap-2" style={{ background: 'rgba(242,242,242,0.03)', border: '1px solid var(--obs-glass-9)' }}>
-                      <p className="m-0 text-xs font-bold" style={{ color: 'var(--arcade-paper)' }}>{task.title}</p>
+                      <p className="m-0 text-xs font-bold truncate min-w-0" style={{ color: 'var(--arcade-paper)' }} title={task.title}>{task.title}</p>
                       {task.notes && <p className="m-0 text-[10px]" style={{ color: 'var(--arcade-paper-muted)' }}>{task.notes}</p>}
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-1.5">

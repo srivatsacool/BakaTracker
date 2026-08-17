@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useStore } from '../../store/useStore';
+import { useShallow } from 'zustand/react/shallow';
 import { CheckCircle2, Circle, Trophy, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -10,7 +11,12 @@ import { Link } from 'react-router-dom';
  * Dismissible; stored in bt_onboarding_dismissed.
  */
 export const OnboardingBanner: React.FC = () => {
-  const { habits, tasks, journal, stats } = useStore();
+  const { habits, tasks, journal, stats } = useStore(useShallow(s => ({
+    habits: s.habits,
+    tasks: s.tasks,
+    journal: s.journal,
+    stats: s.stats,
+  })));
   const [dismissed, setDismissed] = useState(() => {
     return localStorage.getItem('bt_onboarding_dismissed') === 'true';
   });

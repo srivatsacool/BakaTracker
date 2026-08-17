@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useStore } from '../store/useStore';
+import { useShallow } from 'zustand/react/shallow';
 import { useNavigate } from 'react-router-dom';
 import type { Task, EisenhowerQuadrant, TaskArea } from '../types';
 import { Plus, ExternalLink, Trash2 } from 'lucide-react';
@@ -116,7 +117,11 @@ const TaskCard: React.FC<{
  * Do First / Schedule / Delegate / Eliminate, plus the unassigned inbox.
  */
 export const Eisenhower: React.FC = () => {
-  const { tasks, assignQuadrant, deleteTask } = useStore();
+  const { tasks, assignQuadrant, deleteTask } = useStore(useShallow(s => ({
+    tasks: s.tasks,
+    assignQuadrant: s.assignQuadrant,
+    deleteTask: s.deleteTask,
+  })));
   const navigate = useNavigate();
 
   const [showAddForm, setShowAddForm] = useState(false);
@@ -194,7 +199,7 @@ export const Eisenhower: React.FC = () => {
             </div>
             <div className="flex flex-col gap-1">
               <label className="font-mono text-[10px] font-bold uppercase" style={{ color: 'var(--arcade-paper-muted)' }}>XP</label>
-              <input type="number" value={xp} onChange={e => setXp(Number(e.target.value))} min={0} className="arcade-input font-mono" />
+              <input type="number" value={xp} onChange={e => setXp(Number(e.target.value))} min={0} max={1000} className="arcade-input font-mono" />
             </div>
             <div className="md:col-span-3 flex justify-end gap-2">
               <button type="button" onClick={() => setShowAddForm(false)} className="btn-ghost !text-xs">Cancel</button>

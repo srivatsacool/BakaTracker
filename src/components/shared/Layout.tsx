@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Flame, ListTodo, Target, BookOpen, Compass, Settings as SettingsIcon, X, Sun, ChevronLeft, ChevronRight, Download, LayoutGrid, Zap, Play, NotebookPen, LogOut, Sparkles, DoorOpen } from 'lucide-react';
 import { useStore } from '../../store/useStore';
+import { useShallow } from 'zustand/react/shallow';
 import { calculateDailyScore, getTodayDateString } from '../../lib/utils';
 import { OnboardingBanner } from './OnboardingBanner';
 import { UserMenu } from '../user/UserMenu';
@@ -42,7 +43,18 @@ export const Layout: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { startTour } = useAppTour(navigate);
-  const { stats, settings, habits, habitLogs, tasks, journal, setAccentColors, loadDemoData, clearDataByDays, syncStatus } = useStore();
+  const { stats, settings, habits, habitLogs, tasks, journal, setAccentColors, loadDemoData, clearDataByDays, syncStatus } = useStore(useShallow(s => ({
+    stats: s.stats,
+    settings: s.settings,
+    habits: s.habits,
+    habitLogs: s.habitLogs,
+    tasks: s.tasks,
+    journal: s.journal,
+    setAccentColors: s.setAccentColors,
+    loadDemoData: s.loadDemoData,
+    clearDataByDays: s.clearDataByDays,
+    syncStatus: s.syncStatus,
+  })));
   const { user, login, logout, getAccessToken } = useAuth();
     const apiClient = useApiClient();
     const init = useStore((s) => s.init);

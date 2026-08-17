@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Bot, ChevronRight, Loader2, MessageCircle, Send, Sparkles, X } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import { useStore } from '../../store/useStore';
+import { useShallow } from 'zustand/react/shallow';
 import { useAuth } from '../../features/auth';
 import { useApiClient } from '../../api/authFetch';
 import { getTodayDateString, isHabitCompleted } from '../../lib/utils';
@@ -98,7 +99,7 @@ function buildRouteSuggestions(route: string, data: { tasks: Task[]; habits: Hab
     case '/today': {
       if (topQuest) {
         return {
-          insight: `${openTodayCount} quest${plural(openTodayCount)} today · top ${topQuest.xp} XP`,
+          insight: `${openTodayCount} quest${plural(openTodayCount)} today · top quest +${topQuest.xp} XP`,
           prompts: [
             {
               label: `Your most important quest: “${truncate(topQuest.title, 42)}”`,
@@ -313,7 +314,13 @@ export const BakaSurRail: React.FC<BakaSurRailProps> = ({ collapsed, onToggle })
   const location = useLocation();
   const apiClient = useApiClient();
   const { user } = useAuth();
-  const { tasks, habits, habitLogs, stats, journal } = useStore();
+  const { tasks, habits, habitLogs, stats, journal } = useStore(useShallow(s => ({
+    tasks: s.tasks,
+    habits: s.habits,
+    habitLogs: s.habitLogs,
+    stats: s.stats,
+    journal: s.journal,
+  })));
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 1,
@@ -453,6 +460,7 @@ export const BakaSurRail: React.FC<BakaSurRailProps> = ({ collapsed, onToggle })
           onChange={event => setInput(event.target.value)}
           placeholder="Ask BakaSur…"
           aria-label="Ask BakaSur"
+          maxLength={500}
           disabled={busy}
           className="arcade-input !py-2 !text-sm flex-1"
         />

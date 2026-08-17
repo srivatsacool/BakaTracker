@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useStore } from '../../store/useStore';
+import { useShallow } from 'zustand/react/shallow';
 import { calculateHabitStreak } from '../../services/habits/calculateHabitStreak';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { Copy, Check, Printer, X, Sparkles } from 'lucide-react';
@@ -19,7 +20,13 @@ export const ExportLifeModal: React.FC<ExportLifeModalProps> = ({ isOpen, onClos
     setClosing(true);
     setTimeout(() => { onClose(); setClosing(false); }, 150);
   };
-  const { habits, habitLogs, stats, events, currentQuote } = useStore();
+  const { habits, habitLogs, stats, events, currentQuote } = useStore(useShallow(s => ({
+    habits: s.habits,
+    habitLogs: s.habitLogs,
+    stats: s.stats,
+    events: s.events,
+    currentQuote: s.currentQuote,
+  })));
   const [timeframe, setTimeframe] = useState<'week' | 'month' | 'all'>('month');
   const [copied, setCopied] = useState(false);
 

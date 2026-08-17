@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useStore } from '../store/useStore';
+import { useShallow } from 'zustand/react/shallow';
 import { getTodayDateString, formatDate } from '../lib/utils';
 import { Search, Flame } from 'lucide-react';
 import type { JournalEntry } from '../types';
@@ -10,7 +11,11 @@ import type { JournalEntry } from '../types';
  * energy field exists, so nothing here claims one.
  */
 export const Journal: React.FC = () => {
-  const { journal, saveJournalEntry, currentQuote } = useStore();
+  const { journal, saveJournalEntry, currentQuote } = useStore(useShallow(s => ({
+    journal: s.journal,
+    saveJournalEntry: s.saveJournalEntry,
+    currentQuote: s.currentQuote,
+  })));
 
   const [date, setDate] = useState(getTodayDateString());
   const [highlight, setHighlight] = useState('');
@@ -243,7 +248,8 @@ export const Journal: React.FC = () => {
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
                   placeholder="Search memories…"
-                  className="arcade-input !pl-9 !py-2 !text-xs"
+                  className="arcade-input !pl-8"
+                  maxLength={120}
                   aria-label="Search journal entries"
                 />
               </div>

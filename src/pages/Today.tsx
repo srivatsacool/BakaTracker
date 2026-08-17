@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { useStore } from '../store/useStore';
+import { useShallow } from 'zustand/react/shallow';
 import type { Task, TaskStatus } from '../types';
 import { ChevronLeft, ChevronRight, Award, CheckSquare, Square, Flame } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -13,7 +14,15 @@ import { calculateHabitStreak } from '../services/habits/calculateHabitStreak';
  * lights the pane (the one authored moment).
  */
 export const Today: React.FC = () => {
-  const { tasks, habits, habitLogs, journal, stats, settings, moveTask } = useStore();
+  const { tasks, habits, habitLogs, journal, stats, settings, moveTask } = useStore(useShallow(s => ({
+    tasks: s.tasks,
+    habits: s.habits,
+    habitLogs: s.habitLogs,
+    journal: s.journal,
+    stats: s.stats,
+    settings: s.settings,
+    moveTask: s.moveTask,
+  })));
 
   const todayTasks = tasks.filter(t => t.today);
   const activeTasks = todayTasks.filter(t => t.status !== 'done');
@@ -358,7 +367,7 @@ export const Today: React.FC = () => {
                           className="rounded-lg p-3 flex flex-col gap-2"
                           style={{ background: 'rgba(242,242,242,0.03)', border: '1px solid var(--obs-glass-9)' }}
                         >
-                          <p className="m-0 text-xs font-bold" style={{ color: 'var(--arcade-paper)' }}>{task.title}</p>
+                          <p className="m-0 text-xs font-bold truncate min-w-0" style={{ color: 'var(--arcade-paper)' }} title={task.title}>{task.title}</p>
                           <div className="flex items-center justify-between">
                             <span className="font-mono text-[9px] score-readout" style={{ color: 'var(--arcade-gold)' }}>+{task.xp} XP</span>
                             <div className="flex gap-1">
@@ -425,7 +434,7 @@ export const Today: React.FC = () => {
                     ) : (
                       colTasks.map(task => (
                         <div key={task.id} className="rounded-lg p-3 flex flex-col gap-2" style={{ background: 'rgba(242,242,242,0.03)', border: '1px solid var(--obs-glass-9)' }}>
-                          <p className="m-0 text-xs font-bold" style={{ color: 'var(--arcade-paper)' }}>{task.title}</p>
+                          <p className="m-0 text-xs font-bold truncate min-w-0" style={{ color: 'var(--arcade-paper)' }} title={task.title}>{task.title}</p>
                           <div className="flex items-center justify-between">
                             <span className="font-mono text-[9px] score-readout" style={{ color: 'var(--arcade-gold)' }}>+{task.xp} XP</span>
                             <div className="flex gap-1">
