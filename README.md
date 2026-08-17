@@ -1,4 +1,4 @@
-# 🚀 BakaTracker — v2
+# 🚀 BakaTracker — v2.3
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![TypeScript](https://img.shields.io/badge/Language-TypeScript-blue.svg)](https://www.typescriptlang.org/)
@@ -12,23 +12,32 @@
 
 > **BakaTracker** is a gamified personal life operating system — an RPG where
 > your habits, tasks, journal entries, and notes earn XP and level up a
-> character. **v2 is Cloudflare-native**: React PWA → Cloudflare Workers REST
+> character. **v2.3 is Cloudflare-native**: React PWA → Cloudflare Workers REST
 > API → D1 + R2 + KV. Self-hostable, single-user by design, zero
-> subscriptions. *"Track your life without turning it into a project."*
+> subscriptions. *Track your life without turning it into a project.*
 
 ---
 
-## ✨ What's new in v2
+## ✨ What's new in v2.3
 
-| | v1 (legacy) | **v2 (this repo)** |
+| | v1 (legacy) | **v2.3 (this repo)** |
 |---|---|---|
 | **Backend** | Python FastAPI on Google Cloud Run + Google Apps Script | **Cloudflare Workers** (`platform/`) |
 | **Database** | Google Sheets via Apps Script proxy | **Cloudflare D1** (SQLite: notes, FTS, tags) + **R2** (binaries) + **KV** (OAuth, notifications) |
 | **Auth** | Auth0 JWT / static bearer | **Google OAuth** via `workers-oauth-provider` (+ offline guest mode) |
 | **API style** | MCP-first, UI hit Sheets | **REST-only for the UI** (`/api/v1/*`); MCP reserved for AI clients |
 | **UI** | Neo-brutalist light/dark | **Dark glassmorphism** with LightTunnel WebGL background |
-| **AI** | — | **BakaSur assistant** (Workers AI + Gemini fallback), notes AI actions, proactive notifications |
-| **Sync** | Sheets `sync` overwrite | **Local-first with op-log sync** (`/sync/push`, `/sync/pull`) |
+| **AI** | — | **BakaSur assistant** (Workers AI, Llama 3.2 1B), notes AI actions, proactive notifications |
+| **Sync** | Sheets `sync` overwrite | **Local-first with op-log sync** (`/sync/pull`, `/sync/push`) |
+
+### v2.3 highlights
+- **Harden + optimize pass** — 14 zustand whole-store subscriptions converted to `useShallow` selectors (Layout, BakaSurRail, ContextBar, SyncStatus, all pages, modals); Tasks delete-timer unmount leak fixed; input maxLength/bounds everywhere; kanban truncation; Tasks search empty state.
+- **Landing text unified** — hero paragraph, body text, captions, labels, and inactive icons all at `rgba(233,230,242,0.7)` (paper white at 70% alpha) for a single consistent register.
+- **Footer bolder** — Fragment Mono 700, full instrument white, violet GitHub chip with 700 weight.
+- **Sign-in chip** — statement instrument chip (Fragment Mono, violet glass, blinking cursor) accepted via impeccable live.
+- **CORS security fix** — disallowed origins no longer leak the allowlist (worker wrapper reflected first allowed origin on rejection; now reflects only when allowed).
+- **AI model** — switched to `@cf/meta/llama-3.2-1b-instruct` (fast inference on Workers AI).
+- **MCP connected** — BakaTracker tools accessible via MCP (38 tools) with OAuth.
 
 ---
 
@@ -40,7 +49,7 @@
 4. [Folder Structure](#-folder-structure)
 5. [Tech Stack](#-tech-stack)
 6. [Local Development](#-local-development)
-7. [Deploy Your Own Instance](#-deploy-your-own-instance)
+7. [Deploy Your Own Instance](#deploy-your-own-instance)
 8. [Security](#-security)
 9. [Developer Guidelines](#-developer-guidelines)
 10. [Troubleshooting](#-troubleshooting)
@@ -58,10 +67,11 @@
 - **Journey Analytics** — consistency heatmap, XP over time, streak tracking, stat breakdowns.
 - **Visual Notes** — Excalidraw-style notebook pages (create, duplicate, archive, reorder), saved to D1/R2.
 - **RPG Character** — 5 stats (Discipline, Health, Knowledge, Creativity, Career), XP, levels, celebration moments.
-- **BakaSur AI Assistant** — in-app assistant with suggested prompts; notes AI actions (summarize, explain, ask, extract tasks/concepts, generate questions).
+- **BakaSur AI Assistant** — in-app assistant with route-aware suggested prompts; notes AI actions (summarize, explain, ask, extract tasks/concepts, generate questions). Powered by Workers AI (Llama 3.2 1B).
 - **Web Push Notifications** — opt-in notifications with quiet hours and personality settings.
 - **Local-first sync** — instant UI, background op-log sync when online; offline guest mode works fully.
 - **PWA** — installable, service-worker cached, works offline.
+- **MCP Integration** — 38 tools accessible via Model Context Protocol for AI clients (Claude, Cursor, Hermes).
 
 ---
 
@@ -101,12 +111,13 @@
    └───────┘  └──────┘ └────────────────┘
 ```
 
-**Key decisions (v2):**
+**Key decisions (v2.3):**
 1. **React talks REST only** — `/api/v1/*` via Hono. MCP is for AI clients (Claude, Cursor), not the browser.
 2. **One Tool Registry** — tools in `platform/src/tools/` power REST, MCP, cron, and future transports. No duplicated business logic.
 3. **D1 for text, R2 for binaries** — notes text + metadata + tags + FTS live in SQLite; images/PDFs/audio/exports go to R2.
 4. **Google Sheets removed entirely** — replaced by portable exports + the sync API.
 5. **Dark glass design system** — documented in [DESIGN.md](DESIGN.md); product rationale in [PRODUCT.md](PRODUCT.md).
+6. **CORS allowlist** — exact-origin matching; disallowed origins get no `Access-Control-Allow-Origin` header.
 
 ---
 
@@ -130,7 +141,7 @@ BakaTracker/
 │   │   ├── http/           # REST endpoints (Hono)
 │   │   ├── auth/           # Google OAuth handlers
 │   │   ├── tools/          # Tool Registry (business logic)
-│   │   ├── ai/             # BakaSur AI service (Workers AI + Gemini)
+│   │   ├── ai/             # BakaSur AI service (Workers AI)
 │   │   ├── notifications/  # proactive notifications
 │   │   ├── mcp/            # MCP server (AI clients)
 │   │   └── storage/        # D1 repositories, R2 files, sync
@@ -139,7 +150,7 @@ BakaTracker/
 ├── scripts/                # setup.mjs, deploy.mjs, pages tests, env sync
 ├── public/                 # PWA manifest, icons, logo
 ├── e2e/                    # Playwright specs (archived in extra/)
-├── DESIGN.md               # Design system spec (dark glass)
+├── DESIGN.md               # Design system spec (Light Tunnel)
 ├── PRODUCT.md              # Product spec
 └── extra/                  # gitignored archive (legacy files, see .gitignore)
 ```
@@ -157,10 +168,11 @@ BakaTracker/
 | Frontend | React 19, TypeScript, Vite, Tailwind CSS v4, Zustand, lucide-react |
 | Backend | Cloudflare Workers, Hono, `workers-oauth-provider` |
 | Database | Cloudflare D1 (SQLite + FTS), Cloudflare R2, Cloudflare KV |
-| AI | Workers AI (`AI_MODEL`/`AI_EMBED_MODEL`), Gemini REST fallback |
+| AI | Workers AI (`@cf/meta/llama-3.2-1b-instruct`), notes AI actions |
 | Auth | Google OAuth 2.0 (Authorization Code + PKCE) |
 | PWA | Vite PWA, injectManifest service worker |
-| Tests | Vitest (platform), Node test runner (pages checks), Playwright (e2e) |
+| MCP | `@modelcontextprotocol/sdk`, McpAgent Durable Object |
+| Tests | Vitest + db-verify (219 tests), Node test runner (10 pages checks) |
 | Deploy | `wrangler` + `scripts/setup.mjs` + Cloudflare Pages |
 
 ---
@@ -187,7 +199,7 @@ Wrangler simulates D1/KV/R2 locally — no Cloudflare resources needed for dev.
 npm run build         # tsc + vite production build
 npm run lint          # eslint
 npm run test:pages    # production build contract checks (10 tests)
-cd platform && npm test   # vitest + db-verify (81+ tests)
+cd platform && npm test   # vitest + db-verify (219 tests)
 ```
 
 ---
@@ -219,6 +231,9 @@ output `dist`, with production env vars `VITE_API_BASE_URL=<worker origin>` and
   access tokens; every `/api/v1/*` request is authenticated (no token → 401).
 - **Owner-scoped data** — tokens carry `sub`/`email`; repositories scope reads
   and writes to the authenticated user.
+- **CORS allowlist** — exact-origin matching; disallowed origins get no
+  `Access-Control-Allow-Origin` header (fixed in v2.3 — previous versions
+  leaked the first allowed origin on rejection).
 - **Local dev bypass** (`REST_DEV_BYPASS=1`) is dev-only and must never be set
   in production.
 - **Production gate** — `test:pages` asserts the built `dist/index.html` never
@@ -233,13 +248,16 @@ output `dist`, with production env vars `VITE_API_BASE_URL=<worker origin>` and
 1. **Store actions only** — React components never call the REST API directly;
    all mutations go through Zustand actions in `src/store/useStore.ts` (local
    cache + sync queue).
-2. **Registry over duplication** — new business logic goes into
+2. **Selector-based subscriptions** — use `useStore(useShallow(s => ({...})))`
+   with explicit slice selectors; never call `useStore()` with no selector
+   (whole-store re-render on every state change).
+3. **Registry over duplication** — new business logic goes into
    `platform/src/tools/`; REST/MCP/cron call the same registry tools.
-3. **D1 schema changes** — add a numbered migration in `platform/migrations/`,
+4. **D1 schema changes** — add a numbered migration in `platform/migrations/`,
    never edit applied migrations.
-4. **Verify before pushing** — `npm run build`, `npm run test:pages`,
+5. **Verify before pushing** — `npm run build`, `npm run test:pages`,
    `cd platform && npm test`.
-5. **Design system** — new UI uses the glass primitives in `src/components/shell/`
+6. **Design system** — new UI uses the glass primitives in `src/components/shell/`
    and tokens from [DESIGN.md](DESIGN.md); no legacy light-mode hardcodes.
 
 ---
@@ -255,12 +273,13 @@ output `dist`, with production env vars `VITE_API_BASE_URL=<worker origin>` and
   and verify secrets with `wrangler secret list`.
 - **Sync not reaching the server** — check `VITE_API_BASE_URL` on Pages and
   the Worker's CORS allow-list (`APP_ORIGIN`).
+- **AI chat not working** — verify Workers AI is enabled in the Cloudflare
+  dashboard and the `AI_MODEL` env var is set in `wrangler.prod.jsonc`.
 
 ---
 
 ## 🗺️ Roadmap
 
-- [ ] BakaSur chat in the UI once `/api/v1/assistant/chat` lands in the Worker
 - [ ] Conflict resolution UI for multi-device op-log merges
 - [ ] Delivery transport for proactive notifications (push → email)
 - [ ] Habit archiving without losing history

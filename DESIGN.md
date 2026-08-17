@@ -1,6 +1,8 @@
 ---
 name: BakaTracker
 description: Your life inside a light tunnel — every tool a smoked-glass instrument pane floating over the fibre-optic world, the daily check-in one lit pane in the tunnel.
+version: 2.3
+updated: 2026-08-17
 colors:
   obs-void: "#060714"
   obs-void-deep: "#03040b"
@@ -131,6 +133,11 @@ The palette is an indigo-tinted night: deep void ground (cool, never warm), inst
 - **Body** (Inter, 400, ~0.95rem, 65–75ch max): content and descriptions.
 - **Label** (Fragment Mono, 400, 0.22em tracking, uppercase): kickers, chips, status, save readouts, nav labels.
 
+### Landing Text Register (v2.3)
+The landing page uses a two-tier register for readability:
+- **Primary text** (headings, hero title): `--obs-paper` (#e9e6f2) at full opacity — the one shouting word.
+- **Secondary text** (hero paragraph, body, captions, labels, feature descriptions, inactive icons): `rgba(233, 230, 242, 0.7)` — paper white at 70% alpha. This unifies all secondary text to a single consistent register across the full landing page. The old dim tokens (`paper-dim`, `paper-muted`, `paper-disabled`) are eliminated from landing text in favor of this unified alpha.
+
 ## Layout
 
 The app is a floating glass shell inside the tunnel: 20px breathing room on desktop, 20px rounded frame, hairline border + inner top highlight + layered shadow, translucent smoked glass — **no backdrop-filter on the frame or its ancestors** (a filtered ancestor becomes the containing block for fixed children; the mobile bottom nav and AI sheet would break). Three zones: left instrument rail (collapsible to an icon rail; auto icon-rail at ≤1180px), centre life workspace, right BakaSur pane (collapsible orb; overlay tier on tablet; bottom sheet on mobile). ≤767px: stacked mobile layout with a fixed bottom instrument nav, a sticky header, and the assistant as a bottom sheet. The sidebar is the instrument rail: logo, the Status card (level, save lamp, theme/settings, XP bar), then the tool nav — each tool a glass row, the active one violet-tinted with a tool-tone hairline band. Spacing rhythm: tight groups (8px) inside cards, generous separation (16–24px) between cards, more space above headings than below.
@@ -194,7 +201,13 @@ The backend's truth in one LED: Observing (teal, lit), Recording… (violet, bli
 The day's progress as one unbroken track with a running light telling you where now is. The fill is the violet gradient, scaled via transform (no layout animation); the now-marker is a lit vertical rule.
 
 ### BakaSur Rail (signature component)
-The intelligence presence — the one allowed persistent glow source. Collapsed: a violet orb tab. Expanded: identity header (violet LED + marquee), route-aware suggested questions derived from the REAL ledger (top quest, streak at risk, N open quests…), conversation, input. Mobile: bottom sheet (slide-up, Escape-to-close). The chat contract is `POST /api/v1/assistant/chat` `{message, history(last 6), context{route, route_name, date}}` → `result.reply`; guests get a route-aware local `demoReply` with "· demo data" badges. No new backend.
+The intelligence presence — the one allowed persistent glow source. Collapsed: a violet orb tab. Expanded: identity header (violet LED + marquee), route-aware suggested questions derived from the REAL ledger (top quest, streak at risk, N open quests…), conversation, input. Mobile: bottom sheet (slide-up, Escape-to-close). The chat contract is `POST /api/v1/assistant/chat` `{message, history(last 6), context{route, route_name, date}}` → `result.reply`; guests get a route-aware local `demoReply` with "· demo data" badges. AI model: `@cf/meta/llama-3.2-1b-instruct` (Workers AI).
+
+### Sign-In Chip (v2.3, live-accepted)
+The sign-in button is a **statement instrument chip** in the landing header: Fragment Mono, 0.98rem, 700 weight, 0.2em tracking, uppercase, `--obs-aurora-bright` text, violet-tinted glass background with hairline border. A blinking cursor LED adds presence. It is the calm counterweight to the glowing TRY LIVE DEMO button — one quiet instrument in the header.
+
+### Footer (v2.3)
+The landing footer is a **two-part instrument stamp**: the kicker "Built with care by build.srivatsa" (Fragment Mono 700, full paper white, 0.22em tracking, uppercase) and the GitHub link as a violet-tinted chip (Fragment Mono 700, `--obs-aurora-bright` text). The old dim 11px mono was replaced by this bolder, brighter register.
 
 ## Do's and Don'ts
 
@@ -208,6 +221,7 @@ The intelligence presence — the one allowed persistent glow source. Collapsed:
 - **Do** name pane states (OFF / ATTRACT / PLAYING / HIGH SCORE / OUT OF ORDER) so color is never the only signal.
 - **Do** render tool colors only as hairline band edges — never as full fields.
 - **Do** darken the overlay before ever sacrificing text readability.
+- **Do** use the unified 0.7 alpha register for landing secondary text (paragraphs, captions, labels, feature descriptions).
 
 ### Don't:
 - **Don't** use the retired worlds' colors — observatory aurora #6f5bd8, arcade gold #ffd24a, warm amber, or any warm gray.
