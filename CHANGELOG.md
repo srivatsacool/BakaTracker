@@ -4,6 +4,51 @@ All notable changes to BakaTracker will be documented in this file.
 
 ---
 
+## [2.3.0] — 2026-08-17 — Landing Polish, Security Fix, AI Model + MCP
+
+### Added
+* **Landing text unified at 0.7 alpha** — hero paragraph, body text, captions,
+  labels, feature descriptions, and inactive icons all at
+  `rgba(233,230,242,0.7)` (paper white at 70% alpha) for a single consistent
+  register across the full landing page.
+* **Footer bolder** — Fragment Mono 700, full instrument white, violet GitHub
+  chip with 700 weight.
+* **Sign-in chip (live-accepted)** — statement instrument chip: Fragment Mono
+  0.98rem/700, violet-tinted glass, hairline border, blinking cursor LED.
+* **MCP integration** — BakaTracker tools accessible via Model Context
+  Protocol (38 tools) with OAuth, enabling AI clients (Claude, Cursor, Hermes).
+
+### Changed
+* **AI model switched to `@cf/meta/llama-3.2-1b-instruct`** — fast inference
+  on Workers AI, replacing the previous Llama 3.3 70B model.
+* **Zustand optimization** — 14 whole-store subscriptions converted to
+  `useStore(useShallow(s => ({...})))` selectors; Layout, BakaSurRail,
+  ContextBar, SyncStatus, all pages, and modals re-render only when their
+  own slices change.
+* **Input hardening** — `maxLength` added to habit name, notes inputs, BakaSur
+  chat, search fields; `max={1000}` on XP inputs (Habits, Eisenhower, FirstRun).
+* **Kanban truncation** — task titles use `truncate min-w-0` to prevent
+  long-text overflow in narrow columns.
+* **DESIGN.md + README.md** updated to reflect v2.3 state.
+
+### Fixed
+* **CORS allowlist leak** — the worker's outer CORS wrapper on `/api/v1/*`
+  previously reflected the first allowed origin on disallowed requests,
+  leaking the allowlist to probing origins. Now reflects the caller's origin
+  only when allowlisted; disallowed origins get no `Access-Control-Allow-Origin`
+  header. 219/219 platform tests pass.
+* **Tasks delete-timer unmount leak** — the 5s undo-grace timer fired
+  `deleteTask` after the component unmounted (user navigated away during the
+  window). Timer now cleared on unmount.
+* **Hero paragraph aria** — accepted live variant baked into `.landing-hero-copy`
+  in index.css with 0.7 alpha, line-height 1.85, 0.015em tracking.
+
+### Security
+* CORS fix (see Fixed above) — production verified: allowed origin → header
+  echoed; evil origin → no ACAO.
+
+---
+
 ## [2.2.0] — 2026-08-16 — BakaSur Chat + Premium Glass
 
 ### Added
