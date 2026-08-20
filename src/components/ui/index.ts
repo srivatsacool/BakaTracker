@@ -14,3 +14,8 @@ export * from './sheet';
 export * from './scroll-area';
 export * from './sonner';
 export * from './glass-pane';
+export * from './pane-header';
+export * from './xp-bar';
+export * from './empty-state';
+export * from './task-card';
+export * from './f11-tooltip';

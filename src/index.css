@@ -131,9 +131,11 @@
   --obs-glass-10: rgba(242,242,242,0.10);
   --obs-glass-12: rgba(242,242,242,0.12);
   --obs-glass-15: rgba(242,242,242,0.15);
-  /* Small radii */
+  /* Small radii — NOTE: --radius-sm is 8px. The earlier 5px declaration was
+     an inert duplicate (later-in-cascade wins at runtime); 8px is what every
+     consumer actually resolves to, so it is the canonical value. */
   --radius-xs: 3px;
-  --radius-sm: 5px;
+  --radius-sm: 8px;
 
   /* --- Glass surfaces --- */
   --glass-pane: linear-gradient(180deg, rgba(233, 230, 242, 0.07) 0%, rgba(233, 230, 242, 0.03) 100%);
@@ -144,11 +146,9 @@
   --aurora-glow: 0 0 28px rgba(139, 92, 246, 0.35), 0 0 2px rgba(139, 92, 246, 0.4);
   --led-glow: 0 0 8px var(--led-color, var(--obs-aurora));
 
-  --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 16px;
   --radius-pill: 999px;
-
   --font-display: "Archivo", "Arial Black", system-ui, sans-serif;
   --font-body: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   --font-instrument: "Fragment Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
