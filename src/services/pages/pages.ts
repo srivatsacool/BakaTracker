@@ -185,3 +185,21 @@ export async function duplicatePage(client: ApiClient, pageId: string): Promise<
   const res = await client.post<CreatePageResponse>(`/api/v1/pages/${encodeURIComponent(pageId)}/duplicate`, {});
   return res.page;
 }
+
+/**
+ * Reorder pages within a notebook (POST /api/v1/pages/reorder).
+ *
+ * `order` is the full ordered list of page ids for the notebook (or the whole
+ * library when notebookId is null). `notebook_id` is passed as a query param
+ * (the REST contract reads it from the URL, not the body). Only the moved
+ * range is updated server-side (sparse positions).
+ */
+export async function reorderPages(
+  client: ApiClient,
+  notebookId: string | null,
+  order: string[],
+): Promise<number> {
+  const qs = notebookId ? `?notebook_id=${encodeURIComponent(notebookId)}` : '';
+  const res = await client.post<{ ok: true; reordered: number }>(`/api/v1/pages/reorder${qs}`, { order });
+  return res.reordered;
+}

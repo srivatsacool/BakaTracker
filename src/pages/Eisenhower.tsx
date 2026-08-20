@@ -253,6 +253,7 @@ export const Eisenhower: React.FC = () => {
                       onAssign={q => assignQuadrant(task.id, q)}
                       onDelete={() => deleteTask(task.id)}
                       onMoveToKanban={() => navigate('/tasks')}
+                      showQuadrantPicker
                       compact
                     />
                   ))

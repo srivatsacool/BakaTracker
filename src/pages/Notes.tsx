@@ -14,10 +14,12 @@ import {
   X,
   ChevronDown,
   ChevronRight,
+  ChevronUp,
   Loader2,
   PenTool,
 } from 'lucide-react';
 import { useApiClient } from '../api/authFetch';
+import { useStore } from '../store/useStore';
 import { useAuth } from '../features/auth';
 import { authConfig } from '../features/auth/config';
 import {
@@ -30,6 +32,7 @@ import {
   archivePage,
   restorePage,
   duplicatePage,
+  reorderPages,
 } from '../services/pages/pages';
 import type { Notebook, Page } from '../types/page';
 
@@ -210,6 +213,72 @@ export const Notes: React.FC = () => {
     }).catch(() => undefined);
   };
 
+  /** Turn a page's content into quests: extract candidate lines from the title
+   *  and any Excalidraw text elements, then create a task per candidate. */
+  const handlePageToQuests = async (page: Page) => {
+    if (busy) return;
+    const candidates: string[] = [];
+    const push = (raw: string) => {
+      const t = raw.trim().replace(/^[-•*]\s*/, '');
+      if (t && t.length >= 3 && t.length <= 180) candidates.push(t);
+    };
+    // Title lines
+    (page.title || '').split(/\n/).forEach(push);
+    // Excalidraw scene text elements
+    if (page.kind === 'excalidraw' && page.scene) {
+      try {
+        const scene = JSON.parse(page.scene) as { elements?: { type?: string; text?: string }[] };
+        (scene.elements ?? [])
+          .filter(el => el.type === 'text' && el.text)
+          .forEach(el => push(String(el.text)));
+      } catch { /* non-JSON scene — ignore */ }
+    }
+    // Dedupe, cap
+    const quests = [...new Set(candidates)].slice(0, 12);
+    if (quests.length === 0) {
+      window.alert('This page has no extractable content to turn into quests.');
+      return;
+    }
+    const ok = window.confirm(`Turn this page into ${quests.length} quest${quests.length === 1 ? '' : 's'}?\n\n${quests.map((q, i) => `${i + 1}. ${q}`).join('\n')}`);
+    if (!ok) return;
+    const { addTask } = useStore.getState();
+    for (const title of quests) {
+      await addTask(title, `From page: ${page.title || 'Untitled'}`, 'personal', 10, false);
+    }
+  };
+
+  /** Move a page up/down within its notebook, persisting the new order. */
+  const handleReorderPage = async (page: Page, dir: -1 | 1) => {
+    if (busy) return;
+    const nbId = page.notebook_id ?? '';
+    const list = pagesByNb[nbId] ?? [];
+    const active = list.filter(p => p.archived_at === null);
+    const from = active.findIndex(p => p.id === page.id);
+    if (from < 0) return;
+    const to = from + dir;
+    if (to < 0 || to >= active.length) return;
+    // New full order: swap the moved page with its neighbour within active pages.
+    const reorderedActive = [...active];
+    const [moved] = reorderedActive.splice(from, 1);
+    reorderedActive.splice(to, 0, moved);
+    await runBusy(`pg:reorder:${page.id}`, async () => {
+      await reorderPages(apiClient, nbId === '' ? null : nbId, reorderedActive.map(p => p.id));
+      // Rebuild the notebook's page list: reordered active pages first (server
+      // order), archived pages preserved at the tail. Existing fields kept.
+      const archivedList = list.filter(p => p.archived_at !== null);
+      setPagesByNb(prev => {
+        const merged = (id: string) => (prev[nbId] ?? []).find(p => p.id === id) ?? { id };
+        return {
+          ...prev,
+          [nbId]: [
+            ...reorderedActive.map(p => ({ ...p, ...merged(p.id) })),
+            ...archivedList,
+          ],
+        };
+      });
+    }).catch(() => undefined);
+  };
+
   // --- Render ----------------------------------------------------------------
 
   const pageRow = (page: Page) => {
@@ -279,6 +348,31 @@ export const Notes: React.FC = () => {
               <Loader2 className="w-4 h-4 shrink-0 animate-spin" style={{ color: 'var(--arcade-magenta)' }} aria-hidden="true" />
             ) : (
               <span className="flex shrink-0 items-center gap-0.5 sm:opacity-0 sm:transition sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 sm:group-focus-visible:opacity-100" style={{ opacity: 0 }}>
+                <button
+                  type="button"
+                  aria-label="Move page up"
+                  onClick={() => void handleReorderPage(page, -1)}
+                  className="icon-button icon-button-small"
+                >
+                  <ChevronUp className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  type="button"
+                  aria-label="Move page down"
+                  onClick={() => void handleReorderPage(page, 1)}
+                  className="icon-button icon-button-small"
+                >
+                  <ChevronDown className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  type="button"
+                  aria-label="Turn this page into quests"
+                  title="Turn this page into quests"
+                  onClick={() => void handlePageToQuests(page)}
+                  className="icon-button icon-button-small"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                </button>
                 <button
                   type="button"
                   aria-label="Rename page"
