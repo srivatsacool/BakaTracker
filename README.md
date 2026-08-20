@@ -200,6 +200,10 @@ npm run build         # tsc + vite production build
 npm run lint          # eslint
 npm run test:pages    # production build contract checks (10 tests)
 cd platform && npm test   # vitest + db-verify (219 tests)
+
+# Browser E2E runs in Firefox (via @mozilla/firefox-devtools-mcp).
+# Requires the dev server on :5173. See CONTRIBUTING.md → "Browser E2E / Visual QA".
+npm run firefox:e2e   # launches Firefox MCP (developer preset) + smoke-checks the app
 ```
 
 ---

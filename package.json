@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "test:pages": "node --test scripts/pages-check.test.mjs",
+    "firefox:e2e": "node scripts/firefox-smoke.mjs",
     "preview": "npm run build && wrangler dev",
     "setup": "node scripts/setup.mjs",
     "setup:dry-run": "node scripts/setup.mjs --dry-run",

@@ -30,7 +30,9 @@ interface BakaState {
   syncError: string | null;
   character: CharacterRecord[];
   weeklyStats: WeeklyStatsRecord[];
-  
+  deletedTaskIds: string[];
+  deletedHabitIds: string[];
+
   // Actions
   init: (apiClient?: ApiClient) => Promise<void>;
   syncWithSheets: (apiClient?: ApiClient) => Promise<void>;
@@ -230,6 +232,8 @@ export const useStore = create<BakaState>((set, get) => ({
   syncError: null,
   character: [],
   weeklyStats: [],
+  deletedTaskIds: [],
+  deletedHabitIds: [],
 
   resetStore: () => {
     // Clear application local storage keys
@@ -240,6 +244,8 @@ export const useStore = create<BakaState>((set, get) => ({
     localStorage.removeItem('bt_events');
     localStorage.removeItem('bt_character');
     localStorage.removeItem('bt_weekly_stats');
+    localStorage.removeItem('bt_deleted_task_ids');
+    localStorage.removeItem('bt_deleted_habit_ids');
     // Keep bt_theme, bt_sidebar_collapsed, and accent colors intact!
 
     // Reset store state to initial/default values
@@ -256,6 +262,8 @@ export const useStore = create<BakaState>((set, get) => ({
       weeklyStats: [],
       syncStatus: 'idle',
       syncError: null,
+      deletedTaskIds: [],
+      deletedHabitIds: [],
     });
   },
 
@@ -464,7 +472,7 @@ export const useStore = create<BakaState>((set, get) => ({
   },
 
   syncWithSheets: async (apiClient) => {
-      const { settings, habits, habitLogs, tasks, journal, events, character, weeklyStats } = get();
+      const { settings, habits, habitLogs, tasks, journal, events, character, weeklyStats, deletedTaskIds, deletedHabitIds } = get();
       // Phase 3: fall back to the client stashed by init(apiClient), so the v1
       // mutation call sites (syncWithSheets() with no args) persist to D1 for
       // authenticated users instead of silently no-op'ing.
@@ -489,6 +497,8 @@ export const useStore = create<BakaState>((set, get) => ({
         tasks,
         journal,
         events,
+        deletedTaskIds,
+        deletedHabitIds,
         settings: formatSettings,
         metadata: formatMetadata,
         character,
@@ -496,6 +506,11 @@ export const useStore = create<BakaState>((set, get) => ({
       });
 
       if (success) {
+        // v2.4: clear tombstone queues after successful sync so we don't re-emit
+        // delete ops on every subsequent sync.
+        set({ deletedTaskIds: [], deletedHabitIds: [] });
+        localStorage.setItem('bt_deleted_task_ids', '[]');
+        localStorage.setItem('bt_deleted_habit_ids', '[]');
         set({ syncStatus: 'success' });
       } else {
         throw new Error('Sync returned false status');
@@ -825,14 +840,16 @@ export const useStore = create<BakaState>((set, get) => ({
   },
 
   deleteHabit: async (id: string) => {
-    const { habits, habitLogs, tasks, journal, events } = get();
+    const { habits, habitLogs, tasks, journal, events, deletedHabitIds } = get();
     const result = deleteHabit(id, habits, habitLogs);
     const newEvents = events.filter(e => e.entity_id !== id || e.type !== 'habit_completed');
+    const newDeleted = [...deletedHabitIds, id];
 
-    set({ habits: result.habits, habitLogs: result.logs, events: newEvents });
+    set({ habits: result.habits, habitLogs: result.logs, events: newEvents, deletedHabitIds: newDeleted });
     localStorage.setItem('bt_habits', JSON.stringify(result.habits));
     localStorage.setItem('bt_logs', JSON.stringify(result.logs));
     localStorage.setItem('bt_events', JSON.stringify(newEvents));
+    localStorage.setItem('bt_deleted_habit_ids', JSON.stringify(newDeleted));
     updateStatsAndSummaries(set, get, result.habits, result.logs, tasks, journal, newEvents);
     
     get().syncWithSheets().catch(console.error);
@@ -904,13 +921,15 @@ export const useStore = create<BakaState>((set, get) => ({
   },
 
   deleteTask: async (id: string) => {
-    const { tasks, habits, habitLogs, journal, events } = get();
+    const { tasks, habits, habitLogs, journal, events, deletedTaskIds } = get();
     const updatedTasks = deleteTask(id, tasks);
     const newEvents = events.filter(e => e.entity_id !== id || e.type !== 'task_completed');
+    const newDeleted = [...deletedTaskIds, id];
 
-    set({ tasks: updatedTasks, events: newEvents });
+    set({ tasks: updatedTasks, events: newEvents, deletedTaskIds: newDeleted });
     localStorage.setItem('bt_tasks', JSON.stringify(updatedTasks));
     localStorage.setItem('bt_events', JSON.stringify(newEvents));
+    localStorage.setItem('bt_deleted_task_ids', JSON.stringify(newDeleted));
     updateStatsAndSummaries(set, get, habits, habitLogs, updatedTasks, journal, newEvents);
     
     get().syncWithSheets().catch(console.error);

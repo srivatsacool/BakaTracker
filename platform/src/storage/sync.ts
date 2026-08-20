@@ -136,6 +136,16 @@ async function applyOp(
       return true;
     }
     case "journal": {
+      if (op === "delete") {
+        // Journal is keyed by (user_id, date); entity_id is the entry's id.
+        // Look up the entry to get the date, then delete by date.
+        const j = await database
+          .prepare("SELECT date FROM journal WHERE id=?1 AND user_id=?2")
+          .bind(id, userId)
+          .first<{ date: string }>();
+        if (j) return repos.journal.delete(userId, j.date);
+        return false;
+      }
       const j = payload as Journal;
       await repos.journal.upsert({
         ...j,

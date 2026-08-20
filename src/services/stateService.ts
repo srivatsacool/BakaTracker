@@ -42,7 +42,7 @@ interface V2Task {
   created_at: string;
   updated_at: string;
 }
-interface V2HabitLogEntry { date: string; count: number }
+interface V2HabitLogEntry { date: string; count: number; value?: string }
 interface V2Habit {
   id: string;
   name: string;
@@ -92,20 +92,27 @@ const uiToV2TaskStatus = (status: Task['status']): string => {
   }
 };
 
-/** v2 journal mood (int 1-5) → UI mood emoji. */
+/** v2 journal mood (int 1-4 new, 1/3/5 legacy) → UI mood emoji.
+ *  Legacy values (1=😞, 3=😐, 5=🙂) are preserved for backward compat with
+ *  existing data written before the 4-mood scale. */
 const v2ToUiMood = (mood: number | null | undefined): JournalEntry['mood'] => {
-  if (mood == null) return '';
-  if (mood <= 2) return '😞';
-  if (mood <= 4) return '😐';
-  return '🙂';
+  switch (mood) {
+    case 1: return '😞';
+    case 2: return '😐';
+    case 3: return '🙂';
+    case 4: return '😄';
+    case 5: return '🙂'; // legacy 🙂 mapping, for backward compat
+    default: return '';
+  }
 };
 
-/** UI mood emoji → v2 journal mood (int 1-5). */
+/** UI mood emoji → v2 journal mood (int 1-4). */
 const uiToV2Mood = (mood: JournalEntry['mood']): number | null => {
   switch (mood) {
     case '😞': return 1;
-    case '😐': return 3;
-    case '🙂': return 5;
+    case '😐': return 2;
+    case '🙂': return 3;
+    case '😄': return 4;
     default: return null;
   }
 };
@@ -185,7 +192,18 @@ function habitToV2(habit: Habit, logs: HabitLog[]): Record<string, unknown> {
     streak: 0,
     log: logs
       .filter((l) => l.habit_id === habit.id)
-      .map((l) => ({ date: l.date, count: Number(l.value) || 1 })),
+      .map((l) => {
+        // Preserve semantic values: mood emoji, energy labels, numeric/counter
+        // numbers. The backend's `count` field is a number; non-numeric values
+        // go in the parallel `value` field (added in v2.4).
+        const num = Number(l.value);
+        const isNumeric = !Number.isNaN(num);
+        return {
+          date: l.date,
+          count: isNumeric ? num : 1,
+          ...(isNumeric ? {} : { value: String(l.value) }),
+        };
+      }),
   };
 }
 
@@ -247,6 +265,10 @@ export const stateService = {
    * Pushes local state to the Worker via the v2 sync ledger
    * (`POST /api/v1/sync/push`). UI-only collections (quotes/events/settings)
    * stay local — the v2 SyncEntity vocabulary is task/habit/note/journal.
+   *
+   * v2.4: Now accepts `deletedTaskIds` and `deletedHabitIds` to emit tombstone
+   * delete ops, ensuring deleted entities are removed server-side (not just
+   * locally). After successful sync, the caller should clear these arrays.
    */
   syncData: async (
     apiClient: ApiClient,
@@ -256,6 +278,8 @@ export const stateService = {
       tasks: Task[];
       journal: JournalEntry[];
       events: EventLog[];
+      deletedTaskIds?: string[];
+      deletedHabitIds?: string[];
       settings?: { key: string; value: string }[];
       metadata?: { schema_version: string; xp_formula: string; last_sync: string }[];
       character?: CharacterRecord[];
@@ -264,6 +288,30 @@ export const stateService = {
   ): Promise<boolean> => {
     try {
       const ops: Record<string, unknown>[] = [];
+
+      // Emit delete ops for tombstoned tasks (v2.4 data integrity fix)
+      if (data.deletedTaskIds?.length) {
+        for (const id of data.deletedTaskIds) {
+          ops.push({
+            op: 'delete',
+            entity: 'task',
+            entity_id: id,
+            rev: new Date().toISOString(),
+          });
+        }
+      }
+
+      // Emit delete ops for tombstoned habits (v2.4 data integrity fix)
+      if (data.deletedHabitIds?.length) {
+        for (const id of data.deletedHabitIds) {
+          ops.push({
+            op: 'delete',
+            entity: 'habit',
+            entity_id: id,
+            rev: new Date().toISOString(),
+          });
+        }
+      }
 
       for (const t of data.tasks) {
         ops.push({

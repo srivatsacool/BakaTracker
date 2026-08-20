@@ -2,7 +2,7 @@
  * Journal repository — Tool → Repository → SQL → D1.
  */
 import type { Journal } from "../../domain/schemas";
-import { journalUpsert, journalGet, journalList, journalDeleteAllForUser } from "../db";
+import { journalUpsert, journalGet, journalList, journalDelete, journalDeleteAllForUser } from "../db";
 
 export class JournalRepository {
   constructor(private readonly db: D1Database) {}
@@ -13,6 +13,10 @@ export class JournalRepository {
 
   async get(userId: string, date: string): Promise<Journal | null> {
     return journalGet(this.db, userId, date);
+  }
+
+  async delete(userId: string, date: string): Promise<boolean> {
+    return journalDelete(this.db, userId, date);
   }
 
   /** Remove every journal row for one user (reset_account; scoped, never global). */

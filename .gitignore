@@ -95,3 +95,6 @@ extra/
 
 # Impeccable live-mode local state (config, sessions, journal)
 .impeccable/
+
+# BakaTracker E2E — dedicated Firefox automation profile (local only, never committed)
+.e2e/

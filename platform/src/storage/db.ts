@@ -326,6 +326,11 @@ export async function journalGet(db: D1Database, userId: string, date: string): 
   return (r as Journal) ?? null;
 }
 
+export async function journalDelete(db: D1Database, userId: string, date: string): Promise<boolean> {
+  const r = await db.prepare("DELETE FROM journal WHERE user_id=?1 AND date=?2").bind(userId, date).run();
+  return (r.meta?.changes ?? 0) > 0;
+}
+
 export async function journalList(db: D1Database, userId: string, from?: string, to?: string): Promise<Journal[]> {
   let sql = "SELECT * FROM journal WHERE user_id=?1";
   const binds = [userId];

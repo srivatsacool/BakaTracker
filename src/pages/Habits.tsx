@@ -42,6 +42,93 @@ export const Habits: React.FC = () => {
 
   const todayStr = getTodayDateString();
 
+  // Date-scoped day editor state: which habit + date the week-strip picker is
+  // open for. Only used for non-checkbox types (checkbox toggles directly).
+  const [dayEditor, setDayEditor] = useState<{ habitId: string; date: string } | null>(null);
+
+  /** Type-aware week-strip click: checkbox toggles; other types open a
+   *  date-scoped editor so we never overwrite counter/numeric/mood/energy
+   *  history with a boolean `1`. */
+  const onDayCellClick = useCallback((habit: Habit, date: string) => {
+    if (habit.type === 'checkbox') {
+      toggleHabit(habit.id, date);
+      return;
+    }
+    setDayEditor({ habitId: habit.id, date });
+  }, [toggleHabit]);
+
+  /** Render the per-type editor for a specific date (reuses the same store
+   *  actions as the today controls, bound to the requested date). */
+  const renderDayEditor = (habit: Habit, date: string) => {
+    const dayLog = habitLogs.find(l => l.habit_id === habit.id && l.date === date);
+    return (
+      <div
+        className="rounded-md border p-2.5 mt-2"
+        style={{ background: 'rgba(13,11,22,0.6)', borderColor: 'var(--obs-glass-7)' }}
+        role="group"
+        aria-label={`Edit ${habit.name} for ${date}`}
+      >
+        <div className="flex items-center justify-between gap-2 mb-2">
+          <span className="font-mono text-[9px]" style={{ color: 'var(--arcade-paper-muted)' }}>{date}</span>
+          <button
+            type="button"
+            onClick={() => setDayEditor(null)}
+            className="icon-button icon-button-small"
+            aria-label="Close day editor"
+          >✕</button>
+        </div>
+        {habit.type === 'counter' && (
+          <div className="flex items-center gap-2">
+            <button type="button" onClick={() => incrementCounterHabit(habit.id, date, -1)} className="btn-ghost !py-1 !px-3" aria-label={`Decrease ${habit.name} on ${date}`}>−</button>
+            <span className="score-readout text-base min-w-[3ch] text-center" style={{ color: 'var(--arcade-gold)' }}>{Number(dayLog?.value) || 0}</span>
+            <button type="button" onClick={() => incrementCounterHabit(habit.id, date, 1)} className="btn-ghost !py-1 !px-3" aria-label={`Increase ${habit.name} on ${date}`}>+</button>
+          </div>
+        )}
+        {habit.type === 'numeric' && (
+          <div className="flex items-center gap-2">
+            <span className="font-mono text-[10px]" style={{ color: 'var(--arcade-paper-muted)' }}>Value</span>
+            <input
+              type="number"
+              value={Number(dayLog?.value) || ''}
+              onChange={e => setNumericHabit(habit.id, date, Number(e.target.value) || 0)}
+              className="arcade-input !py-1 !w-24 !text-sm"
+              placeholder="0"
+              aria-label={`${habit.name} value on ${date}`}
+            />
+          </div>
+        )}
+        {habit.type === 'mood' && (
+          <div className="flex gap-1" role="group" aria-label={`${habit.name} mood on ${date}`}>
+            {['😞', '😐', '🙂', '😄'].map(emoji => (
+              <button
+                key={emoji}
+                type="button"
+                onClick={() => setMoodHabit(habit.id, date, dayLog?.value === emoji ? '' : emoji)}
+                className={`w-9 h-9 rounded-lg text-base cursor-pointer transition hover:scale-110 ${dayLog?.value === emoji ? 'chip chip--magenta' : 'chip'}`}
+                aria-label={`Set mood to ${emoji} on ${date}`}
+                aria-pressed={dayLog?.value === emoji}
+              >{emoji}</button>
+            ))}
+          </div>
+        )}
+        {habit.type === 'energy' && (
+          <div className="flex gap-1" role="group" aria-label={`${habit.name} energy on ${date}`}>
+            {['low', 'med', 'high'].map(level => (
+              <button
+                key={level}
+                type="button"
+                onClick={() => setEnergyHabit(habit.id, date, dayLog?.value === level ? '' : level)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold font-mono cursor-pointer transition hover:scale-105 uppercase ${dayLog?.value === level ? 'chip chip--aurora' : 'chip'}`}
+                aria-label={`Set energy to ${level} on ${date}`}
+                aria-pressed={dayLog?.value === level}
+              >{level}</button>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const getLast5Days = (): { date: string; label: string }[] => {
     const days = [];
     const d = new Date();
@@ -475,27 +562,43 @@ export const Habits: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* Week strip */}
+                    {/* Week strip (type-aware since v2.4) */}
                     <div className="mt-3 pt-3 flex items-end gap-1.5" style={{ borderTop: '1px solid var(--obs-glass-7)' }} aria-label="Last 5 days">
                       {last5.map(day => {
                         const dayLog = habitLogs.find(l => l.habit_id === habit.id && l.date === day.date);
                         const done = isHabitCompleted(habit, dayLog);
+                        // Non-checkbox habits show their semantic value + status,
+                        // and opening the day editor requires a real interaction.
+                        const recordValue = dayLog?.value;
+                        const isNonCheckbox = habit.type !== 'checkbox';
                         return (
                           <button
                             key={day.date}
                             type="button"
-                            onClick={() => toggleHabit(habit.id, day.date)}
+                            onClick={() => onDayCellClick(habit, day.date)}
                             className="flex-1 flex flex-col items-center gap-1 rounded-md py-1.5 cursor-pointer transition hover:scale-105"
                             style={{ background: done ? 'rgba(61,220,132,0.1)' : 'rgba(242,242,242,0.03)', border: `1px solid ${done ? 'rgba(61,220,132,0.3)' : 'var(--obs-glass-7)'}` }}
-                            aria-label={`Toggle ${habit.name} on ${day.date}`}
+                            aria-label={`${isNonCheckbox ? 'Edit' : 'Toggle'} ${habit.name} on ${day.date}`}
                             aria-pressed={done}
                           >
                             <span className="font-mono text-[9px]" style={{ color: done ? 'var(--arcade-green)' : 'var(--arcade-paper-muted)' }}>{day.label}</span>
-                            <span className="w-4 h-4 rounded-sm" style={{ background: done ? 'var(--arcade-green)' : 'transparent', border: done ? 'none' : '1px solid rgba(242,242,242,0.2)', boxShadow: done ? '0 0 6px var(--arcade-green)' : 'none' }} aria-hidden="true" />
+                            {isNonCheckbox ? (
+                              <span
+                                className="w-4 h-4 rounded-sm flex items-center justify-center text-[9px] leading-none"
+                                style={{ background: done ? 'var(--arcade-green)' : 'transparent', border: done ? 'none' : '1px solid rgba(242,242,242,0.2)', color: done ? '#08140c' : 'var(--arcade-paper-dim)' }}
+                                aria-hidden="true"
+                              >
+                                {String(recordValue ?? '')}
+                              </span>
+                            ) : (
+                              <span className="w-4 h-4 rounded-sm" style={{ background: done ? 'var(--arcade-green)' : 'transparent', border: done ? 'none' : '1px solid rgba(242,242,242,0.2)', boxShadow: done ? '0 0 6px var(--arcade-green)' : 'none' }} aria-hidden="true" />
+                            )}
                           </button>
                         );
                       })}
                     </div>
+                    {/* Date-scoped editor for non-checkbox types (v2.4 P0 fix) */}
+                    {dayEditor && dayEditor.habitId === habit.id && renderDayEditor(habit, dayEditor.date)}
                   </div>
                 </div>
               );

@@ -23,7 +23,51 @@ Be kind, be direct, assume good intent. That's it.
    npm run test:pages
    cd platform && npm test
    ```
-5. Open a PR with a clear description and, for UI changes, a screenshot.
+5. **Browser E2E runs in Firefox.** See "Browser E2E / visual QA" below. Do
+   **not** use Chrome/Chromium for the project's browser automation.
+6. Open a PR with a clear description and, for UI changes, a screenshot.
+
+## Browser E2E / Visual QA (Firefox)
+
+The project's browser E2E and visual-inspection workflow runs in **Firefox**
+via [@mozilla/firefox-devtools-mcp](https://github.com/mozilla/firefox-devtools-mcp)
+(repository name `mozilla/firefox-devtools-mcp`). This replaces any Chrome /
+Playwright-Chromium flow used during development.
+
+- **Package:** `@mozilla/firefox-devtools-mcp@latest`
+- **Run:** `npx @mozilla/firefox-devtools-mcp@latest`
+- **Preset:** `developer` (pages, snapshot, input, screenshot, console, network,
+  script, debugging, …)
+- **Requirements:** Node >= 20.19.0, Firefox 100+ (auto-detected; set
+  `--firefoxPath` if not found). geckodriver is auto-downloaded by the MCP.
+- **Dedicated profile:** always use a dedicated automation profile, never a
+  personal browsing profile (the MCP's `--autoProfile` keeps a per-browser
+  persistent profile under `~/.firefox-devtools-mcp/`).
+
+Smoke-check that the Firefox MCP launches and reaches the local app:
+
+```bash
+# with the dev server running on :5173
+npm run firefox:e2e          # == node scripts/firefox-smoke.mjs
+START_URL=http://localhost:5173 node scripts/firefox-smoke.mjs
+```
+
+To use the full Firefox MCP tool set inside Hermes, the server is registered
+in Hermes as `firefox-devtools` (visible as `mcp_firefox_devtools_*` tools);
+those load at Hermes session startup. Developer hint — start it manually:
+
+```bash
+npx @mozilla/firefox-devtools-mcp@latest \
+  --toolPreset developer \
+  --viewport 1440x900 \
+  --autoProfile \
+  --startUrl http://localhost:5173
+```
+
+Firefox is run **visibly** (no `--headless`) for screenshots and interactive
+E2E. For debugging failures prefer Firefox tooling (`take_snapshot`,
+`screenshot_page`, `list_console_messages`, `list_network_requests`) over
+opening Chromium DevTools.
 
 ## Architecture Rules (v2)
 
