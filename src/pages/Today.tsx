@@ -6,6 +6,7 @@ import { ChevronLeft, ChevronRight, Award, CheckSquare, Square, Flame } from 'lu
 import { Link } from 'react-router-dom';
 import { calculateDailyScore, isHabitCompleted, getTodayDateString } from '../lib/utils';
 import { calculateHabitStreak } from '../services/habits/calculateHabitStreak';
+import { GlassPane, XPBar } from '../components/ui';
 
 /**
  * Today — the daily cockpit. One lit pane: the starred quests board.
@@ -264,16 +265,10 @@ export const Today: React.FC = () => {
       ) : (
         <>
           {/* Today's Quests Checklist Panel */}
-          <section className="cabinet cabinet--playing z-10" style={{ '--marquee-color': 'var(--arcade-gold)' } as React.CSSProperties}>
-            <div className="cabinet-marquee">
-              <span className="cabinet-led" aria-hidden="true" />
-              <span className="cabinet-marquee-title">Today's Quests</span>
-              <span className="ml-auto font-mono text-[10px] score-readout" style={{ color: 'var(--arcade-gold)' }}>
-                {doneTasks.length} / {todayTasks.length}
-              </span>
-            </div>
-            <div className="cabinet-screen !p-5">
-              <div className="flex flex-col gap-4">
+          <GlassPane state="playing" paneTitle="Today's Quests" tone="aurora"
+            titleRight={<span className="font-mono text-[10px] score-readout" style={{ color: 'var(--arcade-gold)' }}>{doneTasks.length} / {todayTasks.length}</span>}
+            screenClassName="!p-5" className="z-10">
+            <div className="flex flex-col gap-4">
                 {todayTasks.map(task => {
                   const isCompleted = task.status === 'done';
                   return (
@@ -336,26 +331,21 @@ export const Today: React.FC = () => {
                   );
                 })}
               </div>
-            </div>
-          </section>
+          </GlassPane>
 
           {/* Kanban Columns (Desktop) */}
           <div className="hidden md:grid grid-cols-3 gap-6 z-10">
             {columns.map(col => {
               const colTasks = getColumnTasks(col.id);
-              const isActiveTab = activeMobileTab === col.mobileTab;
               return (
-                <section
+                <GlassPane
                   key={col.id}
-                  className={`cabinet ${col.id === 'done' ? 'cabinet--highscore' : 'cabinet--off'} ${isActiveTab ? '' : ''}`}
-                  style={{ '--marquee-color': col.id === 'done' ? 'var(--arcade-green)' : 'var(--arcade-cobalt)' } as React.CSSProperties}
+                  state={col.id === 'done' ? 'highscore' : 'off'}
+                  tone={col.id === 'done' ? 'green' : 'cobalt'}
+                  paneTitle={col.label}
+                  titleRight={<span className="font-mono text-[10px] score-readout" style={{ color: 'var(--arcade-paper-muted)' }}>{colTasks.length}</span>}
+                  screenClassName="!p-4 flex flex-col gap-3 min-h-[120px]"
                 >
-                  <div className="cabinet-marquee">
-                    <span className="cabinet-led" aria-hidden="true" />
-                    <span className="cabinet-marquee-title">{col.label}</span>
-                    <span className="ml-auto font-mono text-[10px] score-readout" style={{ color: 'var(--arcade-paper-muted)' }}>{colTasks.length}</span>
-                  </div>
-                  <div className="cabinet-screen !p-4 flex flex-col gap-3 min-h-[120px]">
                     {colTasks.length === 0 ? (
                       <p className="m-0 py-4 text-center font-mono text-[10px]" style={{ color: 'var(--arcade-paper-disabled)' }}>
                         No quests here
@@ -396,8 +386,7 @@ export const Today: React.FC = () => {
                         </div>
                       ))
                     )}
-                  </div>
-                </section>
+                </GlassPane>
               );
             })}
           </div>
@@ -423,12 +412,7 @@ export const Today: React.FC = () => {
             {columns.filter(col => col.mobileTab === activeMobileTab).map(col => {
               const colTasks = getColumnTasks(col.id);
               return (
-                <section key={col.id} className="cabinet cabinet--off" style={{ '--marquee-color': col.id === 'done' ? 'var(--arcade-green)' : 'var(--arcade-cobalt)' } as React.CSSProperties}>
-                  <div className="cabinet-marquee">
-                    <span className="cabinet-led" aria-hidden="true" />
-                    <span className="cabinet-marquee-title">{col.label}</span>
-                  </div>
-                  <div className="cabinet-screen !p-4 flex flex-col gap-3">
+                <GlassPane key={col.id} state="off" tone={col.id === 'done' ? 'green' : 'cobalt'} paneTitle={col.label} screenClassName="!p-4 flex flex-col gap-3">
                     {colTasks.length === 0 ? (
                       <p className="m-0 py-4 text-center font-mono text-[10px]" style={{ color: 'var(--arcade-paper-disabled)' }}>No quests here</p>
                     ) : (
@@ -453,8 +437,7 @@ export const Today: React.FC = () => {
                         </div>
                       ))
                     )}
-                  </div>
-                </section>
+                </GlassPane>
               );
             })}
           </div>
@@ -473,58 +456,59 @@ export const Today: React.FC = () => {
         </div>
         <div className="cockpit-grid">
         {/* Daily Score */}
-        <section className="cabinet cabinet--off" style={{ '--marquee-color': 'var(--arcade-gold)' } as React.CSSProperties}>
-          <div className="cabinet-marquee">
-            <span className="cabinet-led" aria-hidden="true" />
-            <span className="cabinet-marquee-title">Daily Score</span>
-            <span className="ml-auto font-mono text-[10px] score-readout" style={{ color: scoreTone }}>{dailyScore}%</span>
-          </div>
-          <div className="cabinet-screen !p-5 flex flex-col gap-3">
-            {hasAnyData ? (
-              <>
-                <div className="flex items-end justify-between">
-                  <span className="marquee-title text-3xl leading-none" style={{ color: scoreTone }}>{dailyScore}%</span>
-                  <span className="font-mono text-[9px] uppercase" style={{ color: 'var(--arcade-paper-muted)' }}>today</span>
-                </div>
-                <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(233,230,242,0.06)', border: '1px solid rgba(233,230,242,0.1)' }}>
-                  <div
-                    className="h-full rounded-full transition-all duration-500"
-                    style={{ width: `${dailyScore}%`, background: `linear-gradient(90deg, var(--arcade-gold-deep), ${scoreTone})`, boxShadow: `0 0 8px ${scoreTone}` }}
-                  />
-                </div>
-                <div className="flex flex-wrap gap-x-3 gap-y-1 font-mono text-[9px]" style={{ color: 'var(--arcade-paper-muted)' }}>
-                  <span>Habits {activeHabits.length > 0 ? `${habitsDone}/${activeHabits.length}` : '—'}</span>
-                  <span>Quests {todayTasks.length > 0 ? `${doneTasks.length}/${todayTasks.length}` : '—'}</span>
-                  <span>Journal {journalLogged ? '✓' : '—'}</span>
-                </div>
-              </>
-            ) : (
+        <GlassPane tone="aurora" paneTitle="Daily Score"
+          titleRight={<span className="font-mono text-[10px] score-readout" style={{ color: scoreTone }}>{dailyScore}%</span>}
+          screenClassName="!p-5 flex flex-col gap-3">
+          {hasAnyData ? (
+            <>
+              <div className="flex items-end justify-between">
+                <span className="marquee-title text-3xl leading-none" style={{ color: scoreTone }}>{dailyScore}%</span>
+                <span className="font-mono text-[9px] uppercase" style={{ color: 'var(--arcade-paper-muted)' }}>today</span>
+              </div>
+              <XPBar
+                value={dailyScore}
+                max={100}
+                ariaLabel="Daily score"
+                className="[&>div]:w-full [&>div]:!h-full"
+                style={{ width: '100%', background: 'rgba(233,230,242,0.06)', border: '1px solid rgba(233,230,242,0.1)' }}
+                indicatorStyle={{
+                  width: `${dailyScore}%`,
+                  background: `linear-gradient(90deg, var(--arcade-gold-deep), ${scoreTone})`,
+                  boxShadow: `0 0 8px ${scoreTone}`,
+                }}
+              />
+              <div className="flex flex-wrap gap-x-3 gap-y-1 font-mono text-[9px]" style={{ color: 'var(--arcade-paper-muted)' }}>
+                <span>Habits {activeHabits.length > 0 ? `${habitsDone}/${activeHabits.length}` : '—'}</span>
+                <span>Quests {todayTasks.length > 0 ? `${doneTasks.length}/${todayTasks.length}` : '—'}</span>
+                <span>Journal {journalLogged ? '✓' : '—'}</span>
+              </div>
+            </>
+          ) : (
               <p className="m-0 font-mono text-[10px] leading-relaxed" style={{ color: 'var(--arcade-paper-muted)' }}>
                 A blank slate. Star a quest or check in a habit to light the meter.
               </p>
             )}
-          </div>
-        </section>
+        </GlassPane>
 
         {/* Habits — N/M done today + the streak that matters */}
-        <section className="cabinet cabinet--off" style={{ '--marquee-color': 'var(--arcade-green)' } as React.CSSProperties}>
-          <div className="cabinet-marquee">
-            <span className="cabinet-led" aria-hidden="true" />
-            <span className="cabinet-marquee-title">Habits</span>
-            <span className="ml-auto font-mono text-[10px] score-readout" style={{ color: 'var(--arcade-green)' }}>
-              {activeHabits.length > 0 ? `${habitsDone}/${activeHabits.length} today` : '—'}
-            </span>
-          </div>
-          <div className="cabinet-screen !p-5 flex flex-col gap-3">
-            {activeHabits.length > 0 ? (
-              <>
-                <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(233,230,242,0.06)', border: '1px solid rgba(233,230,242,0.1)' }}>
-                  <div
-                    className="h-full rounded-full transition-all duration-500"
-                    style={{ width: `${(habitsDone / activeHabits.length) * 100}%`, background: 'linear-gradient(90deg, var(--arcade-gold-deep), var(--arcade-green))', boxShadow: '0 0 8px var(--arcade-green)' }}
-                  />
-                </div>
-                {topStreak && topStreak.streak > 0 ? (
+        <GlassPane tone="green" paneTitle="Habits"
+          titleRight={<span className="font-mono text-[10px] score-readout" style={{ color: 'var(--arcade-green)' }}>{activeHabits.length > 0 ? `${habitsDone}/${activeHabits.length} today` : '—'}</span>}
+          screenClassName="!p-5 flex flex-col gap-3">
+          {activeHabits.length > 0 ? (
+            <>
+              <XPBar
+                value={(habitsDone / activeHabits.length) * 100}
+                max={100}
+                ariaLabel="Habits done today"
+                className="[&>div]:w-full [&>div]:!h-full"
+                style={{ width: '100%', background: 'rgba(233,230,242,0.06)', border: '1px solid rgba(233,230,242,0.1)' }}
+                indicatorStyle={{
+                  width: `${(habitsDone / activeHabits.length) * 100}%`,
+                  background: 'linear-gradient(90deg, var(--arcade-gold-deep), var(--arcade-green))',
+                  boxShadow: '0 0 8px var(--arcade-green)',
+                }}
+              />
+              {topStreak && topStreak.streak > 0 ? (
                   <p className="m-0 font-mono text-[10px] leading-relaxed" style={{ color: 'var(--arcade-paper-dim)' }}>
                     <Flame className="w-3 h-3 inline -mt-0.5 mr-1" style={{ color: 'var(--arcade-gold)' }} aria-hidden="true" />
                     {topStreak.habit.icon} {topStreak.habit.name} — {topStreak.streak}-day streak.
@@ -546,20 +530,15 @@ export const Today: React.FC = () => {
                 No habits yet — build your instruments.
               </p>
             )}
-          </div>
-        </section>
+        </GlassPane>
 
         {/* Journal — today's entry status */}
-        <section className="cabinet cabinet--off" style={{ '--marquee-color': 'var(--arcade-magenta)' } as React.CSSProperties}>
-          <div className="cabinet-marquee">
-            <span className="cabinet-led" aria-hidden="true" />
-            <span className="cabinet-marquee-title">Journal</span>
-            {journalLogged && (
-              <span className="ml-auto font-mono text-[10px] chip chip--teal">Today's highlight: ✓ logged</span>
-            )}
-          </div>
-          <div className="cabinet-screen !p-5 flex flex-col gap-3">
-            {journalLogged ? (
+        <GlassPane tone="magenta" paneTitle="Journal"
+          titleRight={journalLogged ? (
+            <span className="font-mono text-[10px] chip chip--teal">Today's highlight: ✓ logged</span>
+          ) : undefined}
+          screenClassName="!p-5 flex flex-col gap-3">
+          {journalLogged ? (
               <>
                 <p className="m-0 text-xs leading-relaxed" style={{ color: 'var(--arcade-paper-dim)' }}>
                   “{todayJournal!.highlight}”{todayJournal!.mood ? ` ${todayJournal!.mood}` : ''}
@@ -578,32 +557,32 @@ export const Today: React.FC = () => {
                 </Link>
               </>
             )}
-          </div>
-        </section>
+        </GlassPane>
 
         {/* XP / Level — same readout as the shell */}
-        <section className="cabinet cabinet--off" style={{ '--marquee-color': 'var(--arcade-cobalt)' } as React.CSSProperties}>
-          <div className="cabinet-marquee">
-            <span className="cabinet-led" aria-hidden="true" />
-            <span className="cabinet-marquee-title">Level</span>
-            <span className="ml-auto font-mono text-[10px] score-readout" style={{ color: 'var(--arcade-gold)' }}>LVL {stats.level}</span>
+        <GlassPane tone="cobalt" paneTitle="Level"
+          titleRight={<span className="font-mono text-[10px] score-readout" style={{ color: 'var(--arcade-gold)' }}>LVL {stats.level}</span>}
+          screenClassName="!p-5 flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <span className="score-readout text-sm" style={{ color: 'var(--arcade-paper)' }}>{stats.xp} / {xpPerLevel} XP</span>
+            <span className="font-mono text-[9px]" style={{ color: 'var(--arcade-paper-muted)' }}>{xpToNext} to next</span>
           </div>
-          <div className="cabinet-screen !p-5 flex flex-col gap-3">
-            <div className="flex items-center justify-between">
-              <span className="score-readout text-sm" style={{ color: 'var(--arcade-paper)' }}>{stats.xp} / {xpPerLevel} XP</span>
-              <span className="font-mono text-[9px]" style={{ color: 'var(--arcade-paper-muted)' }}>{xpToNext} to next</span>
-            </div>
-            <div className="h-1.5 rounded-full overflow-hidden relative" style={{ background: 'rgba(233,230,242,0.06)', border: '1px solid rgba(139,92,246,0.25)' }}>
-              <div
-                className="h-full rounded-full transition-all duration-300"
-                style={{ width: `${xpProgress}%`, background: 'linear-gradient(90deg, var(--arcade-gold-deep), var(--arcade-gold))', boxShadow: '0 0 8px rgba(139, 92, 246, 0.5)' }}
-              />
-            </div>
-            <p className="m-0 font-mono text-[9px] leading-relaxed" style={{ color: 'var(--arcade-paper-muted)' }}>
-              Starred quests, habit check-ins and journal entries feed this bar.
-            </p>
-          </div>
-        </section>
+          <XPBar
+            value={xpProgress}
+            max={100}
+            ariaLabel="Level progress"
+            className="[&>div]:w-full [&>div]:!h-full"
+            style={{ width: '100%', background: 'rgba(233,230,242,0.06)', border: '1px solid rgba(139,92,246,0.25)' }}
+            indicatorStyle={{
+              width: `${xpProgress}%`,
+              background: 'linear-gradient(90deg, var(--arcade-gold-deep), var(--arcade-gold))',
+              boxShadow: '0 0 8px rgba(139, 92, 246, 0.5)',
+            }}
+          />
+          <p className="m-0 font-mono text-[9px] leading-relaxed" style={{ color: 'var(--arcade-paper-muted)' }}>
+            Starred quests, habit check-ins and journal entries feed this bar.
+          </p>
+        </GlassPane>
         </div>
       </div>
     </div>

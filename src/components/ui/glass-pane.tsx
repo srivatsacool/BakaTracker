@@ -2,71 +2,70 @@ import * as React from 'react';
 import { cn } from '@/lib/utils';
 
 /**
- * GlassPane — the shared Darkglass surface (was the raw `.cabinet` classes).
- * Encapsulates the Night-Observatory surface: a frosted glass pane with an
- * optional marquee header (LED + title) and a body. Mirrors the old
- * `GlassPane`/`CabinetSurface` API so feature pages can migrate onto it.
+ * GlassPane — the Night-Observatory cabinet surface.
  *
- * `tone` sets the instrument LED + title accent; `state` renders a named phase
- * (never color alone): off / attract / playing / high-score / ooo.
+ * FAITHFUL WRAPPER: renders the existing `.cabinet`/`.cabinet--{state}`
+ * grammar from index.css (the real shared surface language), so adopting it
+ * produces byte-identical visuals to the raw markup the pages used before.
+ * Preserves the visual hierarchy: `cabinet` (primary functional instrument)
+ * vs `glass-pane` (secondary) vs `attract-state` (empty) — see EmptyState.
+ *
+ * `tone` sets `--marquee-color` (the LED + title accent); `state` selects the
+ * named phase class (off/attract/playing/highscore/ooo). PaneHeader renders
+ * the marquee title band when `paneTitle` is provided.
  */
 export interface GlassPaneProps extends React.HTMLAttributes<HTMLDivElement> {
   as?: 'div' | 'section' | 'article';
   state?: 'off' | 'attract' | 'playing' | 'highscore' | 'ooo';
-  tone?: 'aurora' | 'coral' | 'cobalt' | 'rose' | 'teal' | 'amber' | 'paper';
+  tone?: 'aurora' | 'coral' | 'cobalt' | 'rose' | 'teal' | 'amber' | 'paper' | 'green' | 'magenta';
   paneTitle?: string;
-  led?: React.ReactNode;
+  /** extra node placed in the marquee title's right slot (e.g. a count) */
+  titleRight?: React.ReactNode;
+  /** force size overrides passed to the inner screen (e.g. '!p-5') */
+  screenClassName?: string;
 }
 
-const toneMap: Record<string, string> = {
-  aurora: 'var(--obs-aurora)',
-  coral: 'var(--obs-coral)',
-  cobalt: 'var(--obs-cobalt)',
-  rose: 'var(--obs-rose)',
-  teal: 'var(--obs-teal)',
-  amber: 'var(--obs-amber)',
-  paper: 'var(--obs-paper-dim)',
+const toneVar: Record<string, string> = {
+  aurora: 'var(--arcade-gold)',
+  coral: 'var(--arcade-red)',
+  cobalt: 'var(--arcade-cobalt)',
+  rose: 'var(--arcade-magenta)',
+  teal: 'var(--arcade-green)',
+  green: 'var(--arcade-green)',
+  magenta: 'var(--arcade-magenta)',
+  amber: 'var(--arcade-orange)',
+  paper: 'var(--arcade-paper-dim)',
 };
 
-const stateGlow: Record<string, string> = {
-  off: 'none',
-  attract: 'var(--led-glow)',
-  playing: 'var(--aurora-glow)',
-  highscore: 'var(--aurora-glow)',
-  ooo: 'var(--led-glow)',
+const stateCls: Record<string, string> = {
+  off: 'cabinet--off',
+  attract: 'cabinet--attract',
+  playing: 'cabinet--playing',
+  highscore: 'cabinet--highscore',
+  ooo: 'cabinet--ooo',
 };
 
 export const GlassPane = React.forwardRef<HTMLDivElement, GlassPaneProps>(
-  ({ as = 'div', state = 'playing', tone = 'paper', paneTitle, led, className, children, style, ...props }, ref) => {
-    const Component = as as 'div';
+  (
+    { as = 'section', state = 'off', tone = 'aurora', paneTitle, titleRight, screenClassName, className, style, children, ...props },
+    ref
+  ) => {
+    const Component = as as 'section';
     return (
       <Component
         ref={ref}
-        className={cn(
-          'relative flex flex-col overflow-hidden rounded-lg border border-[var(--glass-hairline)] bg-[var(--glass-pane)] shadow-[var(--glass-shadow)] backdrop-blur-[var(--glass-blur)]',
-          className
-        )}
-        style={{
-          ...style,
-          '--marquee-color': toneMap[tone],
-          boxShadow: stateGlow[state] !== 'none' ? `${stateGlow[state]}, var(--glass-shadow)` : 'var(--glass-shadow)',
-        } as React.CSSProperties}
+        className={cn('cabinet', stateCls[state], className)}
+        style={{ ...style, '--marquee-color': toneVar[tone] } as React.CSSProperties}
         {...props}
       >
         {paneTitle && (
-          <div className="flex items-center gap-2 border-b border-[var(--glass-hairline)] px-3 py-1.5">
-            <span
-              className="h-2 w-2 rounded-full"
-              style={{ background: toneMap[tone], boxShadow: 'var(--led-glow)', ['--led-color' as string]: toneMap[tone] }}
-              aria-hidden="true"
-            />
-            <span className="font-mono text-[10px] uppercase tracking-wider text-[var(--obs-paper-dim)]">
-              {paneTitle}
-            </span>
-            {led && <span className="ml-auto">{led}</span>}
+          <div className="cabinet-marquee">
+            <span className="cabinet-led" aria-hidden="true" />
+            <span className="cabinet-marquee-title">{paneTitle}</span>
+            {titleRight && <span className="ml-auto">{titleRight}</span>}
           </div>
         )}
-        <div className="flex-1">{children}</div>
+        <div className={cn('cabinet-screen', screenClassName)}>{children}</div>
       </Component>
     );
   }
