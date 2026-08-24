@@ -9,7 +9,8 @@
  * `self.__WB_MANIFEST` with the precache list at build time.
  */
 
-self.__WB_MANIFEST;
+// @ts-expect-error vite-plugin-pwa injectManifest replaces this token
+void self.__WB_MANIFEST;
 
 // --- Push handler -----------------------------------------------------------
 self.addEventListener('push', (event) => {

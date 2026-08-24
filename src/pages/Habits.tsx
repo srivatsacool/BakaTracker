@@ -164,6 +164,10 @@ export const Habits: React.FC = () => {
     y: number;
   }
   const [floatingXPs, setFloatingXPs] = useState<FloatingXP[]>([]);
+  // Monotonic id source for transient floating-XP elements. Event-handler-only,
+  // so ids stay unique within a session while render remains pure.
+  const floatingXpIdRef = useRef(0);
+  const nextFloatingXpId = () => ++floatingXpIdRef.current;
   const [showLevelUpModal, setShowLevelUpModal] = useState(false);
   const prevLevelRef = useRef(stats.level);
 
@@ -200,7 +204,7 @@ export const Habits: React.FC = () => {
     }
 
     const newXP = {
-      id: Date.now() + Math.random(),
+      id: nextFloatingXpId(),
       xp,
       statName,
       x,

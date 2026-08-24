@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import LightTunnel from './LightTunnel';
 
 /**
@@ -26,19 +26,17 @@ import LightTunnel from './LightTunnel';
  * never animated. All tunnel props stay exposed for later live tuning.
  */
 const AppBackground: React.FC = () => {
-  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
-
-  useEffect(() => {
-    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
-    setPrefersReducedMotion(mediaQuery.matches);
-
-    const handleChange = (e: MediaQueryListEvent) => {
-      setPrefersReducedMotion(e.matches);
-    };
-
-    mediaQuery.addEventListener('change', handleChange);
-    return () => mediaQuery.removeEventListener('change', handleChange);
-  }, []);
+  // Subscribe to the reduced-motion media query outside render; the snapshot
+  // read stays pure, so no effect-driven state mirroring is needed.
+  const prefersReducedMotion = React.useSyncExternalStore(
+    React.useCallback((onStoreChange) => {
+      const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+      mq.addEventListener('change', onStoreChange);
+      return () => mq.removeEventListener('change', onStoreChange);
+    }, []),
+    () => window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+    () => false
+  );
 
   return (
     <div className="obs-background" aria-hidden="true">

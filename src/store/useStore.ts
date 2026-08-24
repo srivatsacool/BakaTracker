@@ -35,7 +35,7 @@ interface BakaState {
 
   // Actions
   init: (apiClient?: ApiClient) => Promise<void>;
-  syncWithSheets: (apiClient?: ApiClient) => Promise<void>;
+  pushSync: (apiClient?: ApiClient) => Promise<void>;
   setSheetsUrl: (url: string) => Promise<void>;
   setApiKey: (key: string) => Promise<void>;
   resetStore: () => void;
@@ -178,8 +178,8 @@ const compileWeeklyStatsRecords = (events: EventLog[]): WeeklyStatsRecord[] => {
 };
 
 const updateStatsAndSummaries = (
-  set: any,
-  get: any,
+  set: (partial: Partial<Pick<BakaState, 'stats' | 'character' | 'weeklyStats'>>) => void,
+  get: () => BakaState,
   habits: Habit[],
   logs: HabitLog[],
   tasks: Task[],
@@ -205,12 +205,12 @@ const updateStatsAndSummaries = (
 // REST client holder (Phase 3: Cloudflare-native persistence)
 //
 // The v1 store is local-first: every mutation (addHabit/addTask/saveJournal…)
-// calls syncWithSheets() with NO argument, and syncWithSheets early-returns
+// calls pushSync() with NO argument, and pushSync early-returns
 // when no ApiClient is passed. That made the D1 sync seam dead for
 // authenticated users — data stayed in localStorage only.
 //
 // Fix: init(apiClient) stashes the client here (module-scoped so it survives
-// React StrictMode remounts of the store consumer), and syncWithSheets falls
+// React StrictMode remounts of the store consumer), and pushSync falls
 // back to it. Every existing mutation then pushes its change to the Worker
 // (POST /api/v1/sync/push) under the authenticated user's sub, exactly as the
 // v2 sync ledger expects. Guest/demo mode never passes a client -> no-op.
@@ -306,7 +306,7 @@ export const useStore = create<BakaState>((set, get) => ({
     if (!settings.api_key) settings.api_key = '';
 
     // Normalize and migrate database objects (Ensure UUIDs and timestamps exist)
-    const normalizedLogs = habitLogs.map((log: any) => ({
+    const normalizedLogs = (habitLogs as HabitLog[]).map((log) => ({
       id: log.id || generateUUID('log_'),
       date: log.date,
       habit_id: log.habit_id,
@@ -315,13 +315,13 @@ export const useStore = create<BakaState>((set, get) => ({
       created_at: log.created_at || new Date().toISOString()
     }));
 
-    const normalizedHabits = habits.map((h: any) => ({
+    const normalizedHabits = (habits as Habit[]).map((h) => ({
       ...h,
       created_at: h.created_at || new Date().toISOString(),
       updated_at: h.updated_at || new Date().toISOString()
     }));
 
-    const normalizedTasks = tasks.map((t: any) => ({
+    const normalizedTasks = (tasks as Task[]).map((t) => ({
       ...t,
       quadrant: t.quadrant !== undefined ? t.quadrant : null,
       updated_at: t.updated_at || t.created_at || new Date().toISOString(),
@@ -329,7 +329,7 @@ export const useStore = create<BakaState>((set, get) => ({
       completed_at: t.completed_at || ''
     }));
 
-    const normalizedJournal = journal.map((j: any) => ({
+    const normalizedJournal = (journal as JournalEntry[]).map((j) => ({
       id: j.id || generateUUID('journal_'),
       date: j.date,
       highlight: j.highlight,
@@ -397,12 +397,12 @@ export const useStore = create<BakaState>((set, get) => ({
           });
 
           // Update state with remote data (using normalize logic for protection)
-          const newHabits = (remoteData.habits.length > 0 ? remoteData.habits : normalizedHabits).map((h: any) => ({
+          const newHabits = (remoteData.habits.length > 0 ? remoteData.habits : normalizedHabits).map((h: Habit) => ({
             ...h,
             created_at: h.created_at || new Date().toISOString(),
             updated_at: h.updated_at || new Date().toISOString()
           }));
-          const newLogs = remoteData.habitLogs.map((log: any) => ({
+          const newLogs = remoteData.habitLogs.map((log: HabitLog) => ({
             id: log.id || generateUUID('log_'),
             date: log.date,
             habit_id: log.habit_id,
@@ -410,13 +410,13 @@ export const useStore = create<BakaState>((set, get) => ({
             xp_earned: Number(log.xp_earned) || 0,
             created_at: log.created_at || new Date().toISOString()
           }));
-          const newTasks = remoteData.tasks.map((t: any) => ({
+          const newTasks = remoteData.tasks.map((t: Task) => ({
             ...t,
             updated_at: t.updated_at || t.created_at || new Date().toISOString(),
             created_at: t.created_at || new Date().toISOString(),
             completed_at: t.completed_at || ''
           }));
-          const newJournal = remoteData.journal.map((j: any) => ({
+          const newJournal = remoteData.journal.map((j: JournalEntry) => ({
             id: j.id || generateUUID('journal_'),
             date: j.date,
             highlight: j.highlight,
@@ -464,17 +464,17 @@ export const useStore = create<BakaState>((set, get) => ({
           localStorage.setItem('bt_character', JSON.stringify(newCharacterRecords));
           localStorage.setItem('bt_weekly_stats', JSON.stringify(newWeeklyStatsRecords));
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Initial sync failed:', err);
-        set({ syncStatus: 'error', syncError: err.message });
+        set({ syncStatus: 'error', syncError: err instanceof Error ? err.message : String(err) });
       }
     }
   },
 
-  syncWithSheets: async (apiClient) => {
+  pushSync: async (apiClient) => {
       const { settings, habits, habitLogs, tasks, journal, events, character, weeklyStats, deletedTaskIds, deletedHabitIds } = get();
       // Phase 3: fall back to the client stashed by init(apiClient), so the v1
-      // mutation call sites (syncWithSheets() with no args) persist to D1 for
+      // mutation call sites (pushSync() with no args) persist to D1 for
       // authenticated users instead of silently no-op'ing.
       const client = apiClient || apiClientHolder;
       if (!client) return;
@@ -515,8 +515,8 @@ export const useStore = create<BakaState>((set, get) => ({
       } else {
         throw new Error('Sync returned false status');
       }
-    } catch (err: any) {
-      set({ syncStatus: 'error', syncError: err.message });
+    } catch (err: unknown) {
+      set({ syncStatus: 'error', syncError: err instanceof Error ? err.message : String(err) });
     }
   },
 
@@ -536,7 +536,7 @@ export const useStore = create<BakaState>((set, get) => ({
     localStorage.setItem('bt_settings', JSON.stringify(newSettings));
     
     if (newSettings.sheets_url) {
-      await get().syncWithSheets();
+      await get().pushSync();
     }
   },
 
@@ -551,7 +551,7 @@ export const useStore = create<BakaState>((set, get) => ({
 
     if (existingIndex > -1) {
       const existingVal = newLogs[existingIndex].value;
-      if (existingVal === 1 || existingVal === '1' || (existingVal as any) === true) {
+      if (existingVal === 1 || existingVal === '1' || (existingVal as unknown) === true) {
         // Uncheck
         newLogs.splice(existingIndex, 1);
         newEvents = newEvents.filter(e => !(e.entity_id === id && e.timestamp.startsWith(date)));
@@ -602,7 +602,7 @@ export const useStore = create<BakaState>((set, get) => ({
     updateStatsAndSummaries(set, get, habits, newLogs, tasks, journal, newEvents);
     
     // Auto background sync
-    get().syncWithSheets().catch(console.error);
+    get().pushSync().catch(console.error);
   },
 
   incrementCounterHabit: async (id: string, date: string, amount: number) => {
@@ -666,7 +666,7 @@ export const useStore = create<BakaState>((set, get) => ({
     localStorage.setItem('bt_events', JSON.stringify(newEvents));
     updateStatsAndSummaries(set, get, habits, newLogs, tasks, journal, newEvents);
     
-    get().syncWithSheets().catch(console.error);
+    get().pushSync().catch(console.error);
   },
 
   setNumericHabit: async (id: string, date: string, value: number) => {
@@ -717,7 +717,7 @@ export const useStore = create<BakaState>((set, get) => ({
     localStorage.setItem('bt_events', JSON.stringify(newEvents));
     updateStatsAndSummaries(set, get, habits, newLogs, tasks, journal, newEvents);
     
-    get().syncWithSheets().catch(console.error);
+    get().pushSync().catch(console.error);
   },
 
   setMoodHabit: async (id: string, date: string, mood: string) => {
@@ -768,7 +768,7 @@ export const useStore = create<BakaState>((set, get) => ({
     localStorage.setItem('bt_events', JSON.stringify(newEvents));
     updateStatsAndSummaries(set, get, habits, newLogs, tasks, journal, newEvents);
     
-    get().syncWithSheets().catch(console.error);
+    get().pushSync().catch(console.error);
   },
 
   setEnergyHabit: async (id: string, date: string, energy: string) => {
@@ -819,7 +819,7 @@ export const useStore = create<BakaState>((set, get) => ({
     localStorage.setItem('bt_events', JSON.stringify(newEvents));
     updateStatsAndSummaries(set, get, habits, newLogs, tasks, journal, newEvents);
     
-    get().syncWithSheets().catch(console.error);
+    get().pushSync().catch(console.error);
   },
 
   addHabit: async (newHabit: Omit<Habit, 'id' | 'active' | 'created_at' | 'updated_at'>) => {
@@ -836,7 +836,7 @@ export const useStore = create<BakaState>((set, get) => ({
     localStorage.setItem('bt_habits', JSON.stringify(updatedHabits));
     updateStatsAndSummaries(set, get, updatedHabits, habitLogs, tasks, journal, events);
     
-    get().syncWithSheets().catch(console.error);
+    get().pushSync().catch(console.error);
   },
 
   deleteHabit: async (id: string) => {
@@ -852,7 +852,7 @@ export const useStore = create<BakaState>((set, get) => ({
     localStorage.setItem('bt_deleted_habit_ids', JSON.stringify(newDeleted));
     updateStatsAndSummaries(set, get, result.habits, result.logs, tasks, journal, newEvents);
     
-    get().syncWithSheets().catch(console.error);
+    get().pushSync().catch(console.error);
   },
 
   addTask: async (title: string, notes: string, area: TaskArea, xp: number, today: boolean, dueDate?: string) => {
@@ -864,7 +864,7 @@ export const useStore = create<BakaState>((set, get) => ({
     localStorage.setItem('bt_tasks', JSON.stringify(updatedTasks));
     updateStatsAndSummaries(set, get, habits, habitLogs, updatedTasks, journal, events);
     
-    get().syncWithSheets().catch(console.error);
+    get().pushSync().catch(console.error);
   },
 
   moveTask: async (id: string, status: Task['status']) => {
@@ -903,7 +903,7 @@ export const useStore = create<BakaState>((set, get) => ({
     localStorage.setItem('bt_events', JSON.stringify(newEvents));
     updateStatsAndSummaries(set, get, habits, habitLogs, updatedTasks, journal, newEvents);
     
-    get().syncWithSheets().catch(console.error);
+    get().pushSync().catch(console.error);
   },
 
   toggleTodayTask: async (id: string) => {
@@ -917,7 +917,7 @@ export const useStore = create<BakaState>((set, get) => ({
     set({ tasks: updatedTasks });
     localStorage.setItem('bt_tasks', JSON.stringify(updatedTasks));
     
-    get().syncWithSheets().catch(console.error);
+    get().pushSync().catch(console.error);
   },
 
   deleteTask: async (id: string) => {
@@ -932,7 +932,7 @@ export const useStore = create<BakaState>((set, get) => ({
     localStorage.setItem('bt_deleted_task_ids', JSON.stringify(newDeleted));
     updateStatsAndSummaries(set, get, habits, habitLogs, updatedTasks, journal, newEvents);
     
-    get().syncWithSheets().catch(console.error);
+    get().pushSync().catch(console.error);
   },
 
   saveJournalEntry: async (date: string, highlight: string, notes: string, mood: JournalEntry['mood']) => {
@@ -977,7 +977,7 @@ export const useStore = create<BakaState>((set, get) => ({
     localStorage.setItem('bt_events', JSON.stringify(newEvents));
     updateStatsAndSummaries(set, get, habits, habitLogs, tasks, newJournal, newEvents);
     
-    get().syncWithSheets().catch(console.error);
+    get().pushSync().catch(console.error);
   },
 
   refreshQuote: () => {
@@ -1017,7 +1017,7 @@ export const useStore = create<BakaState>((set, get) => ({
     applyAccentAndShadowColor(theme, newSettings);
 
     // Auto background sync
-    get().syncWithSheets().catch(console.error);
+    get().pushSync().catch(console.error);
   },
 
   assignQuadrant: async (taskId: string, quadrant: EisenhowerQuadrant) => {
@@ -1027,7 +1027,7 @@ export const useStore = create<BakaState>((set, get) => ({
     );
     set({ tasks: updatedTasks });
     localStorage.setItem('bt_tasks', JSON.stringify(updatedTasks));
-    get().syncWithSheets().catch(console.error);
+    get().pushSync().catch(console.error);
   },
 
   loadDemoData: async () => {
@@ -1146,7 +1146,7 @@ export const useStore = create<BakaState>((set, get) => ({
     localStorage.setItem('bt_logs', JSON.stringify(mergedLogs));
     localStorage.setItem('bt_events', JSON.stringify(mergedEvents));
     updateStatsAndSummaries(set, get, finalHabits, mergedLogs, finalTasks, finalJournal, mergedEvents);
-    get().syncWithSheets().catch(console.error);
+    get().pushSync().catch(console.error);
   },
 
   clearDataByDays: async (days: number | 'all') => {
@@ -1173,7 +1173,7 @@ export const useStore = create<BakaState>((set, get) => ({
         syncStatus: 'idle',
         syncError: null,
       });
-      get().syncWithSheets().catch(console.error);
+      get().pushSync().catch(console.error);
       return;
     }
 
@@ -1193,6 +1193,6 @@ export const useStore = create<BakaState>((set, get) => ({
     localStorage.setItem('bt_journal', JSON.stringify(newJournal));
     localStorage.setItem('bt_events', JSON.stringify(newEvents));
     updateStatsAndSummaries(set, get, habits, newLogs, newTasks, newJournal, newEvents);
-    get().syncWithSheets().catch(console.error);
+    get().pushSync().catch(console.error);
   },
 }));

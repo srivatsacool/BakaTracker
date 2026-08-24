@@ -91,6 +91,7 @@ export const TaskCard = React.forwardRef<HTMLDivElement, TaskCardProps>(
 TaskCard.displayName = 'TaskCard';
 
 /** Default icon action set used by pages that adopt the shared TaskCard. */
+// eslint-disable-next-line react-refresh/only-export-components -- shared action-set consumed by task-list pages
 export const TaskCardIconActions = {
   Open: (onOpen: () => void) => (
     <button type="button" onClick={onOpen} title="Open" aria-label="Open"

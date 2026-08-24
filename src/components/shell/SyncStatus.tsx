@@ -16,10 +16,10 @@ interface SyncStatusProps {
  * OUT OF ORDER. Error state is actionable: click retries the sync.
  */
 export const SyncStatus: React.FC<SyncStatusProps> = ({ compact = false }) => {
-  const { syncStatus, syncError, syncWithSheets } = useStore(useShallow(s => ({
+  const { syncStatus, syncError, pushSync } = useStore(useShallow(s => ({
     syncStatus: s.syncStatus,
     syncError: s.syncError,
-    syncWithSheets: s.syncWithSheets,
+    pushSync: s.pushSync,
   })));
   const { user } = useAuth();
   const [isOffline, setIsOffline] = React.useState(() => !navigator.onLine);
@@ -73,7 +73,7 @@ export const SyncStatus: React.FC<SyncStatusProps> = ({ compact = false }) => {
 
   if (state === 'error') {
     return (
-      <button type="button" className={clsName} onClick={() => syncWithSheets()} title={title} aria-label={title}>
+      <button type="button" className={clsName} onClick={() => pushSync()} title={title} aria-label={title}>
         <Icon className={compact ? 'w-3 h-3' : 'w-3.5 h-3.5'} aria-hidden="true" />
         {!compact && <span>{label}</span>}
       </button>

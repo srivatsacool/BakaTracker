@@ -16,9 +16,9 @@ export function backfillEvents(
     if (!habit) return;
 
     let xpEarned = 0;
-    let metadataObj: Record<string, any> = {};
+    let metadataObj: Record<string, unknown> = {};
 
-    if (habit.type === 'checkbox' && (log.value === 1 || log.value === '1' || log.value === 'true' || (log.value as any) === true)) {
+    if (habit.type === 'checkbox' && (log.value === 1 || log.value === '1' || log.value === 'true' || (log.value as unknown) === true)) {
       xpEarned = habit.xp;
     } else if (habit.type === 'counter' && typeof log.value === 'number' && log.value > 0) {
       xpEarned = log.value * habit.xp;

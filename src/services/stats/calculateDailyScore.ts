@@ -12,7 +12,7 @@ export function calculateDailyScore(
   if (activeHabits.length === 0 && tasks.length === 0 && journal.length === 0) return 0;
 
   // 1. Habit Completion (50% weight)
-  let habitScore = 0;
+  let habitScore: number;
   if (activeHabits.length > 0) {
     const logsToday = habitLogs.filter(l => l.date === date);
     let completedCount = 0;
@@ -30,7 +30,7 @@ export function calculateDailyScore(
   }
 
   // 2. Today's Tasks Completion (40% weight)
-  let taskScore = 0;
+  let taskScore: number;
   const todayTasks = tasks.filter(t => t.today);
   if (todayTasks.length > 0) {
     const completedTasks = todayTasks.filter(t => t.status === 'done');

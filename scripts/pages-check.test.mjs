@@ -35,7 +35,7 @@ const TEST_ORIGIN = "https://bakatracker-platform.e2e-test.workers.dev";
 const TEST_CLIENT_ID = "pages-check-test.apps.googleusercontent.com";
 
 function buildWith(origin, clientId) {
-  return spawnSync("npm", ["run", "build"], {
+  const r = spawnSync("npm", ["run", "build"], {
     cwd: ROOT,
     encoding: "utf8",
     shell: true,
@@ -44,8 +44,21 @@ function buildWith(origin, clientId) {
       VITE_API_BASE_URL: origin,
       VITE_GOOGLE_CLIENT_ID: clientId,
     },
-    timeout: 240_000,
+    // Observed legitimate production-build durations on dev hardware:
+    // ~65s warm, ~185s cold (tsc -b + vite build + PWA precache of 206
+    // entries). 300s keeps ~60% headroom over the worst observed real
+    // duration while still failing a genuinely hung build.
+    timeout: 300_000,
   });
+  if (r.status !== 0 || r.error) {
+    const cause = r.error
+      ? `spawn error: ${r.error.message}`
+      : r.signal
+        ? `killed by signal ${r.signal} (timeout=${r.timeout}ms — build exceeded the ceiling)`
+        : `exit code ${r.status}`;
+    console.error(`[test:pages] build ${cause}`);
+  }
+  return r;
 }
 
 const jsAssets = () =>

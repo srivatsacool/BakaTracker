@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useStore } from '../store/useStore';
 import { useShallow } from 'zustand/react/shallow';
 import { getTodayDateString, formatDate } from '../lib/utils';
@@ -18,10 +18,37 @@ export const Journal: React.FC = () => {
   })));
 
   const [date, setDate] = useState(getTodayDateString());
-  const [highlight, setHighlight] = useState('');
-  const [notes, setNotes] = useState('');
-  const [mood, setMood] = useState<JournalEntry['mood']>('😐');
+  // Draft model — derived, effect-free. Local state holds ONLY what the user
+  // is actively typing, tagged with the date it belongs to; initial
+  // population, date switching and reload persistence all derive straight
+  // from the store during render, so no cascading sync-effect is needed.
+  interface Draft { highlight: string; notes: string; mood: JournalEntry['mood']; }
+  const emptyDraft: Draft = { highlight: '', notes: '', mood: '😐' };
+  const [draftDate, setDraftDate] = useState<string | null>(null);
+  const [draft, setDraft] = useState<Draft>(emptyDraft);
   const [searchQuery, setSearchQuery] = useState('');
+
+  const existingEntry = journal.find(j => j.date === date);
+  const activeDraft = draftDate === date ? draft : null;
+  const highlight = activeDraft ? activeDraft.highlight : (existingEntry?.highlight ?? '');
+  const notes = activeDraft ? activeDraft.notes : (existingEntry?.notes ?? '');
+  const mood: JournalEntry['mood'] = activeDraft ? activeDraft.mood : (existingEntry?.mood ?? '😐');
+
+  // Event-time capture of user edits; seeds from the store entry when the
+  // first edit for this date begins.
+  const updateDraft = (patch: Partial<Draft>) => {
+    setDraftDate(date);
+    setDraft(prev =>
+      draftDate === date
+        ? { ...prev, ...patch }
+        : {
+            highlight: existingEntry?.highlight ?? '',
+            notes: existingEntry?.notes ?? '',
+            mood: existingEntry?.mood ?? '😐',
+            ...patch,
+          }
+    );
+  };
 
   const todayStr = getTodayDateString();
 
@@ -63,19 +90,6 @@ export const Journal: React.FC = () => {
     .slice(0, 14)
     .map(j => ({ date: j.date, mood: j.mood, color: moodColor[j.mood] }));
 
-  // Load existing entry values if editing a past day or if there is already an entry for today
-  useEffect(() => {
-    const existing = journal.find(j => j.date === date);
-    if (existing) {
-      setHighlight(existing.highlight);
-      setNotes(existing.notes);
-      setMood(existing.mood || '😐');
-    } else {
-      setHighlight('');
-      setNotes('');
-      setMood('😐');
-    }
-  }, [date, journal]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -130,7 +144,7 @@ export const Journal: React.FC = () => {
               <input
                 type="text"
                 value={highlight}
-                onChange={e => setHighlight(e.target.value)}
+                onChange={e => updateDraft({ highlight: e.target.value })}
                 placeholder="One sentence is enough — what was the single best thing today?"
                 className="arcade-input text-sm"
                 maxLength={120}
@@ -148,7 +162,7 @@ export const Journal: React.FC = () => {
                   <button
                     type="button"
                     key={emoji}
-                    onClick={() => setMood(emoji)}
+                    onClick={() => updateDraft({ mood: emoji })}
                     className={`w-11 h-11 rounded-lg text-xl cursor-pointer transition hover:scale-110 ${mood === emoji ? 'chip chip--magenta' : 'chip'}`}
                     aria-label={`Set mood to ${emoji}`}
                     aria-pressed={mood === emoji}
@@ -163,7 +177,7 @@ export const Journal: React.FC = () => {
               <label className="font-mono text-[10px] font-bold uppercase" style={{ color: 'var(--arcade-paper-muted)' }}>Notes</label>
               <textarea
                 value={notes}
-                onChange={e => setNotes(e.target.value)}
+                onChange={e => updateDraft({ notes: e.target.value })}
                 placeholder="Anything else worth remembering…"
                 className="arcade-input min-h-[90px] resize-y"
                 maxLength={1000}

@@ -4,6 +4,7 @@ import type { IdentityProvider, User } from './types';
 import { useStore } from '../../store/useStore';
 import { LoadingScreen } from './components/LoadingScreen';
 
+// eslint-disable-next-line react-refresh/only-export-components -- auth context colocated with provider by design
 export const AuthContext = createContext<IdentityProvider | undefined>(undefined);
  
 export type { IdentityProvider };
@@ -118,7 +119,7 @@ const AuthProviderInner: React.FC<{ children: React.ReactNode }> = ({ children }
   // Demo mode: when OAuth IS configured but user chose "Explore Demo"
   const isDemoMode = useMemo(() => localStorage.getItem('bt_demo_mode') === 'true', []);
 
-  const getAccessToken = useCallback(async (_options?: unknown): Promise<string> => {
+  const getAccessToken = useCallback(async (): Promise<string> => {
     const token = sessionStorage.getItem(SESSION_TOKEN);
     if (!token) return '';
     const expiresAt = Number(sessionStorage.getItem(SESSION_EXPIRES)) || 0;

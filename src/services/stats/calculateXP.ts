@@ -31,7 +31,7 @@ export function calculateXP(
     if (!habit) return;
 
     let xpEarned = 0;
-    if (habit.type === 'checkbox' && (log.value === 1 || log.value === '1' || log.value === 'true' || (log.value as any) === true)) {
+    if (habit.type === 'checkbox' && (log.value === 1 || log.value === '1' || log.value === 'true' || (log.value as unknown) === true)) {
       xpEarned = habit.xp;
     } else if (habit.type === 'counter' && typeof log.value === 'number') {
       xpEarned = log.value * habit.xp;

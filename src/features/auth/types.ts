@@ -14,7 +14,9 @@ export interface IdentityProvider {
   isAuthenticated: boolean;
   isLoading: boolean;
   error: Error | null;
+  /* eslint-disable @typescript-eslint/no-explicit-any -- polymorphic auth boundary: login/logout/getAccessToken accept provider-specific options */
   login: (options?: any) => Promise<void>;
   logout: (options?: any) => Promise<void>;
   getAccessToken: (options?: any) => Promise<string>;
+  /* eslint-enable @typescript-eslint/no-explicit-any */
 }

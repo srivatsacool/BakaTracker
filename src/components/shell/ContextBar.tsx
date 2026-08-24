@@ -21,7 +21,7 @@ export const ContextBar: React.FC<ContextBarProps> = ({
   onToggleAssistant,
   assistantCollapsed,
 }) => {
-  const { stats, settings, habits, habitLogs, tasks, journal, syncStatus, syncError, syncWithSheets } = useStore(useShallow(s => ({
+  const { stats, settings, habits, habitLogs, tasks, journal, syncStatus, syncError, pushSync } = useStore(useShallow(s => ({
     stats: s.stats,
     settings: s.settings,
     habits: s.habits,
@@ -30,7 +30,7 @@ export const ContextBar: React.FC<ContextBarProps> = ({
     journal: s.journal,
     syncStatus: s.syncStatus,
     syncError: s.syncError,
-    syncWithSheets: s.syncWithSheets,
+    pushSync: s.pushSync,
   })));
   const { user } = useAuth();
   const [now, setNow] = useState(() => new Date());
@@ -95,7 +95,7 @@ export const ContextBar: React.FC<ContextBarProps> = ({
 
       <div className="flex items-center gap-2">
         {syncState === 'error' ? (
-          <button type="button" className={`save-lamp ${cls}`} onClick={() => syncWithSheets()} title={syncTitle} aria-label={syncTitle}>
+          <button type="button" className={`save-lamp ${cls}`} onClick={() => pushSync()} title={syncTitle} aria-label={syncTitle}>
             <Icon className="w-3.5 h-3.5" aria-hidden="true" /><span>{label}</span>
           </button>
         ) : (

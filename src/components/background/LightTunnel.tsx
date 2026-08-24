@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import type { Renderer, Program, Mesh } from 'ogl';
 import './LightTunnel.css';
 
 const hexToRgb = (hex: string): [number, number, number] => {
@@ -166,12 +167,13 @@ interface LightTunnelProps {
 }
 
 interface TunnelCtx {
-  renderer: any;
-  program: any;
-  mesh: any;
+  renderer: Renderer;
+  program: Program;
+  mesh: Mesh;
 }
 
 const ctxMap = new WeakMap<HTMLDivElement, TunnelCtx>();
+const cleanupMap = new WeakMap<HTMLDivElement, () => void>();
 
 const LightTunnel: React.FC<LightTunnelProps> = ({
   cableColor = '#A855F7',
@@ -289,7 +291,7 @@ const LightTunnel: React.FC<LightTunnelProps> = ({
       ro.observe(container);
       setSize();
 
-      let currentMouse = [0.5, 0.5];
+      const currentMouse = [0.5, 0.5];
       let targetMouse = [0.5, 0.5];
 
       const handleMouseMove = (e: MouseEvent) => {
@@ -341,7 +343,7 @@ const LightTunnel: React.FC<LightTunnelProps> = ({
       const io = new IntersectionObserver(
         ([entry]) => {
           isVisible = entry.isIntersecting;
-          isVisible ? tryStart() : tryStop();
+          if (isVisible) tryStart(); else tryStop();
         },
         { threshold: 0 },
       );
@@ -349,13 +351,13 @@ const LightTunnel: React.FC<LightTunnelProps> = ({
 
       const onVisibility = () => {
         isPageVisible = !document.hidden;
-        isPageVisible ? tryStart() : tryStop();
+        if (isPageVisible) tryStart(); else tryStop();
       };
       document.addEventListener('visibilitychange', onVisibility);
 
       tryStart();
 
-      (container as any).__tunnelCleanup = () => {
+      cleanupMap.set(container, () => {
         tryStop();
         ro.disconnect();
         io.disconnect();
@@ -365,16 +367,16 @@ const LightTunnel: React.FC<LightTunnelProps> = ({
         ctxMap.delete(container);
         try {
           container.removeChild(canvas);
-        } catch {}
+        } catch { /* canvas already removed */ }
         gl.getExtension('WEBGL_lose_context')?.loseContext();
-      };
+      });
     };
 
     initGL();
 
     return () => {
       cancelled = true;
-      const cleanup = (container as any).__tunnelCleanup;
+      const cleanup = cleanupMap.get(container);
       if (cleanup) cleanup();
     };
   }, []);

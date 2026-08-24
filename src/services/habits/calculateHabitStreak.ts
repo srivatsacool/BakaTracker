@@ -21,7 +21,7 @@ export function calculateHabitStreak(habit: Habit, logs: HabitLog[]): number {
   };
 
   let streak = 0;
-  let offset = 0;
+  let offset: number;
 
   // If today is completed, start check from today. Otherwise, start check from yesterday.
   const todayLog = habitLogs.find(l => l.date === todayStr);

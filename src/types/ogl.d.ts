@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 declare module 'ogl' {
   export class Renderer {
     constructor(options?: {

@@ -47,9 +47,9 @@ export interface ApiClientConfig {
 
 export class ApiClient {
   private baseUrl: string;
-  private getToken: (options?: any) => Promise<string>;
+  private getToken: (options?: unknown) => Promise<string>;
 
-  constructor(apiClientConfig: ApiClientConfig, getToken: (options?: any) => Promise<string>) {
+  constructor(apiClientConfig: ApiClientConfig, getToken: (options?: unknown) => Promise<string>) {
     this.baseUrl = apiClientConfig.baseUrl.replace(/\/$/, ''); // Remove trailing slash
     this.getToken = getToken;
   }
@@ -70,22 +70,22 @@ export class ApiClient {
           ...options,
           headers,
         });
-      } catch (err) {
+      } catch {
         throw new NetworkError();
       }
     };
 
-    let token = '';
+    let token: string;
     try {
       token = await this.getToken();
-    } catch (err) {
+    } catch {
       throw new SessionExpiredError();
     }
 
     let response: Response;
     try {
       response = await makeRequest(token);
-    } catch (err) {
+    } catch {
       throw new NetworkError();
     }
 
@@ -94,7 +94,7 @@ export class ApiClient {
       try {
         token = await this.getToken({ ignoreCache: true });
         response = await makeRequest(token);
-      } catch (err) {
+      } catch {
         throw new SessionExpiredError();
       }
     }
@@ -135,7 +135,7 @@ export class ApiClient {
     return this.request<T>(path, { ...options, method: 'GET' });
   }
 
-  async post<T>(path: string, body: any, options?: RequestInit): Promise<T> {
+  async post<T>(path: string, body: unknown, options?: RequestInit): Promise<T> {
     return this.request<T>(path, {
       ...options,
       method: 'POST',
@@ -143,7 +143,7 @@ export class ApiClient {
     });
   }
 
-  async put<T>(path: string, body: any, options?: RequestInit): Promise<T> {
+  async put<T>(path: string, body: unknown, options?: RequestInit): Promise<T> {
     return this.request<T>(path, {
       ...options,
       method: 'PUT',
@@ -151,7 +151,7 @@ export class ApiClient {
     });
   }
 
-  async patch<T>(path: string, body: any, options?: RequestInit): Promise<T> {
+  async patch<T>(path: string, body: unknown, options?: RequestInit): Promise<T> {
     return this.request<T>(path, {
       ...options,
       method: 'PATCH',
