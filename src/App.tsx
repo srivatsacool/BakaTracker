@@ -6,6 +6,7 @@ import { Layout } from './components/shared/Layout';
 import { ProtectedRoute, useAuth } from './features/auth';
 import { useApiClient } from './api/authFetch';
 import AppBackground from './components/background/AppBackground';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 // Route-level code splitting: heavy pages (Journey/recharts, Notes/excalidraw)
 // load only when their route is entered, not on first paint.
@@ -40,6 +41,7 @@ function App() {
       <AppBackground />
 
       {/* App content — floats above the lobby */}
+      <ErrorBoundary>
       <Suspense fallback={<RouteFallback />}>
         <Routes>
           <Route path="/" element={<Landing />} />
@@ -56,6 +58,7 @@ function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Suspense>
+      </ErrorBoundary>
     </BrowserRouter>
   );
 }
