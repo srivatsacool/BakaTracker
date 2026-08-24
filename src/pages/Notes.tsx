@@ -34,6 +34,7 @@ import {
   duplicatePage,
   reorderPages,
 } from '../services/pages/pages';
+import { GlassPane } from '../components/ui';
 import type { Notebook, Page } from '../types/page';
 
 /** Compact ISO → "12 Aug, 14:32" for page rows. */
@@ -478,7 +479,7 @@ export const Notes: React.FC = () => {
       ) : (
         <>
           {loadError && (
-            <div className="cabinet cabinet--ooo mb-6 p-4">
+            <GlassPane state="ooo" tone="coral" className="mb-6" screenClassName="!p-4">
               <p className="m-0 font-mono text-xs font-bold" style={{ color: 'var(--arcade-red)' }}>{loadError}</p>
               <button
                 type="button"
@@ -487,14 +488,17 @@ export const Notes: React.FC = () => {
               >
                 Retry
               </button>
-            </div>
+            </GlassPane>
           )}
 
       {creatingNotebook && (
-        <form
+        <GlassPane
+          as="form"
           onSubmit={e => void handleCreateNotebook(e)}
-          className="cabinet cabinet--playing mb-6 flex items-center gap-2 p-4 animate-fade-in"
-          style={{ '--marquee-color': 'var(--arcade-magenta)' } as React.CSSProperties}
+          state="playing"
+          tone="rose"
+          className="mb-6 animate-fade-in"
+          screenClassName="flex items-center gap-2"
         >
           <input
             value={newNbName}
@@ -518,14 +522,14 @@ export const Notes: React.FC = () => {
           >
             Cancel
           </button>
-        </form>
+        </GlassPane>
       )}
 
       {notebooks === null ? (
-        <div className="cabinet cabinet--attract p-8 text-center">
+        <GlassPane state="attract" screenClassName="!p-8 text-center">
           <Loader2 className="mx-auto mb-2 w-6 h-6 animate-spin" style={{ color: 'var(--arcade-magenta)' }} aria-hidden="true" />
           <p className="m-0 font-mono text-xs font-bold" style={{ color: 'var(--arcade-paper-muted)' }}>Loading notebooks…</p>
-        </div>
+        </GlassPane>
       ) : notebooks.length === 0 ? (
         <div className="attract-state p-10">
           <NotebookPen className="mx-auto mb-3 w-8 h-8" style={{ color: 'var(--arcade-magenta)' }} aria-hidden="true" />
@@ -552,7 +556,7 @@ export const Notes: React.FC = () => {
             const archivedCount = (pages ?? []).filter(p => p.archived_at !== null).length;
 
             return (
-              <section key={nb.id} className="cabinet cabinet--off overflow-hidden" style={{ '--marquee-color': 'var(--arcade-magenta)' } as React.CSSProperties}>
+              <GlassPane key={nb.id} state="off" tone="rose" className="overflow-hidden" screenClassName="!p-0">
                 <div className="flex items-center gap-2 px-4 py-3" style={{ borderBottom: '1px solid var(--obs-glass-8)', background: 'rgba(242,242,242,0.03)' }}>
                   <button
                     type="button"
@@ -602,7 +606,7 @@ export const Notes: React.FC = () => {
                     )}
                   </div>
                 )}
-              </section>
+              </GlassPane>
             );
           })}
         </div>

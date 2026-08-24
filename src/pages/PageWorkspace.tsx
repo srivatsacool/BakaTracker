@@ -13,6 +13,7 @@ import {
 import { hydrateScene } from '../services/pages/hydrateScene';
 import { serializeScene, containsDataUrl } from '../services/pages/sceneSerialization';
 import { EditorCanvas } from '../components/pages/EditorCanvas';
+import { GlassPane } from '../components/ui';
 import type { Page } from '../types/page';
 import type { ExcalidrawInitialDataState } from '@excalidraw/excalidraw/types';
 import type { ExcalidrawElement } from '@excalidraw/excalidraw/element/types';
@@ -36,10 +37,10 @@ type SaveStatus =
 
 const WorkspaceSpinner: React.FC<{ label: string }> = ({ label }) => (
   <div className="flex h-full w-full items-center justify-center" style={{ background: 'var(--arcade-void-deep)' }}>
-    <div className="cabinet cabinet--attract flex flex-col items-center gap-3 p-6" style={{ '--marquee-color': 'var(--arcade-magenta)' } as React.CSSProperties}>
+    <GlassPane as="div" state="attract" tone="rose" screenClassName="flex flex-col items-center gap-3 !p-6">
       <div className="w-8 h-8 animate-spin rounded-full border-2" style={{ borderColor: 'var(--arcade-magenta)', borderTopColor: 'transparent' }} />
       <p className="font-mono text-xs font-bold m-0" style={{ color: 'var(--arcade-paper-dim)' }}>{label}</p>
-    </div>
+    </GlassPane>
   </div>
 );
 
@@ -350,7 +351,7 @@ const PageWorkspaceInner: React.FC<{ pageId: string | undefined; onReload: () =>
 
         {loadError?.kind === 'error' && (
           <div className="flex h-full w-full items-center justify-center" style={{ background: 'var(--arcade-void-deep)' }}>
-            <div className="cabinet cabinet--ooo flex max-w-md flex-col items-center gap-4 p-6 text-center">
+            <GlassPane as="div" state="ooo" tone="coral" className="max-w-md" screenClassName="flex flex-col items-center gap-4 !p-6 text-center">
               <p className="m-0 marquee-title text-lg" style={{ color: 'var(--arcade-paper)' }}>Couldn&apos;t open this page</p>
               <p className="m-0 font-mono text-xs" style={{ color: 'var(--arcade-paper-muted)' }}>
                 {loadError.message}
@@ -363,13 +364,13 @@ const PageWorkspaceInner: React.FC<{ pageId: string | undefined; onReload: () =>
                 <RotateCcw className="w-3.5 h-3.5" aria-hidden="true" />
                 Retry
               </button>
-            </div>
+            </GlassPane>
           </div>
         )}
 
         {(missingId || loadError?.kind === 'not-found') && (
           <div className="flex h-full w-full items-center justify-center" style={{ background: 'var(--arcade-void-deep)' }}>
-            <div className="cabinet cabinet--ooo flex max-w-md flex-col items-center gap-4 p-6 text-center">
+            <GlassPane as="div" state="ooo" tone="coral" className="max-w-md" screenClassName="flex flex-col items-center gap-4 !p-6 text-center">
               <p className="m-0 marquee-title text-lg" style={{ color: 'var(--arcade-paper)' }}>Page not found</p>
               <p className="m-0 font-mono text-xs" style={{ color: 'var(--arcade-paper-muted)' }}>
                 This page doesn&apos;t exist or you don&apos;t have access to it. It may have
@@ -382,7 +383,7 @@ const PageWorkspaceInner: React.FC<{ pageId: string | undefined; onReload: () =>
                 <ArrowLeft className="w-3.5 h-3.5" aria-hidden="true" />
                 Back to Notebooks
               </Link>
-            </div>
+            </GlassPane>
           </div>
         )}
 

@@ -4,6 +4,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { getTodayDateString, formatDate } from '../lib/utils';
 import { Search, Flame } from 'lucide-react';
 import type { JournalEntry } from '../types';
+import { GlassPane, EmptyState } from '../components/ui';
 
 /**
  * Journal — the quiet room. One honest sentence a day: highlight,
@@ -116,16 +117,23 @@ export const Journal: React.FC = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Quick Log Form — the diary booth */}
-        <form onSubmit={handleSubmit} className="cabinet cabinet--playing md:col-span-2" style={{ '--marquee-color': 'var(--arcade-magenta)' } as React.CSSProperties}>
-          <div className="cabinet-marquee">
-            <span className="cabinet-led" aria-hidden="true" />
-            <span className="cabinet-marquee-title">Today's reflection</span>
-            <span className={`ml-auto font-mono text-[10px] chip ${todayLogged ? 'chip--teal' : ''}`}>
-              {todayLogged ? "Today's highlight: ✓ logged" : "Today's highlight: not logged yet"}
-            </span>
-            <span className="font-mono text-[10px] chip chip--aurora">+10 XP</span>
-          </div>
-          <div className="cabinet-screen !p-5 flex flex-col gap-4">
+        <GlassPane
+          as="form"
+          onSubmit={handleSubmit}
+          state="playing"
+          tone="rose"
+          className="md:col-span-2"
+          paneTitle="Today's reflection"
+          titleRight={
+            <>
+              <span className={`font-mono text-[10px] chip ${todayLogged ? 'chip--teal' : ''}`}>
+                {todayLogged ? "Today's highlight: ✓ logged" : "Today's highlight: not logged yet"}
+              </span>
+              <span className="font-mono text-[10px] chip chip--aurora">+10 XP</span>
+            </>
+          }
+          screenClassName="!p-5 flex flex-col gap-4"
+        >
             <div className="flex flex-col gap-1">
               <label className="font-mono text-[10px] font-bold uppercase" style={{ color: 'var(--arcade-paper-muted)' }}>Date</label>
               <input
@@ -194,17 +202,11 @@ export const Journal: React.FC = () => {
             <button type="submit" disabled={!highlight.trim()} className="insert-coin self-start !text-xs">
               <span className="coin-slot" aria-hidden="true" /> {highlight.trim() ? 'Save entry' : 'Write a highlight to save'}
             </button>
-          </div>
-        </form>
+        </GlassPane>
 
         {/* Recent streak card */}
         <div className="flex flex-col gap-4">
-          <div className="cabinet cabinet--off" style={{ '--marquee-color': 'var(--arcade-gold)' } as React.CSSProperties}>
-            <div className="cabinet-marquee">
-              <span className="cabinet-led" aria-hidden="true" />
-              <span className="cabinet-marquee-title">Consistency</span>
-            </div>
-            <div className="cabinet-screen !p-4 text-center">
+          <GlassPane as="div" state="off" tone="aurora" paneTitle="Consistency" screenClassName="!p-4 text-center">
               <Flame className="w-7 h-7 mx-auto mb-2" style={{ color: 'var(--arcade-gold)' }} aria-hidden="true" />
               <p className="marquee-title m-0 text-2xl" style={{ color: 'var(--arcade-gold)' }}>{journalStreak}</p>
               <p className="m-0 mt-1 font-mono text-[10px]" style={{ color: 'var(--arcade-paper-muted)' }}>
@@ -213,16 +215,10 @@ export const Journal: React.FC = () => {
               <p className="m-0 mt-2 font-mono text-[9px]" style={{ color: 'var(--arcade-paper-disabled)' }}>
                 {journal.length} {journal.length === 1 ? 'entry' : 'entries'} logged
               </p>
-            </div>
-          </div>
+          </GlassPane>
 
           {/* Mood-dot timeline — reverse-chron, newest first */}
-          <div className="cabinet cabinet--off" style={{ '--marquee-color': 'var(--arcade-magenta)' } as React.CSSProperties}>
-            <div className="cabinet-marquee">
-              <span className="cabinet-led" aria-hidden="true" />
-              <span className="cabinet-marquee-title">Mood trail</span>
-            </div>
-            <div className="cabinet-screen !p-4">
+          <GlassPane as="div" state="off" tone="rose" paneTitle="Mood trail" screenClassName="!p-4">
               {moodDots.length === 0 ? (
                 <p className="m-0 py-2 text-center font-mono text-[10px]" style={{ color: 'var(--arcade-paper-disabled)' }}>
                   No moods yet — entries paint the trail.
@@ -246,15 +242,9 @@ export const Journal: React.FC = () => {
                   </p>
                 </>
               )}
-            </div>
-          </div>
+          </GlassPane>
 
-          <div className="cabinet cabinet--off" style={{ '--marquee-color': 'var(--arcade-cobalt)' } as React.CSSProperties}>
-            <div className="cabinet-marquee">
-              <span className="cabinet-led" aria-hidden="true" />
-              <span className="cabinet-marquee-title">Search diary</span>
-            </div>
-            <div className="cabinet-screen !p-3">
+          <GlassPane as="div" state="off" tone="cobalt" paneTitle="Search diary" screenClassName="!p-3">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: 'var(--arcade-paper-disabled)' }} aria-hidden="true" />
                 <input
@@ -267,35 +257,34 @@ export const Journal: React.FC = () => {
                   aria-label="Search journal entries"
                 />
               </div>
-            </div>
-          </div>
+          </GlassPane>
         </div>
       </div>
 
       {/* Entries list */}
       <div className="flex flex-col gap-4">
         {filteredEntries.length === 0 ? (
-          <div className="attract-state">
-            <span className="text-4xl" aria-hidden="true">📓</span>
-            <div className="attract-dots" aria-hidden="true"><span /><span /><span /></div>
-            <h3>{searchQuery ? 'No memories match' : 'No memories on this booth'}</h3>
-            <p>{searchQuery ? `Nothing found for “${searchQuery}” — try a different word.` : 'Write one honest sentence about today. It earns +10 XP and builds a memory of the day.'}</p>
-          </div>
+          <EmptyState
+            icon={<span className="text-4xl" aria-hidden="true">📓</span>}
+            title={searchQuery ? 'No memories match' : 'No memories on this booth'}
+            description={searchQuery ? `Nothing found for “${searchQuery}” — try a different word.` : 'Write one honest sentence about today. It earns +10 XP and builds a memory of the day.'}
+          />
         ) : (
           filteredEntries.map(entry => (
-            <article key={entry.id} className="cabinet cabinet--off" style={{ '--marquee-color': 'var(--arcade-magenta)' } as React.CSSProperties}>
-              <div className="cabinet-marquee">
-                <span className="cabinet-led" aria-hidden="true" />
-                <span className="cabinet-marquee-title">{formatDate(entry.date)}</span>
-                <span className="ml-auto font-mono text-base" aria-hidden="true">{entry.mood}</span>
-              </div>
-              <div className="cabinet-screen !p-4">
+            <GlassPane
+              as="article"
+              key={entry.id}
+              state="off"
+              tone="rose"
+              paneTitle={formatDate(entry.date)}
+              titleRight={<span className="font-mono text-base" aria-hidden="true">{entry.mood}</span>}
+              screenClassName="!p-4"
+            >
                 <p className="journal-entry-copy m-0 text-sm font-bold" style={{ color: 'var(--arcade-paper)' }}>{entry.highlight}</p>
                 {entry.notes && (
                   <p className="journal-entry-copy m-0 mt-2 text-[0.8rem] leading-relaxed" style={{ color: 'var(--arcade-paper-muted)' }}>{entry.notes}</p>
                 )}
-              </div>
-            </article>
+            </GlassPane>
           ))
         )}
       </div>

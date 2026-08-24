@@ -15,7 +15,7 @@ import { cn } from '@/lib/utils';
  * the marquee title band when `paneTitle` is provided.
  */
 export interface GlassPaneProps extends React.HTMLAttributes<HTMLDivElement> {
-  as?: 'div' | 'section' | 'article';
+  as?: 'div' | 'section' | 'article' | 'form';
   state?: 'off' | 'attract' | 'playing' | 'highscore' | 'ooo';
   tone?: 'aurora' | 'coral' | 'cobalt' | 'rose' | 'teal' | 'amber' | 'paper' | 'green' | 'magenta';
   paneTitle?: string;
@@ -55,7 +55,7 @@ export const GlassPane = React.forwardRef<HTMLDivElement, GlassPaneProps>(
       <Component
         ref={ref}
         className={cn('cabinet', stateCls[state], className)}
-        style={{ ...style, '--marquee-color': toneVar[tone] } as React.CSSProperties}
+        style={{ '--marquee-color': toneVar[tone], ...style } as React.CSSProperties}
         {...props}
       >
         {paneTitle && (

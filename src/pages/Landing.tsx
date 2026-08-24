@@ -7,6 +7,7 @@ import { useShallow } from 'zustand/react/shallow';
 import type { Habit, Task } from '../types';
 import { calculateDailyScore, getTodayDateString, isHabitCompleted } from '../lib/utils';
 import { calculateHabitStreak } from '../services/habits/calculateHabitStreak';
+import { EmptyState, GlassPane } from '../components/ui';
 import {
   ArrowRight,
   BookOpen,
@@ -31,6 +32,8 @@ import {
   TrendingUp,
 } from 'lucide-react';
 
+type GlassTone = React.ComponentProps<typeof GlassPane>['tone'];
+
 const GithubIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" {...props}>
     <path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4" />
@@ -48,6 +51,17 @@ const CABINET_COLORS: Record<string, string> = {
   journey: 'var(--arcade-cobalt)',
   notes: 'var(--arcade-magenta)',
 };
+
+/** Accent CSS var → GlassPane tone (the marquee LED + title accent). */
+const ACCENT_TO_TONE: Record<string, GlassTone> = {
+  'var(--arcade-gold)': 'aurora',
+  'var(--arcade-green)': 'teal',
+  'var(--arcade-red)': 'coral',
+  'var(--arcade-orange)': 'amber',
+  'var(--arcade-magenta)': 'rose',
+  'var(--arcade-cobalt)': 'cobalt',
+};
+const accentTone = (accent: string): GlassTone => ACCENT_TO_TONE[accent] ?? 'aurora';
 
 const features = [
   { icon: Target, title: 'Today focus', text: 'A small execution pane for the quests that matter now — star quests, one lit board, one clear next move.', accent: CABINET_COLORS.today },
@@ -342,15 +356,19 @@ export const Landing: React.FC = () => {
 
           {/* Hero demo pane — the REAL application, live on this page */}
           <div className="lg:w-[460px] shrink-0 landing-preview-float" aria-label="BakaTracker live product preview — the real application running on this page">
-            <div className={`cabinet cabinet--playing ${paneLit ? 'pane-light' : ''}`} style={{ '--marquee-color': 'var(--arcade-gold)' } as React.CSSProperties}>
-              <div className="cabinet-marquee">
-                <span className="cabinet-led" aria-hidden="true" />
-                <span className="cabinet-marquee-title">BAKATRACKER · TODAY</span>
-                <span className="ml-auto flex items-center gap-1.5 font-mono text-[9px]" style={{ color: 'var(--arcade-green)' }}>
+            <GlassPane
+              as="div"
+              state="playing"
+              tone="aurora"
+              paneTitle="BAKATRACKER · TODAY"
+              titleRight={
+                <span className="flex items-center gap-1.5 font-mono text-[9px]" style={{ color: 'var(--arcade-green)' }}>
                   <span className="w-1.5 h-1.5 rounded-full" style={{ background: 'var(--arcade-green)', boxShadow: '0 0 6px var(--arcade-green)' }} aria-hidden="true" /> LIVE
                 </span>
-              </div>
-              <div className="cabinet-screen flex flex-col gap-3" style={{ padding: 14 }}>
+              }
+              className={paneLit ? 'pane-light' : ''}
+              screenClassName="flex flex-col gap-3 [padding:14px]"
+            >
                 {/* screen header — real daily score from the store */}
                 <div className="flex items-center justify-between gap-3">
                   <small className="font-mono text-[9px] tracking-[0.18em] uppercase" style={{ color: 'rgba(233,230,242,0.7)' }}>Today's focus</small>
@@ -377,9 +395,7 @@ export const Landing: React.FC = () => {
                 {/* Quest list — real Today quest rows, click toggles the real store */}
                 <div className="flex flex-col gap-1.5">
                   {previewQuests.length === 0 ? (
-                    <p className="m-0 py-3 text-center font-mono text-[10px]" style={{ color: 'rgba(233,230,242,0.7)' }}>
-                      No quests yet — the path ahead is waiting.
-                    </p>
+                    <EmptyState title="No quests yet" description="The path ahead is waiting." />
                   ) : (
                     previewQuests.map(task => {
                       const isDone = task.status === 'done';
@@ -497,8 +513,7 @@ export const Landing: React.FC = () => {
                   <span className="save-lamp is-local" title="Preview data lives in this browser until you sign in"><span className="lamp-dot" aria-hidden="true" /> Offline · local</span>
                   <small className="font-mono text-[8px]" style={{ color: 'rgba(233,230,242,0.7)' }}>This is the real app — click a quest</small>
                 </div>
-              </div>
-            </div>
+            </GlassPane>
           </div>
         </section>
 
@@ -523,15 +538,13 @@ export const Landing: React.FC = () => {
             ].map(step => {
               const Icon = step.icon;
               return (
-                <article key={step.title} className="cabinet cabinet--off">
-                  <div className="cabinet-screen !py-5">
-                    <span className="w-10 h-10 rounded-lg flex items-center justify-center mb-3" style={{ color: step.color, background: `${step.color}14`, border: `1px solid ${step.color}44` }} aria-hidden="true">
-                      <Icon className="w-5 h-5" />
-                    </span>
-                    <h3 className="marquee-title m-0 mb-1.5" style={{ fontSize: '1rem' }}>{step.title}</h3>
-                    <p className="m-0 text-[0.8rem] leading-relaxed" style={{ color: 'rgba(233,230,242,0.7)' }}>{step.text}</p>
-                  </div>
-                </article>
+                <GlassPane as="article" key={step.title} state="off" screenClassName="!py-5">
+                  <span className="w-10 h-10 rounded-lg flex items-center justify-center mb-3" style={{ color: step.color, background: `${step.color}14`, border: `1px solid ${step.color}44` }} aria-hidden="true">
+                    <Icon className="w-5 h-5" />
+                  </span>
+                  <h3 className="marquee-title m-0 mb-1.5" style={{ fontSize: '1rem' }}>{step.title}</h3>
+                  <p className="m-0 text-[0.8rem] leading-relaxed" style={{ color: 'rgba(233,230,242,0.7)' }}>{step.text}</p>
+                </GlassPane>
               );
             })}
           </div>
@@ -559,18 +572,20 @@ export const Landing: React.FC = () => {
             {features.map(feature => {
               const Icon = feature.icon;
               return (
-                <article key={feature.title} className="cabinet cabinet--off transition hover:scale-[1.02]" style={{ '--marquee-color': feature.accent } as React.CSSProperties}>
-                  <div className="cabinet-marquee">
-                    <span className="cabinet-led" aria-hidden="true" />
-                    <span className="cabinet-marquee-title">{feature.title}</span>
-                  </div>
-                  <div className="cabinet-screen !py-4">
-                    <span className="flex items-center justify-center w-9 h-9 rounded-lg mb-2.5" style={{ color: feature.accent, background: `${feature.accent}14`, border: `1px solid ${feature.accent}44` }} aria-hidden="true">
-                      <Icon className="w-4 h-4" />
-                    </span>
-                    <p className="m-0 text-[0.8rem] leading-relaxed" style={{ color: 'rgba(233,230,242,0.7)' }}>{feature.text}</p>
-                  </div>
-                </article>
+                <GlassPane
+                  as="article"
+                  key={feature.title}
+                  state="off"
+                  tone={accentTone(feature.accent)}
+                  paneTitle={feature.title}
+                  className="transition hover:scale-[1.02]"
+                  screenClassName="!py-4"
+                >
+                  <span className="flex items-center justify-center w-9 h-9 rounded-lg mb-2.5" style={{ color: feature.accent, background: `${feature.accent}14`, border: `1px solid ${feature.accent}44` }} aria-hidden="true">
+                    <Icon className="w-4 h-4" />
+                  </span>
+                  <p className="m-0 text-[0.8rem] leading-relaxed" style={{ color: 'rgba(233,230,242,0.7)' }}>{feature.text}</p>
+                </GlassPane>
               );
             })}
           </div>
@@ -583,12 +598,7 @@ export const Landing: React.FC = () => {
             <h2 className="marquee-title mt-2" style={{ fontSize: 'clamp(1.4rem, 3vw, 2rem)' }}>A task manager tracks your list.<br />BakaTracker runs your system.</h2>
           </div>
           <div className="grid md:grid-cols-2 gap-4 max-w-4xl mx-auto">
-            <div className="cabinet cabinet--off">
-              <div className="cabinet-marquee">
-                <span className="cabinet-led" aria-hidden="true" />
-                <span className="cabinet-marquee-title">A task manager answers…</span>
-              </div>
-              <div className="cabinet-screen flex flex-col gap-2.5 !py-5">
+            <GlassPane as="div" state="off" paneTitle="A task manager answers…" screenClassName="flex flex-col gap-2.5 !py-5">
                 <p className="m-0 text-sm font-bold" style={{ color: 'rgba(233,230,242,0.7)' }}>“What's on my list?”</p>
                 {[
                   'One more app to maintain, one more inbox to feed',
@@ -599,14 +609,8 @@ export const Landing: React.FC = () => {
                     <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: 'var(--arcade-paper-disabled)' }} aria-hidden="true" /> {item}
                   </span>
                 ))}
-              </div>
-            </div>
-            <div className="cabinet cabinet--playing" style={{ '--marquee-color': 'var(--arcade-gold)' } as React.CSSProperties}>
-              <div className="cabinet-marquee">
-                <span className="cabinet-led" aria-hidden="true" />
-                <span className="cabinet-marquee-title">BakaTracker answers…</span>
-              </div>
-              <div className="cabinet-screen flex flex-col gap-2.5 !py-5">
+            </GlassPane>
+            <GlassPane as="div" state="playing" tone="aurora" paneTitle="BakaTracker answers…" screenClassName="flex flex-col gap-2.5 !py-5">
                 <p className="m-0 text-sm font-bold" style={{ color: 'var(--arcade-paper)' }}>“What should I do today — and how am I actually doing?”</p>
                 {[
                   'Star quests for Today → one lit pane, one clear next move',
@@ -619,19 +623,13 @@ export const Landing: React.FC = () => {
                     <Check className="w-4 h-4 shrink-0" style={{ color: 'var(--arcade-green)' }} aria-hidden="true" /> {item}
                   </span>
                 ))}
-              </div>
-            </div>
+            </GlassPane>
           </div>
         </section>
 
         {/* ============ HOW to try it — walkthrough ============ */}
         <section className="px-5 py-14 max-w-6xl mx-auto">
-          <div className="cabinet cabinet--playing" style={{ '--marquee-color': 'var(--arcade-cobalt)' } as React.CSSProperties}>
-            <div className="cabinet-marquee">
-              <span className="cabinet-led" aria-hidden="true" />
-              <span className="cabinet-marquee-title">Walkthrough</span>
-            </div>
-            <div className="cabinet-screen grid lg:grid-cols-[1fr_1.2fr] gap-8" style={{ padding: '24px 32px' }}>
+          <GlassPane as="div" state="playing" tone="cobalt" paneTitle="Walkthrough" screenClassName="grid lg:grid-cols-[1fr_1.2fr] gap-8 [padding:24px_32px]">
               <div className="flex flex-col justify-center">
                 <span className="font-mono text-[10px] uppercase tracking-[0.2em]" style={{ color: 'var(--arcade-cobalt)' }}>See the loop before you sign in</span>
                 <h2 className="marquee-title mt-2 mb-3" style={{ fontSize: 'clamp(1.3rem, 3vw, 1.8rem)' }}>{activeWalkthrough.title}</h2>
@@ -669,8 +667,7 @@ export const Landing: React.FC = () => {
                   <button type="button" className="icon-button" onClick={nextStep} aria-label="Next walkthrough step"><ChevronRight className="w-4 h-4" aria-hidden="true" /></button>
                 </div>
               </div>
-            </div>
-          </div>
+          </GlassPane>
         </section>
 
         {/* ============ HOW to create your own instance — ownership ============ */}
@@ -699,20 +696,20 @@ export const Landing: React.FC = () => {
                 <Shield className="w-4 h-4" aria-hidden="true" /> {isAuthConfigured ? 'SIGN IN / CREATE YOUR INSTANCE' : 'Configure sign-in to continue'}
               </button>
             </div>
-            <div className="cabinet cabinet--highscore" style={{ '--marquee-color': 'var(--arcade-gold)' } as React.CSSProperties}>
-              <div className="cabinet-marquee">
-                <span className="cabinet-led" aria-hidden="true" />
-                <span className="cabinet-marquee-title">FIRST LIGHT · YOUR INSTANCE</span>
-              </div>
-              <div className="cabinet-screen flex flex-col items-start gap-4" style={{ padding: 24 }}>
+            <GlassPane
+              as="div"
+              state="highscore"
+              tone="aurora"
+              paneTitle="FIRST LIGHT · YOUR INSTANCE"
+              screenClassName="flex flex-col items-start gap-4 [padding:24px]"
+            >
                 <LockKeyhole className="w-7 h-7" style={{ color: 'var(--arcade-gold)' }} aria-hidden="true" />
                 <strong className="marquee-title" style={{ fontSize: '1.1rem' }}>Your records. Your data. Your pace.</strong>
                 <span className="text-sm leading-relaxed" style={{ color: 'rgba(233,230,242,0.7)' }}>No subscription wall. No productivity guilt. Just a clear place to continue.</span>
                 <a href="https://github.com/srivatsacool/BakaTracker" target="_blank" rel="noreferrer" className="btn-ghost no-underline">
                   <GithubIcon className="w-4 h-4" aria-hidden="true" /> View the repository <ArrowRight className="w-4 h-4" aria-hidden="true" />
                 </a>
-              </div>
-            </div>
+            </GlassPane>
           </div>
         </section>
 

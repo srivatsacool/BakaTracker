@@ -4,6 +4,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { useNavigate } from 'react-router-dom';
 import type { Task, EisenhowerQuadrant, TaskArea } from '../types';
 import { Plus, ExternalLink, Trash2 } from 'lucide-react';
+import { GlassPane } from '../components/ui';
 
 type QuadrantKey = 'do' | 'schedule' | 'delegate' | 'delete';
 
@@ -177,12 +178,9 @@ export const Eisenhower: React.FC = () => {
 
       {/* Add form */}
       {showAddForm && (
-        <form onSubmit={handleAddTask} className="cabinet cabinet--playing animate-fade-in" style={{ '--marquee-color': 'var(--arcade-orange)' } as React.CSSProperties}>
-          <div className="cabinet-marquee">
-            <span className="cabinet-led" aria-hidden="true" />
-            <span className="cabinet-marquee-title">Add to inbox</span>
-          </div>
-          <div className="cabinet-screen !p-4 grid grid-cols-1 md:grid-cols-3 gap-3">
+        <GlassPane as="form" onSubmit={handleAddTask} state="playing" tone="amber"
+          paneTitle="Add to inbox" screenClassName="!p-4 grid grid-cols-1 md:grid-cols-3 gap-3"
+          className="animate-fade-in">
             <div className="flex flex-col gap-1">
               <label className="font-mono text-[10px] font-bold uppercase" style={{ color: 'var(--arcade-paper-muted)' }}>Title</label>
               <input value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Call the dentist" className="arcade-input" maxLength={200} required />
@@ -205,8 +203,7 @@ export const Eisenhower: React.FC = () => {
               <button type="button" onClick={() => setShowAddForm(false)} className="btn-ghost !text-xs">Cancel</button>
               <button type="submit" disabled={!title.trim()} className="insert-coin !py-2 !px-4 !text-xs"><span className="coin-slot" aria-hidden="true" /> Add to inbox</button>
             </div>
-          </div>
-        </form>
+        </GlassPane>
       )}
 
       {justAdded && (
@@ -215,19 +212,15 @@ export const Eisenhower: React.FC = () => {
 
       {/* Empty-matrix celebration — quiet bays are a good day */}
       {matrixEmpty && (
-        <section className={`cabinet ${unassigned.length === 0 ? 'cabinet--attract' : 'cabinet--off'}`} style={{ '--marquee-color': 'var(--arcade-gold)' } as React.CSSProperties}>
-          <div className="cabinet-marquee">
-            <span className="cabinet-led" aria-hidden="true" />
-            <span className="cabinet-marquee-title">{unassigned.length === 0 ? 'All bays clear' : 'Nothing sorted yet'}</span>
-          </div>
-          <div className="cabinet-screen !p-4">
-            <p className="m-0 font-mono text-[10px] leading-relaxed" style={{ color: 'var(--arcade-paper-muted)' }}>
-              {unassigned.length === 0
-                ? 'A quiet matrix — no quests waiting, nothing loud. When something arrives, it lands in the inbox below.'
-                : `The grid is empty but the inbox holds ${unassigned.length} — assign each one a quadrant to sort the noise.`}
-            </p>
-          </div>
-        </section>
+        <GlassPane state={unassigned.length === 0 ? 'attract' : 'off'} tone="aurora"
+          paneTitle={unassigned.length === 0 ? 'All bays clear' : 'Nothing sorted yet'}
+          screenClassName="!p-4">
+          <p className="m-0 font-mono text-[10px] leading-relaxed" style={{ color: 'var(--arcade-paper-muted)' }}>
+            {unassigned.length === 0
+              ? 'A quiet matrix — no quests waiting, nothing loud. When something arrives, it lands in the inbox below.'
+              : `The grid is empty but the inbox holds ${unassigned.length} — assign each one a quadrant to sort the noise.`}
+          </p>
+        </GlassPane>
       )}
 
       {/* The 2×2 grid */}
@@ -235,44 +228,37 @@ export const Eisenhower: React.FC = () => {
         {QUADRANTS.map(q => {
           const qTasks = getQuadrantTasks(q.key);
           return (
-            <section key={q.key} className="cabinet cabinet--off" style={{ '--marquee-color': q.accent } as React.CSSProperties}>
-              <div className="cabinet-marquee">
-                <span className="cabinet-led" aria-hidden="true" />
-                <span className="cabinet-marquee-title">{q.emoji} {q.label}</span>
-                <span className="ml-auto font-mono text-[10px] score-readout" style={{ color: q.accent }}>{qTasks.length}</span>
-              </div>
-              <div className="cabinet-screen !p-3 min-h-[140px] flex flex-col gap-2">
-                <p className="m-0 font-mono text-[9px] uppercase" style={{ color: 'var(--arcade-paper-muted)' }}>{q.subtitle}</p>
-                {qTasks.length === 0 ? (
-                  <p className="m-0 py-4 text-center font-mono text-[10px]" style={{ color: 'var(--arcade-paper-disabled)' }}>Empty bay</p>
-                ) : (
-                  qTasks.map(task => (
-                    <TaskCard
-                      key={task.id}
-                      task={task}
-                      onAssign={q => assignQuadrant(task.id, q)}
-                      onDelete={() => deleteTask(task.id)}
-                      onMoveToKanban={() => navigate('/tasks')}
-                      showQuadrantPicker
-                      compact
-                    />
-                  ))
-                )}
-                <p className="m-0 font-mono text-[9px] leading-relaxed" style={{ color: 'var(--arcade-paper-disabled)' }}>{q.description}</p>
-              </div>
-            </section>
+            <GlassPane key={q.key} state="off"
+              style={{ '--marquee-color': q.accent } as React.CSSProperties}
+              paneTitle={`${q.emoji} ${q.label}`}
+              titleRight={<span className="font-mono text-[10px] score-readout" style={{ color: q.accent }}>{qTasks.length}</span>}
+              screenClassName="!p-3 min-h-[140px] flex flex-col gap-2">
+              <p className="m-0 font-mono text-[9px] uppercase" style={{ color: 'var(--arcade-paper-muted)' }}>{q.subtitle}</p>
+              {qTasks.length === 0 ? (
+                <p className="m-0 py-4 text-center font-mono text-[10px]" style={{ color: 'var(--arcade-paper-disabled)' }}>Empty bay</p>
+              ) : (
+                qTasks.map(task => (
+                  <TaskCard
+                    key={task.id}
+                    task={task}
+                    onAssign={q => assignQuadrant(task.id, q)}
+                    onDelete={() => deleteTask(task.id)}
+                    onMoveToKanban={() => navigate('/tasks')}
+                    showQuadrantPicker
+                    compact
+                  />
+                ))
+              )}
+              <p className="m-0 font-mono text-[9px] leading-relaxed" style={{ color: 'var(--arcade-paper-disabled)' }}>{q.description}</p>
+        </GlassPane>
           );
         })}
       </div>
 
       {/* Inbox — unassigned */}
-      <section className="cabinet cabinet--attract" style={{ '--marquee-color': 'var(--arcade-gold)' } as React.CSSProperties}>
-        <div className="cabinet-marquee">
-          <span className="cabinet-led" aria-hidden="true" />
-          <span className="cabinet-marquee-title">Inbox · unassigned</span>
-          <span className="ml-auto font-mono text-[10px] score-readout" style={{ color: 'var(--arcade-gold)' }}>{unassigned.length}</span>
-        </div>
-        <div className="cabinet-screen !p-4">
+      <GlassPane state="attract" tone="aurora" paneTitle="Inbox · unassigned"
+        titleRight={<span className="font-mono text-[10px] score-readout" style={{ color: 'var(--arcade-gold)' }}>{unassigned.length}</span>}
+        screenClassName="!p-4">
           {unassigned.length === 0 ? (
             <p className="m-0 py-4 text-center font-mono text-[10px]" style={{ color: 'var(--arcade-paper-disabled)' }}>Nothing waiting — every quest has a quadrant.</p>
           ) : (
@@ -289,8 +275,7 @@ export const Eisenhower: React.FC = () => {
               ))}
             </div>
           )}
-        </div>
-      </section>
+      </GlassPane>
     </div>
   );
 };

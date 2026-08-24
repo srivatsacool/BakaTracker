@@ -4,6 +4,9 @@ import { useShallow } from 'zustand/react/shallow';
 import type { Task, TaskStatus, TaskArea } from '../types';
 import { Plus, Search, Star, ChevronLeft, ChevronRight, Calendar, Trash2, CheckCircle2, Zap } from 'lucide-react';
 import { UndoToast } from '../components/shared/UndoToast';
+import { GlassPane, EmptyState } from '../components/ui';
+
+type GlassTone = React.ComponentProps<typeof GlassPane>['tone'];
 
 /**
  * Tasks — the action cabinet. Four-column Kanban:
@@ -108,11 +111,11 @@ export const Tasks: React.FC = () => {
     setShowAddForm(false);
   };
 
-  const columns: { id: TaskStatus; label: string; tone: string }[] = [
-    { id: 'backlog', label: 'Backlog', tone: 'var(--arcade-paper-dim)' },
-    { id: 'todo', label: 'Todo', tone: 'var(--arcade-cobalt)' },
-    { id: 'doing', label: 'Doing', tone: 'var(--arcade-gold)' },
-    { id: 'done', label: 'Done', tone: 'var(--arcade-green)' }
+  const columns: { id: TaskStatus; label: string; tone: GlassTone }[] = [
+    { id: 'backlog', label: 'Backlog', tone: 'paper' },
+    { id: 'todo', label: 'Todo', tone: 'cobalt' },
+    { id: 'doing', label: 'Doing', tone: 'aurora' },
+    { id: 'done', label: 'Done', tone: 'teal' }
   ];
 
   const areas: (TaskArea | 'all')[] = ['all', 'health', 'career', 'learning', 'personal', 'creativity'];
@@ -203,50 +206,52 @@ export const Tasks: React.FC = () => {
 
       {/* Task Add Form */}
       {showAddForm && (
-        <form onSubmit={handleAddTask} className="cabinet cabinet--playing animate-fade-in" style={{ '--marquee-color': 'var(--arcade-red)' } as React.CSSProperties}>
-          <div className="cabinet-marquee">
-            <span className="cabinet-led" aria-hidden="true" />
-            <span className="cabinet-marquee-title">Create new quest</span>
+        <GlassPane
+          as="form"
+          onSubmit={handleAddTask}
+          state="playing"
+          tone="coral"
+          paneTitle="Create new quest"
+          screenClassName="!p-5 grid grid-cols-1 md:grid-cols-2 gap-4"
+          className="animate-fade-in"
+        >
+          <div className="flex flex-col gap-1.5">
+            <label className="font-mono text-[10px] font-bold uppercase" style={{ color: 'var(--arcade-paper-muted)' }}>Task Title</label>
+            <input type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Update resume" className="arcade-input" maxLength={200} required />
           </div>
-          <div className="cabinet-screen !p-5 grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="flex flex-col gap-1.5">
-              <label className="font-mono text-[10px] font-bold uppercase" style={{ color: 'var(--arcade-paper-muted)' }}>Task Title</label>
-              <input type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Update resume" className="arcade-input" maxLength={200} required />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="font-mono text-[10px] font-bold uppercase" style={{ color: 'var(--arcade-paper-muted)' }}>RPG Area</label>
-              <select value={area} onChange={e => setArea(e.target.value as TaskArea)} className="arcade-input font-mono">
-                <option value="health">Health</option>
-                <option value="career">Career</option>
-                <option value="learning">Learning</option>
-                <option value="personal">Personal</option>
-                <option value="creativity">Creativity</option>
-              </select>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="font-mono text-[10px] font-bold uppercase" style={{ color: 'var(--arcade-paper-muted)' }}>Notes</label>
-              <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Details…" className="arcade-input min-h-[60px] resize-y" maxLength={500} />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="font-mono text-[10px] font-bold uppercase" style={{ color: 'var(--arcade-paper-muted)' }}>XP Reward</label>
-              <input type="number" value={xp} onChange={e => setXp(Number(e.target.value))} min={0} max={1000} className="arcade-input font-mono" />
-            </div>
-            <div className="flex items-center gap-2">
-              <input type="checkbox" id="task-today" checked={today} onChange={e => setToday(e.target.checked)} className="w-4 h-4 accent-arcade-gold" />
-              <label htmlFor="task-today" className="font-mono text-[10px] font-bold cursor-pointer" style={{ color: 'var(--arcade-paper-dim)' }}>Star for Today board</label>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="font-mono text-[10px] font-bold uppercase" style={{ color: 'var(--arcade-paper-muted)' }}>Due Date</label>
-              <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} className="arcade-input font-mono" />
-            </div>
-            <div className="md:col-span-2 flex justify-end gap-2">
-              <button type="button" onClick={() => setShowAddForm(false)} className="btn-ghost !text-xs">Cancel</button>
-              <button type="submit" disabled={!title.trim()} className="insert-coin !py-2 !px-4 !text-xs">
-                <span className="coin-slot" aria-hidden="true" /> Add quest
-              </button>
-            </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="font-mono text-[10px] font-bold uppercase" style={{ color: 'var(--arcade-paper-muted)' }}>RPG Area</label>
+            <select value={area} onChange={e => setArea(e.target.value as TaskArea)} className="arcade-input font-mono">
+              <option value="health">Health</option>
+              <option value="career">Career</option>
+              <option value="learning">Learning</option>
+              <option value="personal">Personal</option>
+              <option value="creativity">Creativity</option>
+            </select>
           </div>
-        </form>
+          <div className="flex flex-col gap-1.5">
+            <label className="font-mono text-[10px] font-bold uppercase" style={{ color: 'var(--arcade-paper-muted)' }}>Notes</label>
+            <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Details…" className="arcade-input min-h-[60px] resize-y" maxLength={500} />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="font-mono text-[10px] font-bold uppercase" style={{ color: 'var(--arcade-paper-muted)' }}>XP Reward</label>
+            <input type="number" value={xp} onChange={e => setXp(Number(e.target.value))} min={0} max={1000} className="arcade-input font-mono" />
+          </div>
+          <div className="flex items-center gap-2">
+            <input type="checkbox" id="task-today" checked={today} onChange={e => setToday(e.target.checked)} className="w-4 h-4 accent-arcade-gold" />
+            <label htmlFor="task-today" className="font-mono text-[10px] font-bold cursor-pointer" style={{ color: 'var(--arcade-paper-dim)' }}>Star for Today board</label>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="font-mono text-[10px] font-bold uppercase" style={{ color: 'var(--arcade-paper-muted)' }}>Due Date</label>
+            <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} className="arcade-input font-mono" />
+          </div>
+          <div className="md:col-span-2 flex justify-end gap-2">
+            <button type="button" onClick={() => setShowAddForm(false)} className="btn-ghost !text-xs">Cancel</button>
+            <button type="submit" disabled={!title.trim()} className="insert-coin !py-2 !px-4 !text-xs">
+              <span className="coin-slot" aria-hidden="true" /> Add quest
+            </button>
+          </div>
+        </GlassPane>
       )}
 
       {/* Search + Area Filters */}
@@ -290,75 +295,78 @@ export const Tasks: React.FC = () => {
         {columns.map(col => {
           const colTasks = filteredTasks.filter(t => t.status === col.id);
           return (
-            <section key={col.id} className="cabinet cabinet--off min-h-[200px]" style={{ '--marquee-color': col.tone } as React.CSSProperties}>
-              <div className="cabinet-marquee">
-                <span className="cabinet-led" aria-hidden="true" />
-                <span className="cabinet-marquee-title">{col.label}</span>
-                <span className="ml-auto font-mono text-[10px] score-readout" style={{ color: 'var(--arcade-paper-muted)' }}>{colTasks.length}</span>
-              </div>
-              <div className="cabinet-screen !p-3 flex flex-col gap-2 min-h-[160px]">
-                {colTasks.length === 0 ? (
-                  <p className="m-0 py-6 text-center font-mono text-[10px]" style={{ color: 'var(--arcade-paper-disabled)' }}>Empty bay</p>
-                ) : (
-                  colTasks.map(task => (
-                    <div
-                      key={task.id}
-                      className={`rounded-lg p-3 flex flex-col gap-2 ${task.status === 'done' ? 'opacity-60' : ''}`}
-                      style={{ background: 'rgba(242,242,242,0.03)', border: '1px solid var(--obs-glass-9)' }}
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <p className={`m-0 text-xs font-bold truncate min-w-0 ${task.status === 'done' ? 'line-through' : ''}`} style={{ color: 'var(--arcade-paper)' }} title={task.title}>{task.title}</p>
-                        <span
-                          className={`w-2 h-2 rounded-full shrink-0 mt-0.5 ${task.today ? '' : 'opacity-30'}`}
-                          style={{ background: 'var(--arcade-gold)', boxShadow: task.today ? '0 0 8px var(--arcade-gold)' : 'none' }}
-                          title={task.today ? 'Starred for Today' : 'Not starred'}
-                          aria-hidden="true"
-                        />
-                      </div>
-                      {task.notes && (
-                        <p className="m-0 text-[10px] leading-relaxed" style={{ color: 'var(--arcade-paper-muted)' }}>{task.notes}</p>
-                      )}
-                      <div className="flex items-center justify-between mt-1">
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-mono text-[9px] chip" style={{ color: getAreaColor(task.area), borderColor: `${getAreaColor(task.area)}44`, background: `${getAreaColor(task.area)}12` }}>
-                            {task.area}
-                          </span>
-                          <span className="font-mono text-[9px] score-readout" style={{ color: 'var(--arcade-gold)' }}>+{task.xp}</span>
-                        </div>
-                        <div className="flex items-center gap-0.5">
-                          <button type="button" onClick={() => toggleTodayTask(task.id)} className="icon-button icon-button-small" style={{ color: task.today ? 'var(--arcade-gold)' : 'var(--arcade-paper-disabled)' }} aria-label={task.today ? `Unstar ${task.title}` : `Star ${task.title} for today`} title={task.today ? 'Starred for Today' : 'Star for Today'}>
-                            <Star className="w-3 h-3" aria-hidden="true" />
-                          </button>
-                          {task.status !== 'backlog' && (
-                            <button type="button" onClick={(e) => shiftStatus(task, 'left', e)} className="icon-button icon-button-small" aria-label={`Move ${task.title} left`}>
-                              <ChevronLeft className="w-3 h-3" aria-hidden="true" />
-                            </button>
-                          )}
-                          {task.status !== 'done' && (
-                            <button type="button" onClick={(e) => shiftStatus(task, 'right', e)} className="icon-button icon-button-small" aria-label={`Move ${task.title} right`}>
-                              <ChevronRight className="w-3 h-3" aria-hidden="true" />
-                            </button>
-                          )}
-                          <button type="button" onClick={() => handleDeleteTask(task)} className="icon-button icon-button-small hover:!text-danger" aria-label={`Delete ${task.title}`}>
-                            <Trash2 className="w-3 h-3" aria-hidden="true" />
-                          </button>
-                        </div>
-                      </div>
-                      {task.due_date && (
-                        <span className="flex items-center gap-1 font-mono text-[9px]" style={{ color: 'var(--arcade-paper-muted)' }}>
-                          <Calendar className="w-3 h-3" aria-hidden="true" /> {task.due_date}
-                        </span>
-                      )}
-                      {task.status === 'done' && task.completed_at && (
-                        <span className="flex items-center gap-1 font-mono text-[9px]" style={{ color: 'var(--arcade-paper-disabled)' }}>
-                          <CheckCircle2 className="w-3 h-3" aria-hidden="true" /> done {new Date(task.completed_at).toLocaleDateString()}
-                        </span>
-                      )}
+            <GlassPane
+              key={col.id}
+              state="off"
+              tone={col.tone}
+              paneTitle={col.label}
+              titleRight={
+                <span className="font-mono text-[10px] score-readout" style={{ color: 'var(--arcade-paper-muted)' }}>{colTasks.length}</span>
+              }
+              className="min-h-[200px]"
+              screenClassName="!p-3 flex flex-col gap-2 min-h-[160px]"
+            >
+              {colTasks.length === 0 ? (
+                <EmptyState title="Empty bay" />
+              ) : (
+                colTasks.map(task => (
+                  <div
+                    key={task.id}
+                    className={`rounded-lg p-3 flex flex-col gap-2 ${task.status === 'done' ? 'opacity-60' : ''}`}
+                    style={{ background: 'rgba(242,242,242,0.03)', border: '1px solid var(--obs-glass-9)' }}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <p className={`m-0 text-xs font-bold truncate min-w-0 ${task.status === 'done' ? 'line-through' : ''}`} style={{ color: 'var(--arcade-paper)' }} title={task.title}>{task.title}</p>
+                      <span
+                        className={`w-2 h-2 rounded-full shrink-0 mt-0.5 ${task.today ? '' : 'opacity-30'}`}
+                        style={{ background: 'var(--arcade-gold)', boxShadow: task.today ? '0 0 8px var(--arcade-gold)' : 'none' }}
+                        title={task.today ? 'Starred for Today' : 'Not starred'}
+                        aria-hidden="true"
+                      />
                     </div>
-                  ))
-                )}
-              </div>
-            </section>
+                    {task.notes && (
+                      <p className="m-0 text-[10px] leading-relaxed" style={{ color: 'var(--arcade-paper-muted)' }}>{task.notes}</p>
+                    )}
+                    <div className="flex items-center justify-between mt-1">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-mono text-[9px] chip" style={{ color: getAreaColor(task.area), borderColor: `${getAreaColor(task.area)}44`, background: `${getAreaColor(task.area)}12` }}>
+                          {task.area}
+                        </span>
+                        <span className="font-mono text-[9px] score-readout" style={{ color: 'var(--arcade-gold)' }}>+{task.xp}</span>
+                      </div>
+                      <div className="flex items-center gap-0.5">
+                        <button type="button" onClick={() => toggleTodayTask(task.id)} className="icon-button icon-button-small" style={{ color: task.today ? 'var(--arcade-gold)' : 'var(--arcade-paper-disabled)' }} aria-label={task.today ? `Unstar ${task.title}` : `Star ${task.title} for today`} title={task.today ? 'Starred for Today' : 'Star for Today'}>
+                          <Star className="w-3 h-3" aria-hidden="true" />
+                        </button>
+                        {task.status !== 'backlog' && (
+                          <button type="button" onClick={(e) => shiftStatus(task, 'left', e)} className="icon-button icon-button-small" aria-label={`Move ${task.title} left`}>
+                            <ChevronLeft className="w-3 h-3" aria-hidden="true" />
+                          </button>
+                        )}
+                        {task.status !== 'done' && (
+                          <button type="button" onClick={(e) => shiftStatus(task, 'right', e)} className="icon-button icon-button-small" aria-label={`Move ${task.title} right`}>
+                            <ChevronRight className="w-3 h-3" aria-hidden="true" />
+                          </button>
+                        )}
+                        <button type="button" onClick={() => handleDeleteTask(task)} className="icon-button icon-button-small hover:!text-danger" aria-label={`Delete ${task.title}`}>
+                          <Trash2 className="w-3 h-3" aria-hidden="true" />
+                        </button>
+                      </div>
+                    </div>
+                    {task.due_date && (
+                      <span className="flex items-center gap-1 font-mono text-[9px]" style={{ color: 'var(--arcade-paper-muted)' }}>
+                        <Calendar className="w-3 h-3" aria-hidden="true" /> {task.due_date}
+                      </span>
+                    )}
+                    {task.status === 'done' && task.completed_at && (
+                      <span className="flex items-center gap-1 font-mono text-[9px]" style={{ color: 'var(--arcade-paper-disabled)' }}>
+                        <CheckCircle2 className="w-3 h-3" aria-hidden="true" /> done {new Date(task.completed_at).toLocaleDateString()}
+                      </span>
+                    )}
+                  </div>
+                ))
+              )}
+            </GlassPane>
           );
         })}
       </div>
@@ -382,41 +390,41 @@ export const Tasks: React.FC = () => {
         {columns.filter(col => col.id === activeMobileColumn).map(col => {
           const colTasks = filteredTasks.filter(t => t.status === col.id);
           return (
-            <section key={col.id} className="cabinet cabinet--off" style={{ '--marquee-color': col.tone } as React.CSSProperties}>
-              <div className="cabinet-marquee">
-                <span className="cabinet-led" aria-hidden="true" />
-                <span className="cabinet-marquee-title">{col.label}</span>
-              </div>
-              <div className="cabinet-screen !p-3 flex flex-col gap-2">
-                {colTasks.length === 0 ? (
-                  <p className="m-0 py-6 text-center font-mono text-[10px]" style={{ color: 'var(--arcade-paper-disabled)' }}>Empty bay</p>
-                ) : (
-                  colTasks.map(task => (
-                    <div key={task.id} className="rounded-lg p-3 flex flex-col gap-2" style={{ background: 'rgba(242,242,242,0.03)', border: '1px solid var(--obs-glass-9)' }}>
-                      <p className="m-0 text-xs font-bold truncate min-w-0" style={{ color: 'var(--arcade-paper)' }} title={task.title}>{task.title}</p>
-                      {task.notes && <p className="m-0 text-[10px]" style={{ color: 'var(--arcade-paper-muted)' }}>{task.notes}</p>}
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-mono text-[9px] chip" style={{ color: getAreaColor(task.area), borderColor: `${getAreaColor(task.area)}44`, background: `${getAreaColor(task.area)}12` }}>{task.area}</span>
-                          <span className="font-mono text-[9px] score-readout" style={{ color: 'var(--arcade-gold)' }}>+{task.xp}</span>
-                        </div>
-                        <div className="flex items-center gap-0.5">
-                          <button type="button" onClick={() => toggleTodayTask(task.id)} className="icon-button icon-button-small" style={{ color: task.today ? 'var(--arcade-gold)' : 'var(--arcade-paper-disabled)' }} aria-label="Toggle today star"><Star className="w-3 h-3" aria-hidden="true" /></button>
-                          {task.status !== 'backlog' && <button type="button" onClick={(e) => shiftStatus(task, 'left', e)} className="icon-button icon-button-small" aria-label="Move left"><ChevronLeft className="w-3 h-3" aria-hidden="true" /></button>}
-                          {task.status !== 'done' && <button type="button" onClick={(e) => shiftStatus(task, 'right', e)} className="icon-button icon-button-small" aria-label="Move right"><ChevronRight className="w-3 h-3" aria-hidden="true" /></button>}
-                          <button type="button" onClick={() => handleDeleteTask(task)} className="icon-button icon-button-small hover:!text-danger" aria-label="Delete"><Trash2 className="w-3 h-3" aria-hidden="true" /></button>
-                        </div>
+            <GlassPane
+              key={col.id}
+              state="off"
+              tone={col.tone}
+              paneTitle={col.label}
+              screenClassName="!p-3 flex flex-col gap-2"
+            >
+              {colTasks.length === 0 ? (
+                <EmptyState title="Empty bay" />
+              ) : (
+                colTasks.map(task => (
+                  <div key={task.id} className="rounded-lg p-3 flex flex-col gap-2" style={{ background: 'rgba(242,242,242,0.03)', border: '1px solid var(--obs-glass-9)' }}>
+                    <p className="m-0 text-xs font-bold truncate min-w-0" style={{ color: 'var(--arcade-paper)' }} title={task.title}>{task.title}</p>
+                    {task.notes && <p className="m-0 text-[10px]" style={{ color: 'var(--arcade-paper-muted)' }}>{task.notes}</p>}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-mono text-[9px] chip" style={{ color: getAreaColor(task.area), borderColor: `${getAreaColor(task.area)}44`, background: `${getAreaColor(task.area)}12` }}>{task.area}</span>
+                        <span className="font-mono text-[9px] score-readout" style={{ color: 'var(--arcade-gold)' }}>+{task.xp}</span>
                       </div>
-                      {task.status === 'done' && task.completed_at && (
-                        <span className="flex items-center gap-1 font-mono text-[9px]" style={{ color: 'var(--arcade-paper-disabled)' }}>
-                          <CheckCircle2 className="w-3 h-3" aria-hidden="true" /> done {new Date(task.completed_at).toLocaleDateString()}
-                        </span>
-                      )}
+                      <div className="flex items-center gap-0.5">
+                        <button type="button" onClick={() => toggleTodayTask(task.id)} className="icon-button icon-button-small" style={{ color: task.today ? 'var(--arcade-gold)' : 'var(--arcade-paper-disabled)' }} aria-label="Toggle today star"><Star className="w-3 h-3" aria-hidden="true" /></button>
+                        {task.status !== 'backlog' && <button type="button" onClick={(e) => shiftStatus(task, 'left', e)} className="icon-button icon-button-small" aria-label="Move left"><ChevronLeft className="w-3 h-3" aria-hidden="true" /></button>}
+                        {task.status !== 'done' && <button type="button" onClick={(e) => shiftStatus(task, 'right', e)} className="icon-button icon-button-small" aria-label="Move right"><ChevronRight className="w-3 h-3" aria-hidden="true" /></button>}
+                        <button type="button" onClick={() => handleDeleteTask(task)} className="icon-button icon-button-small hover:!text-danger" aria-label="Delete"><Trash2 className="w-3 h-3" aria-hidden="true" /></button>
+                      </div>
                     </div>
-                  ))
-                )}
-              </div>
-            </section>
+                    {task.status === 'done' && task.completed_at && (
+                      <span className="flex items-center gap-1 font-mono text-[9px]" style={{ color: 'var(--arcade-paper-disabled)' }}>
+                        <CheckCircle2 className="w-3 h-3" aria-hidden="true" /> done {new Date(task.completed_at).toLocaleDateString()}
+                      </span>
+                    )}
+                  </div>
+                ))
+              )}
+            </GlassPane>
           );
         })}
       </div>
