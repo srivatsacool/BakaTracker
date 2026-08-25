@@ -217,6 +217,76 @@ const updateStatsAndSummaries = (
 // ---------------------------------------------------------------------------
 let apiClientHolder: ApiClient | null = null;
 
+// ---------------------------------------------------------------------------
+// Sync debounce — P3.4a
+//
+// Every mutation currently calls pushSync() immediately, which sends the
+// FULL state to the Worker. Rapid mutations (counter increments, numeric
+// inputs) cause N full syncs in quick succession.
+//
+// Fix: wrap the actual sync in a debounce. All pushSync() call sites are
+// unchanged — they call the same method, but the method now waits 500ms
+// of inactivity before actually firing. If called again within 500ms, the
+// previous pending sync is cancelled and the timer resets.
+//
+// This reduces N syncs to 1 for rapid mutations, with zero behavioral
+// change for single mutations (they sync after 500ms instead of immediately).
+// ---------------------------------------------------------------------------
+let syncDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+const SYNC_DEBOUNCE_MS = 500;
+
+/** Immediate sync — sends state to Worker now. */
+async function executeSyncNow(get: () => BakaState, set: (partial: Partial<BakaState>) => void) {
+  const { settings, habits, habitLogs, tasks, journal, events, character, weeklyStats, deletedTaskIds, deletedHabitIds } = get();
+  const client = apiClientHolder;
+  if (!client) return;
+
+  try {
+    set({ syncStatus: 'loading', syncError: null });
+    const formatSettings = [
+      { key: 'sheets_url', value: settings.sheets_url },
+      { key: 'xp_per_level', value: String(settings.xp_per_level) },
+      { key: 'api_key', value: settings.api_key || '' }
+    ];
+    const formatMetadata = [
+      { schema_version: '2.0', xp_formula: 'completed_tasks_if_today + habit_logs + journal_highlights', last_sync: new Date().toISOString() }
+    ];
+
+    const success = await stateService.syncData(client, {
+      habits, habitLogs, tasks, journal, events,
+      deletedTaskIds, deletedHabitIds,
+      settings: formatSettings,
+      metadata: formatMetadata,
+      character, weeklyStats
+    });
+
+    if (success) {
+      set({ deletedTaskIds: [], deletedHabitIds: [] });
+      localStorage.setItem('bt_deleted_task_ids', '[]');
+      localStorage.setItem('bt_deleted_habit_ids', '[]');
+      set({ syncStatus: 'success' });
+    } else {
+      throw new Error('Sync returned false status');
+    }
+  } catch (err: unknown) {
+    set({ syncStatus: 'error', syncError: err instanceof Error ? err.message : String(err) });
+  }
+}
+
+/**
+ * Debounced sync — the public API that all mutation call sites use.
+ * Waits 500ms of inactivity before firing. Rapid mutations collapse to 1 sync.
+ */
+function scheduleSync(get: () => BakaState, set: (partial: Partial<BakaState>) => void) {
+  if (syncDebounceTimer !== null) {
+    clearTimeout(syncDebounceTimer);
+  }
+  syncDebounceTimer = setTimeout(() => {
+    syncDebounceTimer = null;
+    executeSyncNow(get, set);
+  }, SYNC_DEBOUNCE_MS);
+}
+
 export const useStore = create<BakaState>((set, get) => ({
   habits: [],
   habitLogs: [],
@@ -472,52 +542,14 @@ export const useStore = create<BakaState>((set, get) => ({
   },
 
   pushSync: async (apiClient) => {
-      const { settings, habits, habitLogs, tasks, journal, events, character, weeklyStats, deletedTaskIds, deletedHabitIds } = get();
-      // Phase 3: fall back to the client stashed by init(apiClient), so the v1
-      // mutation call sites (pushSync() with no args) persist to D1 for
-      // authenticated users instead of silently no-op'ing.
-      const client = apiClient || apiClientHolder;
-      if (!client) return;
-
-    try {
-      set({ syncStatus: 'loading', syncError: null });
-      const formatSettings = [
-        { key: 'sheets_url', value: settings.sheets_url },
-        { key: 'xp_per_level', value: String(settings.xp_per_level) },
-        { key: 'api_key', value: settings.api_key || '' }
-      ];
-
-      const formatMetadata = [
-        { schema_version: '2.0', xp_formula: 'completed_tasks_if_today + habit_logs + journal_highlights', last_sync: new Date().toISOString() }
-      ];
-
-      const success = await stateService.syncData(client, {
-        habits,
-        habitLogs,
-        tasks,
-        journal,
-        events,
-        deletedTaskIds,
-        deletedHabitIds,
-        settings: formatSettings,
-        metadata: formatMetadata,
-        character,
-        weeklyStats
-      });
-
-      if (success) {
-        // v2.4: clear tombstone queues after successful sync so we don't re-emit
-        // delete ops on every subsequent sync.
-        set({ deletedTaskIds: [], deletedHabitIds: [] });
-        localStorage.setItem('bt_deleted_task_ids', '[]');
-        localStorage.setItem('bt_deleted_habit_ids', '[]');
-        set({ syncStatus: 'success' });
+      // When called with an explicit apiClient (from init()), sync immediately.
+      // When called without args (from mutations), use debounced scheduleSync.
+      if (apiClient) {
+        apiClientHolder = apiClient;
+        await executeSyncNow(get, set);
       } else {
-        throw new Error('Sync returned false status');
+        scheduleSync(get, set);
       }
-    } catch (err: unknown) {
-      set({ syncStatus: 'error', syncError: err instanceof Error ? err.message : String(err) });
-    }
   },
 
   setSheetsUrl: async (url: string) => {
