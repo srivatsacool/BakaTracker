@@ -28,6 +28,9 @@ interface BakaState {
   stats: UserStats;
   syncStatus: 'idle' | 'loading' | 'success' | 'error';
   syncError: string | null;
+  /** Durable flag: true when a sync failed and retry is pending.
+   *  Persisted to localStorage so it survives page reload. */
+  syncPending: boolean;
   character: CharacterRecord[];
   weeklyStats: WeeklyStatsRecord[];
   deletedTaskIds: string[];
@@ -235,6 +238,52 @@ let apiClientHolder: ApiClient | null = null;
 let syncDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 const SYNC_DEBOUNCE_MS = 500;
 
+// ---------------------------------------------------------------------------
+// Retry logic — P3.4b
+//
+// When a sync fails, we mark syncPending=true (persisted to localStorage)
+// and schedule a retry with exponential backoff. The retry:
+// - Fires when the timer expires (no network check needed — the request
+//   will fail again if still offline)
+// - Stops after MAX_RETRY_ATTEMPTS (resets on next successful sync)
+// - Is NOT interrupted by new mutations (the debounce handles those)
+//
+// On app init: if syncPending is true from localStorage, schedule a retry.
+// On network reconnect: schedule a retry if syncPending.
+// ---------------------------------------------------------------------------
+let retryTimer: ReturnType<typeof setTimeout> | null = null;
+let retryBackoffMs = 1000; // Start at 1s
+const INITIAL_RETRY_MS = 1000;
+const MAX_RETRY_MS = 30_000; // Cap at 30s
+const MAX_RETRY_ATTEMPTS = 10;
+
+let retryAttempt = 0;
+
+function scheduleRetry(get: () => BakaState, set: (partial: Partial<BakaState>) => void) {
+  if (retryTimer !== null) clearTimeout(retryTimer);
+  if (retryAttempt >= MAX_RETRY_ATTEMPTS) return; // Give up after max attempts
+
+  retryAttempt++;
+  retryBackoffMs = Math.min(retryBackoffMs * 2, MAX_RETRY_MS);
+
+  retryTimer = setTimeout(() => {
+    retryTimer = null;
+    executeSyncNow(get, set);
+  }, retryBackoffMs);
+}
+
+/** Called on network reconnect — resets retry attempt counter and fires. */
+function onNetworkReconnect(get: () => BakaState, set: (partial: Partial<BakaState>) => void) {
+  if (!get().syncPending) return;
+  retryAttempt = 0; // Reset attempts on reconnect
+  retryBackoffMs = INITIAL_RETRY_MS;
+  if (retryTimer !== null) clearTimeout(retryTimer);
+  retryTimer = setTimeout(() => {
+    retryTimer = null;
+    executeSyncNow(get, set);
+  }, 500); // Quick retry after reconnect
+}
+
 /** Immediate sync — sends state to Worker now. */
 async function executeSyncNow(get: () => BakaState, set: (partial: Partial<BakaState>) => void) {
   const { settings, habits, habitLogs, tasks, journal, events, character, weeklyStats, deletedTaskIds, deletedHabitIds } = get();
@@ -264,12 +313,20 @@ async function executeSyncNow(get: () => BakaState, set: (partial: Partial<BakaS
       set({ deletedTaskIds: [], deletedHabitIds: [] });
       localStorage.setItem('bt_deleted_task_ids', '[]');
       localStorage.setItem('bt_deleted_habit_ids', '[]');
-      set({ syncStatus: 'success' });
+      set({ syncStatus: 'success', syncPending: false });
+      localStorage.setItem('bt_sync_pending', 'false');
+      // Reset retry backoff on success
+      retryBackoffMs = INITIAL_RETRY_MS;
     } else {
       throw new Error('Sync returned false status');
     }
   } catch (err: unknown) {
     set({ syncStatus: 'error', syncError: err instanceof Error ? err.message : String(err) });
+    // Mark pending — survives page reload via localStorage
+    set({ syncPending: true });
+    localStorage.setItem('bt_sync_pending', 'true');
+    // Schedule retry with backoff
+    scheduleRetry(get, set);
   }
 }
 
@@ -300,6 +357,7 @@ export const useStore = create<BakaState>((set, get) => ({
   theme: 'dark',
   syncStatus: 'idle',
   syncError: null,
+  syncPending: false,
   character: [],
   weeklyStats: [],
   deletedTaskIds: [],
@@ -332,6 +390,7 @@ export const useStore = create<BakaState>((set, get) => ({
       weeklyStats: [],
       syncStatus: 'idle',
       syncError: null,
+      syncPending: false,
       deletedTaskIds: [],
       deletedHabitIds: [],
     });
@@ -362,6 +421,7 @@ export const useStore = create<BakaState>((set, get) => ({
     const storedEvents = localStorage.getItem('bt_events');
     const storedCharacter = localStorage.getItem('bt_character');
     const storedWeeklyStats = localStorage.getItem('bt_weekly_stats');
+    const storedSyncPending = localStorage.getItem('bt_sync_pending') === 'true';
 
     const habits = storedHabits ? JSON.parse(storedHabits) : [];
     const habitLogs = storedLogs ? JSON.parse(storedLogs) : [];
@@ -438,8 +498,14 @@ export const useStore = create<BakaState>((set, get) => ({
       stats,
       theme: savedTheme,
       character,
-      weeklyStats
+      weeklyStats,
+      syncPending: storedSyncPending,
     });
+
+    // If sync was pending from a previous session, schedule a retry
+    if (storedSyncPending && apiClient) {
+      onNetworkReconnect(get, set);
+    }
 
     // Save normalized objects back to localStorage
     localStorage.setItem('bt_habits', JSON.stringify(normalizedHabits));
@@ -1204,6 +1270,7 @@ export const useStore = create<BakaState>((set, get) => ({
         weeklyStats: [],
         syncStatus: 'idle',
         syncError: null,
+        syncPending: false,
       });
       get().pushSync().catch(console.error);
       return;
@@ -1228,3 +1295,14 @@ export const useStore = create<BakaState>((set, get) => ({
     get().pushSync().catch(console.error);
   },
 }));
+
+/**
+ * Trigger a sync retry on network reconnect. Call this from the
+ * useAppHandler when navigator.onLine transitions from false to true.
+ */
+export function triggerSyncReconnect() {
+  onNetworkReconnect(
+    useStore.getState,
+    (partial) => useStore.setState(partial),
+  );
+}

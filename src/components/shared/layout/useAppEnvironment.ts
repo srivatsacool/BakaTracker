@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { triggerSyncReconnect } from '../../../store/useStore';
 
 /**
  * PWA & connectivity environment for the shell.
@@ -18,7 +19,10 @@ export function useAppEnvironment() {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
 
   useEffect(() => {
-    const handleOnline = () => setIsOffline(false);
+    const handleOnline = () => {
+      setIsOffline(false);
+      triggerSyncReconnect();
+    };
     const handleOffline = () => setIsOffline(true);
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
