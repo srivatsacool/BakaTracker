@@ -84,7 +84,7 @@
     // Vite dev server origin (http://localhost:5173) is the browser origin in
     // local dev — the API lives at :8787, so the two MUST cross-talk. The
     // allowlist is exact-origin; no wildcards.
-    "CORS_ALLOWED_ORIGINS": "http://localhost:5173",
+    "CORS_ALLOWED_ORIGINS": "http://localhost:5173,http://localhost:5174",
     "SYNC_LOCK_TTL_SECONDS": 60,
     "AI_MODEL": "@cf/meta/llama-3.2-1b-instruct",
     // --- Web Push (proactive notifications) ----------------------------------

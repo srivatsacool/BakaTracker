@@ -1,14 +1,15 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, Download, Settings as SettingsIcon, Zap } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Download, Zap } from 'lucide-react';
 import { useShallow } from 'zustand/react/shallow';
 import { UserMenu } from '../../user/UserMenu';
 import { useAuth } from '../../../features/auth';
 import { authConfig } from '../../../features/auth/config';
 import { SyncStatus } from '../../shell';
 import { useStore } from '../../../store/useStore';
+import { PixelIcon, SystemLabel, PixelFrame } from '../../ui';
 import type { HudStatus } from './hudStatus';
-import { NAV_ITEMS, NAV_TONES } from './constants';
+import { NAV_ITEMS, NAV_TONES, NAV_PIXEL_ICONS } from './constants';
 import type { BeforeInstallPromptEvent } from './useAppEnvironment';
 
 interface InstrumentRailProps {
@@ -81,15 +82,15 @@ export const InstrumentRail: React.FC<InstrumentRailProps> = ({
                 title="Settings"
                 aria-label="Settings"
               >
-                <SettingsIcon className="w-4 h-4" style={{ color: 'var(--arcade-paper)' }} />
+                <PixelIcon name="settings" size={16} color="var(--arcade-paper)" />
               </button>
             )}
           </div>
 
           {/* Status Card (character stats) */}
-          <div
+          <PixelFrame
             id="sidebar-level-bar"
-            className={`cabinet ${railCollapsed ? 'p-2 items-center flex flex-col gap-2.5' : 'p-3 flex flex-col gap-2.5'} transition-all min-w-0`}
+            className={`${railCollapsed ? 'p-2 items-center flex flex-col gap-2.5' : 'p-3 flex flex-col gap-2.5'} transition-all min-w-0`}
             style={{ borderColor: 'rgba(139, 92, 246,0.2)', boxShadow: '0 4px 20px rgba(0,0,0,0.35), inset 0 1px 0 var(--obs-glass-5)', background: 'linear-gradient(180deg, rgba(139, 92, 246,0.07) 0%, rgba(63,123,255,0.03) 100%)' }}
           >
             {railCollapsed ? (
@@ -115,7 +116,7 @@ export const InstrumentRail: React.FC<InstrumentRailProps> = ({
                   style={{ border: '1px solid var(--obs-glass-15)', background: 'rgba(242,242,242,0.04)' }}
                   title="Settings"
                 >
-                  <SettingsIcon className="w-3.5 h-3.5" style={{ color: 'var(--arcade-paper)' }} />
+                  <PixelIcon name="settings" size={14} color="var(--arcade-paper)" />
                 </button>
 
                 {/* User Menu (guest: Leave demo / Create your own BakaTracker) */}
@@ -134,8 +135,8 @@ export const InstrumentRail: React.FC<InstrumentRailProps> = ({
                 </div>
 
                 <div className="flex justify-between items-baseline font-mono text-[10px]">
-                  <span style={{ color: 'var(--arcade-paper-muted)' }}>XP</span>
-                  <span className="score-readout" style={{ color: 'var(--arcade-gold)' }}>{stats.xp} / {settings.xp_per_level}</span>
+                  <SystemLabel k="XP" tone="muted">{stats.xp} / {settings.xp_per_level}</SystemLabel>
+                  <span className="score-readout" style={{ color: 'var(--arcade-gold)' }} />
                 </div>
                 <div className="hud-xp-track">
                   <div
@@ -150,7 +151,7 @@ export const InstrumentRail: React.FC<InstrumentRailProps> = ({
 
                 {/* Day Progress — the day's clear count */}
                 <div id="sidebar-day-progress" className="flex justify-between items-center pt-2" style={{ borderTop: '1px solid var(--obs-glass-7)' }}>
-                  <span className="font-mono text-[9px]" style={{ color: 'var(--arcade-paper-muted)' }}>Sky Clear</span>
+                  <SystemLabel tone="muted">Sky Clear</SystemLabel>
                   <span
                     className={`font-mono text-[10px] font-bold score-readout ${
                       dailyScore >= 80 ? 'text-success' : dailyScore >= 40 ? 'text-arcade-gold' : 'text-danger'
@@ -166,7 +167,7 @@ export const InstrumentRail: React.FC<InstrumentRailProps> = ({
                 </div>
               </>
             )}
-          </div>
+          </PixelFrame>
 
           {/* Demo Mode Banner (sidebar) */}
           {isGuest && !railCollapsed && (
@@ -209,6 +210,7 @@ export const InstrumentRail: React.FC<InstrumentRailProps> = ({
               const isActive = location.pathname === item.path || (item.path === '/today' && location.pathname === '/');
               const itemId = item.path === '/eisenhower' ? 'nav-eisenhower' : `nav-${item.name.toLowerCase()}`;
               const tone = NAV_TONES[item.path] || 'var(--arcade-paper-dim)';
+              const pixelName = NAV_PIXEL_ICONS[item.path] || 'target';
               return (
                 <Link
                   key={item.path}
@@ -219,6 +221,7 @@ export const InstrumentRail: React.FC<InstrumentRailProps> = ({
                   style={{ '--nav-color': tone } as React.CSSProperties}
                 >
                   <span className="nav-led" aria-hidden="true" />
+                  <PixelIcon name={pixelName as never} size={railCollapsed ? 20 : 18} color={tone} className="shrink-0" />
                   {!railCollapsed && <span className="whitespace-nowrap">{item.name}</span>}
                 </Link>
               );

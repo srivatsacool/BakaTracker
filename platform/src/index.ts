@@ -9,6 +9,8 @@
  */
 import OAuthProvider from "@cloudflare/workers-oauth-provider";
 import { Hono } from "hono";
+import { cors } from "hono/cors";
+import { isAllowedCorsOrigin } from "./auth/app-origin";
 import { MyMCP } from "./mcp/server";
 import { GoogleHandler } from "./auth/google-handler";
 import { buildRestApp, REST_PREFIX } from "./http/rest";
@@ -22,6 +24,16 @@ export { MyMCP } from "./mcp/server";
 
 // Catch-all handler: Google OAuth pages + thin REST API, all in one Hono app.
 const defaultApp = new Hono();
+defaultApp.use(
+  "*",
+  cors({
+    origin: (origin, c) =>
+      isAllowedCorsOrigin(origin, c.env.APP_ORIGIN, c.env.CORS_ALLOWED_ORIGINS) ? origin : undefined,
+    allowHeaders: ["Authorization", "Content-Type", "X-User-Sub"],
+    allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    maxAge: 86400,
+  }),
+);
 defaultApp.route("/", GoogleHandler);
 defaultApp.route(REST_PREFIX, buildRestApp());
 
@@ -71,21 +83,25 @@ export default {
       const allowed = env.CORS_ALLOWED_ORIGINS?.split(",").map(s => s.trim()) || [];
       const appOrig = env.APP_ORIGIN?.trim();
       const isAllowed = origin && ((appOrig && origin === appOrig) || allowed.includes(origin));
-      // Reflect ONLY the caller's own origin when it is on the allowlist.
-      // Disallowed origins get NO Access-Control-Allow-Origin — the browser
-      // then blocks the read. Never fall back to echoing the first allowed
-      // origin: a mismatched ACAO is a CORS contract violation and leaks the
-      // allowlist to probing origins (the hono cors() allowlist below is the
-      // same rule; this wrapper only survives responses the OAuth provider
-      // produced before the REST app's middleware ran).
       if (isAllowed && origin) {
-        const newRes = new Response(res.body, res);
-        newRes.headers.set("Access-Control-Allow-Origin", origin);
-        newRes.headers.set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-        newRes.headers.set("Access-Control-Allow-Headers", "Authorization, Content-Type, X-User-Sub");
-        newRes.headers.set("Access-Control-Max-Age", "86400");
-        newRes.headers.set("Vary", "Origin");
-        return newRes;
+        // Create a completely new Response with CORS headers
+        // (original response headers may be immutable from OAuthProvider)
+        const newHeaders = new Headers();
+        newHeaders.set("Access-Control-Allow-Origin", origin);
+        newHeaders.set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+        newHeaders.set("Access-Control-Allow-Headers", "Authorization, Content-Type, X-User-Sub");
+        newHeaders.set("Access-Control-Max-Age", "86400");
+        newHeaders.set("Vary", "Origin");
+        // Copy content-related headers from original response
+        const contentType = res.headers.get("Content-Type");
+        if (contentType) newHeaders.set("Content-Type", contentType);
+        const contentLength = res.headers.get("Content-Length");
+        if (contentLength) newHeaders.set("Content-Length", contentLength);
+        return new Response(res.body, {
+          status: res.status,
+          statusText: res.statusText,
+          headers: newHeaders,
+        });
       }
     }
     return res;

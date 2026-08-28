@@ -1,12 +1,13 @@
 import React from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
-import { Download, Settings as SettingsIcon, Sun } from 'lucide-react';
+import { Sun } from 'lucide-react';
 import { useShallow } from 'zustand/react/shallow';
 import { UserMenu } from '../../user/UserMenu';
 import { OfflineBanner, ContextBar } from '../../shell';
 import { OnboardingBanner } from '../OnboardingBanner';
 import { useStore } from '../../../store/useStore';
-import { NAV_ITEMS, NAV_TONES } from './constants';
+import { PixelIcon, SystemLabel } from '../../ui';
+import { NAV_ITEMS, NAV_TONES, NAV_PIXEL_ICONS } from './constants';
 import type { BeforeInstallPromptEvent } from './useAppEnvironment';
 
 interface MobileChromeProps {
@@ -61,12 +62,7 @@ export const MobileChrome: React.FC<MobileChromeProps> = ({
 
         {/* Character Quick Info */}
         <div className="flex items-center gap-2">
-          <span
-            className="font-mono text-xs font-bold px-1.5 py-0.5 rounded score-readout"
-            style={{ color: 'var(--arcade-gold)', border: '1px solid rgba(139, 92, 246,0.4)', background: 'rgba(139, 92, 246,0.12)' }}
-          >
-            LVL {stats.level}
-          </span>
+          <SystemLabel k="LVL" tone="primary">{stats.level}</SystemLabel>
           <div
             className="w-16 h-2 rounded-full overflow-hidden relative"
             style={{ background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(139, 92, 246,0.2)' }}
@@ -89,7 +85,7 @@ export const MobileChrome: React.FC<MobileChromeProps> = ({
               style={{ border: '1px solid rgba(139, 92, 246,0.35)', background: 'rgba(139, 92, 246,0.1)' }}
               title="Install BakaTracker App"
             >
-              <Download className="w-3.5 h-3.5" style={{ color: 'var(--arcade-gold)' }} />
+              <PixelIcon name="download" size={14} color="var(--arcade-gold)" />
             </button>
           )}
 
@@ -109,7 +105,7 @@ export const MobileChrome: React.FC<MobileChromeProps> = ({
             style={{ border: '1px solid var(--obs-glass-15)', background: 'rgba(242,242,242,0.04)' }}
             title="Settings"
           >
-            <SettingsIcon className="w-3.5 h-3.5" style={{ color: 'var(--arcade-paper)' }} />
+            <PixelIcon name="settings" size={14} color="var(--arcade-paper)" />
           </button>
 
           {/* User Menu (guest: Leave demo / Create your own BakaTracker) */}
@@ -121,7 +117,7 @@ export const MobileChrome: React.FC<MobileChromeProps> = ({
       {isOffline && <OfflineBanner />}
 
       {/* Scrollable Container */}
-      <main className={`flex-1 ${isEditorRoute ? 'overflow-hidden p-0 min-h-0' : 'overflow-y-auto pb-24 p-4'}`}>
+      <main className={`flex-1 ${isEditorRoute ? 'overflow-hidden p-0 min-h-0' : 'overflow-y-auto pb-28 p-4'}`}>
         {!isEditorRoute && (
           <div className="hidden md:block">
             <ContextBar
@@ -147,7 +143,7 @@ export const MobileChrome: React.FC<MobileChromeProps> = ({
         >
           {NAV_ITEMS.map(item => {
             const isActive = pathname === item.path || (item.path === '/today' && pathname === '/');
-            const Icon = item.icon;
+            const pixelName = NAV_PIXEL_ICONS[item.path] || 'target';
             const tone = NAV_TONES[item.path] || 'var(--arcade-paper-disabled)';
             return (
               <Link
@@ -162,7 +158,7 @@ export const MobileChrome: React.FC<MobileChromeProps> = ({
                   boxShadow: isActive ? '0 0 16px rgba(139, 92, 246,0.18)' : 'none',
                 }}
               >
-                <Icon className="w-5 h-5" style={{ color: isActive ? tone : 'var(--arcade-paper-disabled)' }} />
+                <PixelIcon name={pixelName as never} size={20} color={isActive ? tone : 'var(--arcade-paper-disabled)'} />
                 <span className="text-[10px] font-bold font-mono mt-0.5" style={{ color: isActive ? 'var(--arcade-paper-dim)' : 'var(--arcade-paper-disabled)' }}>{item.name}</span>
               </Link>
             );

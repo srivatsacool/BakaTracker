@@ -1,646 +1,421 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useStore } from '../store/useStore';
 import { useShallow } from 'zustand/react/shallow';
-import { getTodayDateString, isHabitCompleted, getDaysInCurrentMonth } from '../lib/utils';
+import { getTodayDateString, isHabitCompleted } from '../lib/utils';
 import { calculateHabitStreak, calculateBestStreak } from '../services/habits/calculateHabitStreak';
-import { Plus, Trash2, RefreshCw, Activity, Calendar } from 'lucide-react';
 import { UndoToast } from '../components/shared/UndoToast';
-import { GlassPane, EmptyState, XPBar } from '../components/ui';
-import type { Habit, HabitType, StatType } from '../types';
+import { PixelIcon, SystemLabel, TerminalText } from '../components/ui';
+import type { Habit, StatType } from '../types';
+
+type HabitView = 'today' | 'week' | 'history';
+const STAT_LABELS: Record<StatType, { label: string; icon: string; color: string }> = {
+  discipline: { label: 'DISCIPLINE', icon: 'sword', color: 'var(--obs-coral, #f87171)' },
+  health: { label: 'HEALTH', icon: 'fire', color: 'var(--obs-teal, #3dca84)' },
+  knowledge: { label: 'KNOWLEDGE', icon: 'book', color: 'var(--obs-cobalt, #3f7bff)' },
+  creativity: { label: 'CREATIVITY', icon: 'brush', color: 'var(--obs-rose, #fb7185)' },
+  career: { label: 'CAREER', icon: 'briefcase', color: 'var(--obs-amber, #f59e0b)' },
+};
 
 /**
- * Habits — the consistency instrument. Five tracker types, streaks as
- * battery-backed memory, XP per check-in, floating score ticks.
+ * Habits — Habit Engine.
+ * "What I'm becoming through repetition."
+ * REPEAT → STREAK → ATTRIBUTE XP → CHARACTER EVOLUTION
  */
 export const Habits: React.FC = () => {
   const {
-    habits,
-    habitLogs,
-    currentQuote,
-    stats,
-    toggleHabit,
-    incrementCounterHabit,
-    setNumericHabit,
-    setMoodHabit,
-    setEnergyHabit,
-    addHabit,
-    deleteHabit,
-    refreshQuote
+    habits, habitLogs, toggleHabit,
   } = useStore(useShallow(s => ({
-    habits: s.habits,
-    habitLogs: s.habitLogs,
-    currentQuote: s.currentQuote,
-    stats: s.stats,
+    habits: s.habits, habitLogs: s.habitLogs,
     toggleHabit: s.toggleHabit,
-    incrementCounterHabit: s.incrementCounterHabit,
-    setNumericHabit: s.setNumericHabit,
-    setMoodHabit: s.setMoodHabit,
-    setEnergyHabit: s.setEnergyHabit,
-    addHabit: s.addHabit,
-    deleteHabit: s.deleteHabit,
-    refreshQuote: s.refreshQuote,
   })));
 
   const todayStr = getTodayDateString();
-
-  // Date-scoped day editor state: which habit + date the week-strip picker is
-  // open for. Only used for non-checkbox types (checkbox toggles directly).
+  const [view, setView] = useState<HabitView>('today');
   const [dayEditor, setDayEditor] = useState<{ habitId: string; date: string } | null>(null);
 
-  /** Type-aware week-strip click: checkbox toggles; other types open a
-   *  date-scoped editor so we never overwrite counter/numeric/mood/energy
-   *  history with a boolean `1`. */
-  const onDayCellClick = useCallback((habit: Habit, date: string) => {
+  // Undo toast for delete
+  const [pendingDelete, setPendingDelete] = useState<{ name: string; id: string } | null>(null);
+  const deleteTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const undoDeleteHabit = useCallback(() => { if (deleteTimerRef.current) clearTimeout(deleteTimerRef.current); setPendingDelete(null); }, []);
+
+  // XP floating
+  const [floatingXPs, setFloatingXPs] = useState<{ id: number; xp: number; stat: string }[]>([]);
+  const xpIdRef = React.useRef(0);
+  const triggerXP = (xp: number, stat: string) => {
+    const item = { id: ++xpIdRef.current, xp, stat };
+    setFloatingXPs(prev => [...prev, item]);
+    setTimeout(() => { setFloatingXPs(prev => prev.filter(p => p.id !== item.id)); }, 1000);
+  };
+
+  // Computed
+  const activeHabits = habits.filter(h => h.active);
+  const todayLogs = habitLogs.filter(l => l.date === todayStr);
+  const completedToday = activeHabits.filter(h => {
+    const log = todayLogs.find(l => l.habit_id === h.id);
+    return isHabitCompleted(h, log);
+  }).length;
+  const activeStreaks = activeHabits.filter(h => calculateHabitStreak(h, habitLogs) > 0).length;
+  const consistencyPct = activeHabits.length > 0 ? Math.round((completedToday / activeHabits.length) * 100) : 0;
+
+  // Character impact: attribute → habits mapping + XP earned this week
+  const weekStart = new Date(); weekStart.setDate(weekStart.getDate() - weekStart.getDay() + 1);
+  const weekStr = weekStart.toISOString().slice(0, 10);
+  const weekLogs = habitLogs.filter(l => l.date >= weekStr);
+  const statImpact: Record<StatType, { totalXp: number; count: number }> = {
+    discipline: { totalXp: 0, count: 0 }, health: { totalXp: 0, count: 0 },
+    knowledge: { totalXp: 0, count: 0 }, creativity: { totalXp: 0, count: 0 }, career: { totalXp: 0, count: 0 },
+  };
+  activeHabits.forEach(h => {
+    const habitWeekLogs = weekLogs.filter(l => l.habit_id === h.id && isHabitCompleted(h, l));
+    if (habitWeekLogs.length > 0) {
+      statImpact[h.stat].totalXp += habitWeekLogs.reduce((sum, l) => sum + (l.xp_earned || 0), 0);
+      statImpact[h.stat].count++;
+    }
+  });
+
+  // At-risk habits
+  const atRiskHabits = activeHabits.filter(h => {
+    const streak = calculateHabitStreak(h, habitLogs);
+    if (streak === 0) return false;
+    const log = todayLogs.find(l => l.habit_id === h.id);
+    return !isHabitCompleted(h, log);
+  });
+
+  // Helper: get log for date
+  const getLogForDate = (habitId: string, date: string) => habitLogs.find(l => l.habit_id === habitId && l.date === date);
+
+  // Helper: handle check-in
+  const handleCheckIn = (habit: Habit) => {
     if (habit.type === 'checkbox') {
-      toggleHabit(habit.id, date);
-      return;
+      toggleHabit(habit.id, todayStr);
+      triggerXP(habit.xp, habit.stat);
     }
-    setDayEditor({ habitId: habit.id, date });
-  }, [toggleHabit]);
-
-  /** Render the per-type editor for a specific date (reuses the same store
-   *  actions as the today controls, bound to the requested date). */
-  const renderDayEditor = (habit: Habit, date: string) => {
-    const dayLog = habitLogs.find(l => l.habit_id === habit.id && l.date === date);
-    return (
-      <div
-        className="rounded-md border p-2.5 mt-2"
-        style={{ background: 'rgba(13,11,22,0.6)', borderColor: 'var(--obs-glass-7)' }}
-        role="group"
-        aria-label={`Edit ${habit.name} for ${date}`}
-      >
-        <div className="flex items-center justify-between gap-2 mb-2">
-          <span className="font-mono text-[9px]" style={{ color: 'var(--arcade-paper-muted)' }}>{date}</span>
-          <button
-            type="button"
-            onClick={() => setDayEditor(null)}
-            className="icon-button icon-button-small"
-            aria-label="Close day editor"
-          >✕</button>
-        </div>
-        {habit.type === 'counter' && (
-          <div className="flex items-center gap-2">
-            <button type="button" onClick={() => incrementCounterHabit(habit.id, date, -1)} className="btn-ghost !py-1 !px-3" aria-label={`Decrease ${habit.name} on ${date}`}>−</button>
-            <span className="score-readout text-base min-w-[3ch] text-center" style={{ color: 'var(--arcade-gold)' }}>{Number(dayLog?.value) || 0}</span>
-            <button type="button" onClick={() => incrementCounterHabit(habit.id, date, 1)} className="btn-ghost !py-1 !px-3" aria-label={`Increase ${habit.name} on ${date}`}>+</button>
-          </div>
-        )}
-        {habit.type === 'numeric' && (
-          <div className="flex items-center gap-2">
-            <span className="font-mono text-[10px]" style={{ color: 'var(--arcade-paper-muted)' }}>Value</span>
-            <input
-              type="number"
-              value={Number(dayLog?.value) || ''}
-              onChange={e => setNumericHabit(habit.id, date, Number(e.target.value) || 0)}
-              className="arcade-input !py-1 !w-24 !text-sm"
-              placeholder="0"
-              aria-label={`${habit.name} value on ${date}`}
-            />
-          </div>
-        )}
-        {habit.type === 'mood' && (
-          <div className="flex gap-1" role="group" aria-label={`${habit.name} mood on ${date}`}>
-            {['😞', '😐', '🙂', '😄'].map(emoji => (
-              <button
-                key={emoji}
-                type="button"
-                onClick={() => setMoodHabit(habit.id, date, dayLog?.value === emoji ? '' : emoji)}
-                className={`w-9 h-9 rounded-lg text-base cursor-pointer transition hover:scale-110 ${dayLog?.value === emoji ? 'chip chip--magenta' : 'chip'}`}
-                aria-label={`Set mood to ${emoji} on ${date}`}
-                aria-pressed={dayLog?.value === emoji}
-              >{emoji}</button>
-            ))}
-          </div>
-        )}
-        {habit.type === 'energy' && (
-          <div className="flex gap-1" role="group" aria-label={`${habit.name} energy on ${date}`}>
-            {['low', 'med', 'high'].map(level => (
-              <button
-                key={level}
-                type="button"
-                onClick={() => setEnergyHabit(habit.id, date, dayLog?.value === level ? '' : level)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold font-mono cursor-pointer transition hover:scale-105 uppercase ${dayLog?.value === level ? 'chip chip--aurora' : 'chip'}`}
-                aria-label={`Set energy to ${level} on ${date}`}
-                aria-pressed={dayLog?.value === level}
-              >{level}</button>
-            ))}
-          </div>
-        )}
-      </div>
-    );
   };
 
-  const getLast5Days = (): { date: string; label: string }[] => {
-    const days = [];
-    const d = new Date();
-    for (let i = 4; i >= 0; i--) {
-      const date = new Date();
-      date.setDate(d.getDate() - i);
-      const y = date.getFullYear();
-      const m = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
-      const dateStr = `${y}-${m}-${day}`;
-      const dayLabel = date.toLocaleDateString('en-US', { weekday: 'narrow' });
-      days.push({ date: dateStr, label: dayLabel });
-    }
-    return days;
-  };
-
-  const [viewMode, setViewMode] = useState<'today' | 'month'>('today');
-  const [showAddForm, setShowAddForm] = useState(false);
-
-  // Form states
-  const [newHabitName, setNewHabitName] = useState('');
-  const [newHabitType, setNewHabitType] = useState<HabitType>('checkbox');
-  const [newHabitIcon, setNewHabitIcon] = useState('💪');
-  const [newHabitXP, setNewHabitXP] = useState(5);
-  const [newHabitStat, setNewHabitStat] = useState<StatType>('health');
-
-  // Micro-interactions state
-  interface FloatingXP {
-    id: number;
-    xp: number;
-    statName: string;
-    x: number;
-    y: number;
+  // Week dates (last 7 days)
+  const weekDates: string[] = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(); d.setDate(d.getDate() - i);
+    weekDates.push(d.toISOString().slice(0, 10));
   }
-  const [floatingXPs, setFloatingXPs] = useState<FloatingXP[]>([]);
-  // Monotonic id source for transient floating-XP elements. Event-handler-only,
-  // so ids stay unique within a session while render remains pure.
-  const floatingXpIdRef = useRef(0);
-  const nextFloatingXpId = () => ++floatingXpIdRef.current;
-  const [showLevelUpModal, setShowLevelUpModal] = useState(false);
-  const prevLevelRef = useRef(stats.level);
-
-  // Undo-toast for habit delete
-  const [pendingDelete, setPendingDelete] = useState<{ habit: typeof habits[0] } | null>(null);
-  const deleteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const handleDeleteHabit = useCallback((habit: typeof habits[0]) => {
-    // Cancel any pending delete
-    if (deleteTimerRef.current) clearTimeout(deleteTimerRef.current);
-    setPendingDelete({ habit });
-    deleteTimerRef.current = setTimeout(() => {
-      deleteHabit(habit.id);
-      setPendingDelete(null);
-    }, 5000);
-  }, [deleteHabit]);
-
-  const undoDeleteHabit = useCallback(() => {
-    if (deleteTimerRef.current) clearTimeout(deleteTimerRef.current);
-    setPendingDelete(null);
-  }, []);
-
-  const triggerFloatingXP = (e: React.MouseEvent | React.FocusEvent | null, xp: number, statName: string) => {
-    let x = window.innerWidth / 2;
-    let y = window.innerHeight / 2;
-
-    if (e && 'clientX' in e && e.clientX) {
-      x = e.clientX;
-      y = e.clientY;
-    } else if (e && e.currentTarget) {
-      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-      x = rect.left + rect.width / 2;
-      y = rect.top + rect.height / 2;
-    }
-
-    const newXP = {
-      id: nextFloatingXpId(),
-      xp,
-      statName,
-      x,
-      y
-    };
-    setFloatingXPs(prev => [...prev, newXP]);
-    setTimeout(() => {
-      setFloatingXPs(prev => prev.filter(item => item.id !== newXP.id));
-    }, 1000);
-  };
-
-  // Level up — the HIGH SCORE moment
-  useEffect(() => {
-    if (stats.level > prevLevelRef.current) {
-      setShowLevelUpModal(true);
-      setTimeout(() => setShowLevelUpModal(false), 2600);
-    }
-    prevLevelRef.current = stats.level;
-  }, [stats.level]);
-
-  const handleAddHabit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newHabitName.trim()) return;
-
-    addHabit({
-      name: newHabitName,
-      type: newHabitType,
-      icon: newHabitIcon,
-      xp: Number(newHabitXP) || 5,
-      stat: newHabitStat
-    });
-
-    setNewHabitName('');
-    setShowAddForm(false);
-  };
-
-  const statConfig = [
-    { name: 'Discipline', icon: '⚔️', value: stats.discipline, barColor: 'var(--arcade-magenta)' },
-    { name: 'Health', icon: '💪', value: stats.health, barColor: 'var(--arcade-green)' },
-    { name: 'Knowledge', icon: '🧠', value: stats.knowledge, barColor: 'var(--arcade-cobalt)' },
-    { name: 'Creativity', icon: '🎨', value: stats.creativity, barColor: 'var(--arcade-red)' },
-    { name: 'Career', icon: '💼', value: stats.career, barColor: 'var(--arcade-gold)' }
-  ];
-
-  // Stat-tone stroke colors — the existing bar grammar, reused for the
-  // weekly progress rings so the rhythm readout matches each habit's stat.
-  const statColor: Record<StatType, string> = {
-    discipline: 'var(--arcade-magenta)',
-    health: 'var(--arcade-green)',
-    knowledge: 'var(--arcade-cobalt)',
-    creativity: 'var(--arcade-red)',
-    career: 'var(--arcade-gold)'
-  };
-
-  // Calendar-week progress (Monday start, matching the store's week model):
-  // completed days ÷ days elapsed so far this week. Honest — never counts
-  // days that haven't happened yet.
-  const getWeekProgress = (habit: Habit) => {
-    const now = new Date();
-    const day = now.getDay();
-    const diff = now.getDate() - day + (day === 0 ? -6 : 1);
-    const weekStart = new Date(now);
-    weekStart.setDate(diff);
-    const daysElapsed = Math.floor((now.getTime() - weekStart.getTime()) / 86400000) + 1;
-    let done = 0;
-    for (let i = 0; i < daysElapsed; i++) {
-      const d = new Date(weekStart);
-      d.setDate(weekStart.getDate() + i);
-      const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-      const log = habitLogs.find(l => l.habit_id === habit.id && l.date === dateStr);
-      if (isHabitCompleted(habit, log)) done += 1;
-    }
-    return { done, daysElapsed };
-  };
-
-  const getLogForToday = (habitId: string) => {
-    return habitLogs.find(l => l.habit_id === habitId && l.date === todayStr);
-  };
-
-  const daysInMonth = getDaysInCurrentMonth();
+  const dayLabels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
   return (
-    <div className="max-w-4xl mx-auto flex flex-col gap-6 relative">
-      {/* Floating XP Elements */}
+    <div className="max-w-4xl mx-auto flex flex-col gap-5">
+      {/* Floating XP */}
       {floatingXPs.map(item => (
-        <div
-          key={item.id}
-          className="float-xp"
-          style={{ left: `${item.x}px`, top: `${item.y}px`, transform: 'translate(-50%, -50%)' }}
-        >
-          +{item.xp} {item.statName.toUpperCase()} XP
+        <div key={item.id} className="fixed z-30 pointer-events-none animate-fade-in" style={{ left: '50%', top: '20%', transform: 'translate(-50%, -50%)' }}>
+          <span className="font-mono text-lg font-bold" style={{ color: 'var(--obs-gold, #e8b45a)' }}>+{item.xp} {item.stat.toUpperCase()}</span>
         </div>
       ))}
+      {pendingDelete && <UndoToast message={`"${pendingDelete.name}" removing — tap Undo to keep`} onUndo={undoDeleteHabit} />}
 
-      {/* Level Up Modal — HIGH SCORE moment */}
-      {showLevelUpModal && (
-        <div className="fixed inset-0 z-[999] flex items-center justify-center pointer-events-none">
-          <GlassPane as="div" state="highscore" tone="aurora" paneTitle="HIGH SCORE" className="animate-fade-in px-8 py-6 text-center">
-            <h3 className="marquee-title m-0" style={{ fontSize: '1.6rem', color: 'var(--arcade-gold)' }}>LEVEL {stats.level}!</h3>
-            <p className="m-0 mt-2 font-mono text-xs" style={{ color: 'var(--arcade-paper-dim)' }}>New high score on the board. Keep playing.</p>
-          </GlassPane>
-        </div>
-      )}
-
-      {/* Page Title */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 z-10">
-        <div>
-          <h2 className="marquee-title text-2xl sm:text-3xl m-0" style={{ color: 'var(--arcade-paper)' }}>Habits</h2>
-          <p className="font-mono text-xs mt-1.5 m-0" style={{ color: 'var(--arcade-paper-muted)' }}>
-            The save file — streaks are battery-backed memory.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          {/* View toggle */}
-          <div className="flex rounded-lg overflow-hidden" style={{ border: '1px solid var(--obs-glass-12)' }} role="group" aria-label="View mode">
-            <button
-              type="button"
-              onClick={() => setViewMode('today')}
-              className={`px-3 py-1.5 font-mono text-[10px] font-bold cursor-pointer transition ${viewMode === 'today' ? 'chip chip--teal' : 'chip'}`}
-            >
-              <Activity className="w-3 h-3 inline mr-1" aria-hidden="true" /> Today
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode('month')}
-              className={`px-3 py-1.5 font-mono text-[10px] font-bold cursor-pointer transition ${viewMode === 'month' ? 'chip chip--cobalt' : 'chip'}`}
-            >
-              <Calendar className="w-3 h-3 inline mr-1" aria-hidden="true" /> Month
-            </button>
-          </div>
-          <button type="button" id="add-habit-btn" onClick={() => setShowAddForm(s => !s)} className="insert-coin !py-2 !px-3 !text-xs">
-            <Plus className="w-4 h-4" aria-hidden="true" /> <span>Habit</span>
-          </button>
-        </div>
+      {/* ─── HEADER ─── */}
+      <div className="flex flex-col gap-2">
+        <TerminalText tone="primary" prompt>{'>'} HABIT_ENGINE</TerminalText>
+        <SystemLabel tone="muted">{activeHabits.length} TRACKED · {activeStreaks} ACTIVE STREAKS · {consistencyPct}% CONSISTENCY</SystemLabel>
       </div>
 
-      {/* Add Habit Form */}
-      {showAddForm && (
-        <GlassPane as="form" onSubmit={handleAddHabit} state="playing" tone="green" paneTitle="New instrument" className="animate-fade-in z-10" screenClassName="!p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-          <div className="flex flex-col gap-1">
-            <label className="font-mono text-[9px] font-bold uppercase" style={{ color: 'var(--arcade-paper-muted)' }}>Name</label>
-            <input value={newHabitName} onChange={e => setNewHabitName(e.target.value)} placeholder="e.g. Morning workout" maxLength={100} className="arcade-input !py-2 !text-sm" />
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="font-mono text-[9px] font-bold uppercase" style={{ color: 'var(--arcade-paper-muted)' }}>Type</label>
-            <select value={newHabitType} onChange={e => setNewHabitType(e.target.value as HabitType)} className="arcade-input !py-2 !text-sm">
-              <option value="checkbox">Checkbox</option>
-              <option value="counter">Counter</option>
-              <option value="numeric">Numeric</option>
-              <option value="mood">Mood</option>
-              <option value="energy">Energy</option>
-            </select>
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="font-mono text-[9px] font-bold uppercase" style={{ color: 'var(--arcade-paper-muted)' }}>Icon</label>
-            <input value={newHabitIcon} onChange={e => setNewHabitIcon(e.target.value)} maxLength={2} className="arcade-input !py-2 !text-sm text-center" aria-label="Habit icon emoji" />
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="font-mono text-[9px] font-bold uppercase" style={{ color: 'var(--arcade-paper-muted)' }}>XP</label>
-            <input type="number" value={newHabitXP} onChange={e => setNewHabitXP(Number(e.target.value))} min={1} max={1000} className="arcade-input !py-2 !text-sm" />
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="font-mono text-[9px] font-bold uppercase" style={{ color: 'var(--arcade-paper-muted)' }}>Stat</label>
-            <select value={newHabitStat} onChange={e => setNewHabitStat(e.target.value as StatType)} className="arcade-input !py-2 !text-sm">
-              <option value="health">Health</option>
-              <option value="discipline">Discipline</option>
-              <option value="knowledge">Knowledge</option>
-              <option value="creativity">Creativity</option>
-              <option value="career">Career</option>
-            </select>
-          </div>
-          <div className="sm:col-span-2 lg:col-span-5 flex justify-end gap-2">
-            <button type="button" onClick={() => setShowAddForm(false)} className="btn-ghost !text-xs">Cancel</button>
-            <button type="submit" disabled={!newHabitName.trim()} className="insert-coin !py-2 !px-4 !text-xs">
-              <span className="coin-slot" aria-hidden="true" /> Start tracking
-            </button>
-          </div>
-        </GlassPane>
-      )}
+      {/* ─── CHARACTER IMPACT ─── */}
+      <section aria-label="Character impact">
+        <TerminalText prompt>{'>'} CHARACTER_IMPACT</TerminalText>
+        <div className="mt-2 grid grid-cols-5 gap-2">
+          {(Object.keys(STAT_LABELS) as StatType[]).map(stat => {
+            const info = STAT_LABELS[stat];
+            const impact = statImpact[stat];
+            return (
+              <div key={stat} className="rounded-lg border p-2.5 text-center" style={{ background: 'rgba(233,230,242,0.03)', borderColor: 'rgba(233,230,242,0.06)' }}>
+                <PixelIcon name={info.icon as never} size={16} color={info.color} />
+                <div className="font-mono text-[10px] font-bold mt-1" style={{ color: 'var(--bt-text)' }}>{info.label}</div>
+                <div className="font-mono text-sm font-bold" style={{ color: info.color }}>+{impact.totalXp}</div>
+                <div className="font-mono text-[9px]" style={{ color: 'var(--bt-text-muted)' }}>{impact.count} habit{impact.count !== 1 ? 's' : ''}</div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
 
-      {/* Quote strip */}
-      {currentQuote && (
-        <GlassPane as="div" state="attract" tone="aurora" paneTitle="Quote of the day" className="z-10"
-          titleRight={
-            <button type="button" onClick={refreshQuote} className="icon-button icon-button-small" aria-label="Refresh quote" title="Refresh quote">
-              <RefreshCw className="w-3.5 h-3.5" aria-hidden="true" />
-            </button>
-          }
-          screenClassName="!py-3 flex items-center justify-between gap-3"
-        >
-          <p className="m-0 text-sm italic" style={{ color: 'var(--arcade-paper-dim)' }}>“{currentQuote.quote}”</p>
-          <span className="font-mono text-[10px] shrink-0" style={{ color: 'var(--arcade-paper-muted)' }}>— {currentQuote.author}</span>
-        </GlassPane>
-      )}
+      {/* ─── VIEW TABS ─── */}
+      <div className="flex gap-1.5" role="tablist">
+        {(['today', 'week', 'history'] as const).map(v => (
+          <button key={v} type="button" role="tab" aria-selected={view === v} onClick={() => setView(v)}
+            className={`chip cursor-pointer font-mono text-[10px] uppercase ${view === v ? 'chip--aurora' : ''}`}>
+            {v}
+          </button>
+        ))}
+      </div>
 
-      {/* Habit List */}
-      <div id="habit-list-container" className="flex flex-col gap-3 z-10">
-        {habits.length === 0 ? (
-          <EmptyState
-            icon={<span className="text-4xl">🎮</span>}
-            title="No cabinets installed"
-            description="Add your first habit — a checkbox, counter, numeric, mood, or energy tracker. Each one earns XP and builds a stat."
-            action={
-              <button type="button" onClick={() => setShowAddForm(true)} className="insert-coin">
-                <Plus className="w-4 h-4" aria-hidden="true" /> <span>Add your first habit</span>
-              </button>
-            }
-          />
-        ) : (
-          <>
-            {/* Stat bars — the character status panel */}
-            <GlassPane as="div" state="off" tone="cobalt" paneTitle="Character status"
-              titleRight={<span className="font-mono text-[10px] score-readout" style={{ color: 'var(--arcade-gold)' }}>LVL {stats.level}</span>}
-              screenClassName="!p-4 grid grid-cols-1 sm:grid-cols-5 gap-3"
-            >
-              {statConfig.map(stat => (
-                <div key={stat.name} className="flex flex-col gap-1.5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-bold" style={{ color: 'var(--arcade-paper-dim)' }}>{stat.icon} {stat.name}</span>
-                    <span className="font-mono text-[10px] score-readout" style={{ color: stat.barColor }}>{stat.value}</span>
+      {/* ═══════════════════════════════════════════════════════════════════
+          TODAY VIEW
+         ═══════════════════════════════════════════════════════════════════ */}
+      {view === 'today' && (
+        <div className="flex flex-col gap-3">
+          {activeHabits.length === 0 ? (
+            <div className="rounded-xl border p-8 text-center" style={{ background: 'rgba(233,230,242,0.02)', borderColor: 'rgba(233,230,242,0.06)' }}>
+              <PixelIcon name="fire" size={32} color="var(--bt-text-disabled)" />
+              <SystemLabel tone="muted" className="mt-3 block">No habits tracked yet. Start building consistency.</SystemLabel>
+            </div>
+          ) : activeHabits.map(habit => {
+            const log = getLogForDate(habit.id, todayStr);
+            const completed = isHabitCompleted(habit, log);
+            const streak = calculateHabitStreak(habit, habitLogs);
+            const bestStreak = calculateBestStreak(habit, habitLogs);
+            const statInfo = STAT_LABELS[habit.stat];
+            // Consistency: last 7 days
+            const last7 = weekDates.filter(d => {
+              const l = getLogForDate(habit.id, d);
+              return isHabitCompleted(habit, l);
+            }).length;
+            const consistencyPct = Math.round((last7 / 7) * 100);
+
+            return (
+              <div key={habit.id} className="rounded-xl border p-4" style={{ background: completed ? 'rgba(61,220,132,0.04)' : 'rgba(233,230,242,0.03)', borderColor: completed ? 'rgba(61,220,132,0.15)' : 'rgba(233,230,242,0.06)' }}>
+                {/* Title row */}
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg" aria-hidden="true">{habit.icon}</span>
+                    <span className="font-bold text-sm" style={{ color: completed ? 'var(--bt-success)' : 'var(--bt-text)' }}>{habit.name}</span>
                   </div>
-                  <XPBar
-                    value={Math.min(100, (stat.value / 200) * 100)}
-                    max={100}
-                    ariaLabel={`${stat.name} progress`}
-                    style={{ background: 'rgba(0,0,0,0.4)', border: '1px solid var(--obs-glass-8)' }}
-                    indicatorStyle={{ width: `${Math.min(100, (stat.value / 200) * 100)}%`, background: stat.barColor, boxShadow: `0 0 8px ${stat.barColor}` }}
-                  />
+                  {streak > 0 && <span className="font-mono text-[10px]" style={{ color: 'var(--obs-gold, #e8b45a)' }}>{streak} DAY STREAK</span>}
                 </div>
-              ))}
-            </GlassPane>
-
-            {habits.map(habit => {
-              const log = getLogForToday(habit.id);
-              const streak = calculateHabitStreak(habit, habitLogs);
-              const bestStreak = calculateBestStreak(habit, habitLogs);
-              const { done: weekDone, daysElapsed: weekElapsed } = getWeekProgress(habit);
-              const isCompleted = isHabitCompleted(habit, log);
-              const last5 = getLast5Days();
-
-              return (
-                <GlassPane
-                  key={habit.id}
-                  as="div"
-                  state="playing"
-                  tone="green"
-                  paneTitle={`${habit.icon} ${habit.name}`}
-                  className="[&_.cabinet-marquee-title]:min-w-0 [&_.cabinet-marquee-title]:truncate"
-                  titleRight={
-                    <span className="flex items-center gap-2 shrink-0">
-                      {/* Weekly rhythm ring — stat-tone stroke, days done this week */}
-                      <div
-                        className="progress-ring"
-                        role="img"
-                        aria-label={`${weekDone} of ${weekElapsed} days completed this week`}
-                        title={`${weekDone}/${weekElapsed} days this week`}
-                        style={{ '--ring-progress': weekElapsed > 0 ? weekDone / weekElapsed : 0, '--ring-color': statColor[habit.stat] } as React.CSSProperties}
-                      >
-                        <span>{weekDone}</span>
-                      </div>
-                      <span className="font-mono text-[9px]" style={{ color: 'var(--arcade-paper-disabled)' }} title={`Longest streak ever: ${bestStreak} days`}>
-                        best {bestStreak}
-                      </span>
-                      <span className={`font-mono text-[10px] chip ${streak >= 7 ? 'chip--aurora' : isCompleted ? 'chip--teal' : ''}`}>
-                        🔥 {streak} streak
-                      </span>
-                    </span>
-                  }
-                  screenClassName="!p-4"
-                >
-                  {/* Habit Controls — by type */}
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-                    <div className="flex-1 flex items-center gap-2">
-                      {habit.type === 'checkbox' && (
-                        <button
-                          type="button"
-                          onClick={(e) => { toggleHabit(habit.id, todayStr); if (!isCompleted) triggerFloatingXP(e, habit.xp, habit.stat); }}
-                          className={`insert-coin !py-2 !px-4 !text-xs ${isCompleted ? '!bg-arcade-green !border-arcade-green' : ''}`}
-                          aria-pressed={isCompleted}
-                        >
-                          <span className="coin-slot" aria-hidden="true" />
-                          {isCompleted ? 'Checked in' : 'Check in'}
-                        </button>
-                      )}
-                      {habit.type === 'counter' && (
-                        <div className="flex items-center gap-2">
-                          <button type="button" onClick={() => { incrementCounterHabit(habit.id, todayStr, -1); }} className="btn-ghost !py-1.5 !px-3" aria-label={`Decrease ${habit.name}`}>−</button>
-                          <span className="score-readout text-lg min-w-[3ch] text-center" style={{ color: 'var(--arcade-gold)' }}>{Number(log?.value) || 0}</span>
-                          <button type="button" onClick={(e) => { incrementCounterHabit(habit.id, todayStr, 1); triggerFloatingXP(e, habit.xp, habit.stat); }} className="btn-ghost !py-1.5 !px-3" aria-label={`Increase ${habit.name}`}>+</button>
-                        </div>
-                      )}
-                      {habit.type === 'numeric' && (
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono text-[10px]" style={{ color: 'var(--arcade-paper-muted)' }}>Value</span>
-                          <input
-                            type="number"
-                            value={Number(log?.value) || ''}
-                            onChange={e => setNumericHabit(habit.id, todayStr, Number(e.target.value) || 0)}
-                            className="arcade-input !py-1.5 !w-24 !text-sm"
-                            placeholder="0"
-                            aria-label={`${habit.name} value`}
-                          />
-                        </div>
-                      )}
-                      {habit.type === 'mood' && (
-                        <div className="flex gap-1.5" role="group" aria-label={`${habit.name} mood`}>
-                          {['😞', '😐', '🙂', '😄'].map(emoji => (
-                            <button
-                              key={emoji}
-                              type="button"
-                              onClick={(e) => { const isCurrent = log?.value === emoji; setMoodHabit(habit.id, todayStr, isCurrent ? '' : emoji); if (!isCurrent) triggerFloatingXP(e, habit.xp, habit.stat); }}
-                              className={`w-10 h-10 rounded-lg text-lg cursor-pointer transition hover:scale-110 ${log?.value === emoji ? 'chip chip--magenta' : 'chip'}`}
-                              aria-label={`Set mood to ${emoji}`}
-                              aria-pressed={log?.value === emoji}
-                            >
-                              {emoji}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                      {habit.type === 'energy' && (
-                        <div className="flex gap-1.5" role="group" aria-label={`${habit.name} energy level`}>
-                          {['low', 'med', 'high'].map(level => (
-                            <button
-                              key={level}
-                              type="button"
-                              onClick={(e) => { const isCurrent = log?.value === level; setEnergyHabit(habit.id, todayStr, isCurrent ? '' : level); if (!isCurrent) triggerFloatingXP(e, habit.xp, habit.stat); }}
-                              className={`px-3 py-2 rounded-lg text-xs font-bold font-mono cursor-pointer transition hover:scale-105 uppercase ${log?.value === level ? 'chip chip--aurora' : 'chip'}`}
-                              aria-label={`Set energy to ${level}`}
-                              aria-pressed={log?.value === level}
-                            >
-                              {level}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="flex items-center gap-2 shrink-0">
-                      <span className="font-mono text-[10px] chip" style={{ color: 'var(--arcade-gold)' }}>+{habit.xp} XP</span>
-                      <span className="font-mono text-[10px]" style={{ color: 'var(--arcade-paper-muted)' }}>{habit.stat}</span>
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteHabit(habit)}
-                        className="icon-button icon-button-small hover:!text-danger"
-                        aria-label={`Delete ${habit.name}`}
-                        title="Delete habit"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
-                      </button>
-                    </div>
+                {/* Meta */}
+                <div className="flex items-center gap-2 mb-2">
+                  <SystemLabel>{statInfo.label}</SystemLabel>
+                  <span className="font-mono text-[10px]" style={{ color: 'var(--obs-gold, #e8b45a)' }}>+{habit.xp} XP</span>
+                </div>
+                {/* Consistency battery */}
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ background: 'rgba(233,230,242,0.08)' }}>
+                    <div className="h-full rounded-full transition-all duration-500" style={{ width: `${consistencyPct}%`, background: completed ? 'var(--bt-success)' : statInfo.color }} />
                   </div>
+                  <span className="font-mono text-[10px] shrink-0" style={{ color: 'var(--bt-text-muted)' }}>{consistencyPct}%</span>
+                </div>
+                {/* Week strip */}
+                <div className="flex items-center gap-1 mb-2">
+                  {weekDates.map((date, i) => {
+                    const log = getLogForDate(habit.id, date);
+                    const done = isHabitCompleted(habit, log);
+                    const isToday = date === todayStr;
+                    return (
+                      <div key={date} className="flex flex-col items-center gap-0.5">
+                        <span className="font-mono text-[8px]" style={{ color: 'var(--bt-text-muted)' }}>{dayLabels[i]}</span>
+                        <div className="w-4 h-4 rounded-full flex items-center justify-center" style={{
+                          background: done ? 'var(--bt-success)' : isToday ? 'rgba(233,230,242,0.08)' : 'transparent',
+                          border: isToday ? '1px solid var(--bt-success)' : '1px solid rgba(233,230,242,0.06)',
+                          boxShadow: done ? '0 0 6px rgba(61,220,132,0.3)' : 'none'
+                        }} aria-label={`${date}: ${done ? 'completed' : 'pending'}`}>
+                          {done && <span className="text-[8px]">✓</span>}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                {/* Actions */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    {bestStreak > 0 && <span className="font-mono text-[9px]" style={{ color: 'var(--bt-text-muted)' }}>BEST {bestStreak} DAYS</span>}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {habit.type !== 'checkbox' && (
+                      <button onClick={() => setDayEditor({ habitId: habit.id, date: todayStr })}
+                        className="font-mono text-[10px] px-2 py-1 rounded cursor-pointer" style={{ color: 'var(--bt-text-muted)', border: '1px solid rgba(233,230,242,0.1)' }}>
+                        EDIT
+                      </button>
+                    )}
+                    <button onClick={() => handleCheckIn(habit)} disabled={completed}
+                      className="font-mono text-[10px] font-bold px-3 py-1 rounded cursor-pointer transition disabled:opacity-40"
+                      style={{ color: completed ? 'var(--bt-success)' : 'var(--obs-gold, #e8b45a)', background: completed ? 'rgba(61,220,132,0.1)' : 'rgba(232,180,90,0.1)', border: `1px solid ${completed ? 'rgba(61,220,132,0.2)' : 'rgba(232,180,90,0.2)'}` }}
+                      aria-label={completed ? `${habit.name} already checked in` : `Check in ${habit.name}`}>
+                      {completed ? '✓ DONE' : 'CHECK IN'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
 
-                  {/* Week strip (type-aware since v2.4) */}
-                  <div className="mt-3 pt-3 flex items-end gap-1.5" style={{ borderTop: '1px solid var(--obs-glass-7)' }} aria-label="Last 5 days">
-                    {last5.map(day => {
-                      const dayLog = habitLogs.find(l => l.habit_id === habit.id && l.date === day.date);
-                      const done = isHabitCompleted(habit, dayLog);
-                      // Non-checkbox habits show their semantic value + status,
-                      // and opening the day editor requires a real interaction.
-                      const recordValue = dayLog?.value;
-                      const isNonCheckbox = habit.type !== 'checkbox';
+          {/* ─── SYSTEM ALERTS ─── */}
+          {atRiskHabits.length > 0 && (
+            <section aria-label="Streaks at risk">
+              <TerminalText prompt>{'>'} SYSTEM_ALERTS</TerminalText>
+              <div className="mt-2 flex flex-col gap-1.5">
+                {atRiskHabits.map(habit => {
+                  const streak = calculateHabitStreak(habit, habitLogs);
+                  return (
+                    <div key={habit.id} className="flex items-center gap-3 py-2 px-3 rounded-lg" style={{ background: 'rgba(248,113,113,0.05)', border: '1px solid rgba(248,113,113,0.15)' }}>
+                      <span className="text-sm" aria-hidden="true">⚠</span>
+                      <span className="font-bold text-sm" style={{ color: 'var(--bt-danger)' }}>{habit.icon} {habit.name}</span>
+                      <span className="font-mono text-[10px] flex-1" style={{ color: 'var(--bt-text-muted)' }}>{streak} day streak · Check in before midnight</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          )}
+        </div>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════════════════
+          WEEK VIEW
+         ═══════════════════════════════════════════════════════════════════ */}
+      {view === 'week' && (() => {
+        // Deterministic weekly interpretation — no AI, pure counts
+        const totalCells = activeHabits.length * 7;
+        const completedCells = activeHabits.reduce((sum, h) => sum + weekDates.filter(d => isHabitCompleted(h, getLogForDate(h.id, d))).length, 0);
+        const weekConsistency = totalCells > 0 ? Math.round((completedCells / totalCells) * 100) : 0;
+        const habitWeekCounts = activeHabits.map(h => ({ habit: h, count: weekDates.filter(d => isHabitCompleted(h, getLogForDate(h.id, d))).length }))
+          .sort((a, b) => b.count - a.count);
+        const strongest = habitWeekCounts[0];
+        const atRisk = [...habitWeekCounts].reverse().find(x => x.count < 4 && x.count < 7);
+        return (
+        <div className="flex flex-col gap-3">
+          <div className="font-mono text-xs font-bold tracking-widest" style={{ color: 'var(--bt-text-muted)' }}>WEEKLY_CONSISTENCY</div>
+          {activeHabits.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2 font-mono text-[10px]" style={{ color: 'var(--bt-text-muted)' }}>
+              <span style={{ color: 'var(--bt-text)' }}>{weekConsistency}% CONSISTENCY</span>
+              {strongest && <span>· STRONGEST: {strongest.habit.name} {strongest.count}/7</span>}
+              {atRisk && <span style={{ color: 'var(--bt-danger)' }}>· AT RISK: {atRisk.habit.name} {atRisk.count}/7</span>}
+            </div>
+          )}
+          {activeHabits.length === 0 ? (
+            <SystemLabel tone="muted">No habits to show.</SystemLabel>
+          ) : (
+            <div className="rounded-xl border overflow-x-auto" style={{ borderColor: 'rgba(233,230,242,0.06)' }}>
+              <div className="min-w-[520px]">
+              <div className="grid gap-0" style={{ gridTemplateColumns: '140px repeat(7, 1fr)', borderBottom: '1px solid rgba(233,230,242,0.06)' }}>
+                <div className="p-2 font-mono text-[10px] font-bold" style={{ color: 'var(--bt-text-muted)' }}>HABIT</div>
+                {weekDates.map((d, i) => (
+                  <div key={d} className="p-2 text-center font-mono text-[10px]" style={{ color: 'var(--bt-text-muted)' }}>{dayLabels[i]}</div>
+                ))}
+              </div>
+              {/* Rows */}
+              {activeHabits.map(habit => {
+                return (
+                  <div key={habit.id} className="grid gap-0" style={{ gridTemplateColumns: '140px repeat(7, 1fr)', borderBottom: '1px solid rgba(233,230,242,0.04)' }}>
+                    <div className="p-2 flex items-center gap-1.5">
+                      <span className="text-sm">{habit.icon}</span>
+                      <span className="font-bold text-xs truncate" style={{ color: 'var(--bt-text)' }}>{habit.name}</span>
+                    </div>
+                    {weekDates.map(date => {
+                      const log = getLogForDate(habit.id, date);
+                      const done = isHabitCompleted(habit, log);
                       return (
-                        <button
-                          key={day.date}
-                          type="button"
-                          onClick={() => onDayCellClick(habit, day.date)}
-                          className="flex-1 flex flex-col items-center gap-1 rounded-md py-1.5 cursor-pointer transition hover:scale-105"
-                          style={{ background: done ? 'rgba(61,220,132,0.1)' : 'rgba(242,242,242,0.03)', border: `1px solid ${done ? 'rgba(61,220,132,0.3)' : 'var(--obs-glass-7)'}` }}
-                          aria-label={`${isNonCheckbox ? 'Edit' : 'Toggle'} ${habit.name} on ${day.date}`}
-                          aria-pressed={done}
-                        >
-                          <span className="font-mono text-[9px]" style={{ color: done ? 'var(--arcade-green)' : 'var(--arcade-paper-muted)' }}>{day.label}</span>
-                          {isNonCheckbox ? (
-                            <span
-                              className="w-4 h-4 rounded-sm flex items-center justify-center text-[9px] leading-none"
-                              style={{ background: done ? 'var(--arcade-green)' : 'transparent', border: done ? 'none' : '1px solid rgba(242,242,242,0.2)', color: done ? '#08140c' : 'var(--arcade-paper-dim)' }}
-                              aria-hidden="true"
-                            >
-                              {String(recordValue ?? '')}
-                            </span>
-                          ) : (
-                            <span className="w-4 h-4 rounded-sm" style={{ background: done ? 'var(--arcade-green)' : 'transparent', border: done ? 'none' : '1px solid rgba(242,242,242,0.2)', boxShadow: done ? '0 0 6px var(--arcade-green)' : 'none' }} aria-hidden="true" />
-                          )}
-                        </button>
+                        <div key={date} className="p-2 flex items-center justify-center">
+                          <div className="w-5 h-5 rounded-full flex items-center justify-center" style={{
+                            background: done ? 'var(--bt-success)' : 'rgba(233,230,242,0.05)',
+                            boxShadow: done ? '0 0 6px rgba(61,220,132,0.3)' : 'none'
+                          }} aria-label={`${habit.name} ${date}: ${done ? 'completed' : 'pending'}`}>
+                            {done && <span className="text-[8px]">✓</span>}
+                          </div>
+                        </div>
                       );
                     })}
                   </div>
-                  {/* Date-scoped editor for non-checkbox types (v2.4 P0 fix) */}
-                  {dayEditor && dayEditor.habitId === habit.id && renderDayEditor(habit, dayEditor.date)}
-                </GlassPane>
-              );
-            })}
-          </>
-        )}
-      </div>
+                );
+              })}
+              </div>
+            </div>
+          )}
+        </div>
+      )})()}
 
-      {/* Undo toast for deletes */}
-      {pendingDelete && (
-        <UndoToast
-          message={`"${pendingDelete.habit.name}" removing — tap Undo to keep`}
-          onUndo={undoDeleteHabit}
-        />
+
+      {/* ═══════════════════════════════════════════════════════════════════
+          HISTORY VIEW — CHARACTER GROWTH
+         ═══════════════════════════════════════════════════════════════════ */}
+      {view === 'history' && (
+        <div className="flex flex-col gap-5">
+          {/* Character Growth This Week */}
+          <section>
+            <TerminalText prompt>{'>'} CHARACTER_GROWTH</TerminalText>
+            <SystemLabel tone="muted">THIS WEEK</SystemLabel>
+            <div className="mt-2 flex flex-col gap-2">
+              {(Object.keys(STAT_LABELS) as StatType[]).map(stat => {
+                const info = STAT_LABELS[stat];
+                const impact = statImpact[stat];
+                const maxVal = Math.max(...(Object.values(statImpact).map(v => v.totalXp)), 1);
+                const pct = Math.round((impact.totalXp / maxVal) * 100);
+                // Deterministic momentum: +N with zero => no activity, otherwise growing/steady from habit count
+                const momentum = impact.totalXp === 0 ? '— no activity' : impact.count >= 2 ? '▲ growing' : '→ steady';
+                return (
+                  <div key={stat} className="flex items-center gap-3">
+                    <PixelIcon name={info.icon as never} size={14} color={info.color} />
+                    <span className="font-mono text-[10px] font-bold w-20" style={{ color: 'var(--bt-text)' }}>{info.label}</span>
+                    <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ background: 'rgba(233,230,242,0.08)' }}>
+                      <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, background: info.color }} />
+                    </div>
+                    <span className="font-mono text-[10px] w-12 text-right" style={{ color: info.color }}>+{impact.totalXp}</span>
+                    <span className="font-mono text-[9px] w-20 text-right" style={{ color: 'var(--bt-text-muted)' }}>{momentum}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+
+          {/* WHAT CHANGED — deterministic narrative from this week's statImpact */}
+          {(() => {
+            const ranked = (Object.keys(statImpact) as StatType[]).map(k => ({ stat: k, xp: statImpact[k].totalXp } as { stat: StatType; xp: number })).sort((a, b) => b.xp - a.xp);
+            const top = ranked[0];
+            const zeroStats = ranked.filter(r => r.xp === 0).map(r => r.stat.toUpperCase());
+            const narrative = top.xp === 0
+              ? 'No attribute activity recorded this week — check in to start building momentum.'
+              : zeroStats.length > 0
+                ? `${top.stat.toUpperCase()} is your strongest growth vector this week (+${top.xp} XP). ${zeroStats.join(', ')} ${zeroStats.length === 1 ? 'has' : 'have'} no recorded activity.`
+                : `${top.stat.toUpperCase()} leads this week (+${top.xp} XP) — balanced progress across attributes.`;
+            return (
+              <section className="rounded-lg border p-3" style={{ background: 'rgba(233,230,242,0.03)', borderColor: 'rgba(233,230,242,0.06)' }}>
+                <TerminalText prompt>{'>'} WHAT_CHANGED</TerminalText>
+                <p className="font-mono text-[11px] m-0 mt-2" style={{ color: 'var(--bt-text-dim)' }}>{narrative}</p>
+              </section>
+            );
+          })()}
+
+          {/* Most Influential — TERTIARY */}
+          <section>
+            <div className="font-mono text-[10px] font-bold tracking-widest uppercase" style={{ color: 'var(--bt-text-disabled)' }}>MOST_INFLUENTIAL</div>
+            <div className="mt-2 flex flex-col" style={{ borderTop: '1px solid rgba(233,230,242,0.06)' }}>
+              {activeHabits
+                .map(h => {
+                  const habitWeekLogs = weekLogs.filter(l => l.habit_id === h.id && isHabitCompleted(h, l));
+                  const totalXp = habitWeekLogs.reduce((sum, l) => sum + (l.xp_earned || 0), 0);
+                  return { habit: h, totalXp };
+                })
+                .filter(x => x.totalXp > 0)
+                .sort((a, b) => b.totalXp - a.totalXp)
+                .slice(0, 5)
+                .map(({ habit: h, totalXp }) => (
+                  <div key={h.id} className="flex items-center gap-3 py-2 px-2" style={{ borderBottom: '1px solid rgba(233,230,242,0.04)' }}>
+                    <span className="text-sm">{h.icon}</span>
+                    <span className="font-bold text-sm flex-1" style={{ color: 'var(--bt-text)' }}>{h.name}</span>
+                    <span className="font-mono text-[10px]" style={{ color: 'var(--obs-gold, #e8b45a)' }}>+{totalXp}</span>
+                    <span className="font-mono text-[10px] uppercase" style={{ color: 'var(--bt-text-muted)' }}>{STAT_LABELS[h.stat].label}</span>
+                  </div>
+                ))
+              }
+            </div>
+          </section>
+        </div>
       )}
 
-      {/* Month view */}
-      {viewMode === 'month' && habits.length > 0 && (
-        <GlassPane as="div" state="off" tone="cobalt" paneTitle="Month grid" className="z-10" screenClassName="!p-4">
-          <div className="grid grid-cols-7 gap-1.5">
-            {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => (
-              <span key={i} className="text-center font-mono text-[9px]" style={{ color: 'var(--arcade-paper-disabled)' }}>{d}</span>
-            ))}
-            {daysInMonth.map(dateStr => {
-              const isToday = dateStr === todayStr;
-              const completedCount = habits.filter(h => isHabitCompleted(h, habitLogs.find(l => l.habit_id === h.id && l.date === dateStr))).length;
-              const pct = habits.length > 0 ? Math.round((completedCount / habits.length) * 100) : 0;
-              return (
-                <div
-                  key={dateStr}
-                  className={`aspect-square rounded-md flex items-center justify-center text-[10px] font-mono font-bold cursor-default ${isToday ? 'chip chip--aurora' : ''}`}
-                  style={{
-                    background: pct >= 80 ? 'rgba(61,220,132,0.25)' : pct >= 40 ? 'rgba(139, 92, 246,0.18)' : pct > 0 ? 'rgba(63,123,255,0.14)' : 'rgba(242,242,242,0.03)',
-                    border: `1px solid ${isToday ? 'rgba(139, 92, 246,0.5)' : 'rgba(242,242,242,0.06)'}`,
-                    boxShadow: isToday ? '0 0 10px rgba(139, 92, 246,0.25)' : 'none',
-                    color: isToday ? 'var(--arcade-gold)' : pct > 0 ? 'var(--arcade-paper-dim)' : 'var(--arcade-paper-disabled)',
-                  }}
-                  title={`${dateStr} — ${completedCount}/${habits.length} habits (${pct}%)`}
-                >
-                  {Number(dateStr.slice(8))}
-                </div>
-              );
-            })}
+      {/* Day editor modal */}
+      {dayEditor && (() => {
+        const habit = habits.find(h => h.id === dayEditor.habitId);
+        if (!habit) return null;
+        return (
+          <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(6px)' }}
+            onClick={() => setDayEditor(null)}>
+            <div className="glass-strong rounded-xl p-5 w-full max-w-sm" onClick={e => e.stopPropagation()}>
+              <h3 className="font-bold text-sm m-0 mb-3" style={{ color: 'var(--bt-text)' }}>{habit.icon} {habit.name}</h3>
+              <p className="font-mono text-[10px] m-0 mb-3" style={{ color: 'var(--bt-text-muted)' }}>Edit for {dayEditor.date}</p>
+              {/* Type-specific editor placeholder */}
+              <div className="flex gap-2">
+                <button onClick={() => { setDayEditor(null); }} className="btn-ghost flex-1 !text-xs">Cancel</button>
+                <button onClick={() => { handleCheckIn(habit); setDayEditor(null); }} className="insert-coin flex-1 !text-xs">Save</button>
+              </div>
+            </div>
           </div>
-        </GlassPane>
-      )}
+        );
+      })()}
     </div>
   );
 };

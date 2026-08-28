@@ -9,6 +9,8 @@ import { useApiClient } from '../../api/authFetch';
 import { FirstRunWizard } from './FirstRunWizard';
 import { ExportLifeModal } from './ExportLifeModal';
 import { FirstRunSetup } from './FirstRunSetup';
+import { OnboardingChoice } from './OnboardingChoice';
+import { isOnboardingComplete } from '../../lib/onboarding';
 import { useAppTour } from '../../lib/useAppTour';
 import { ContextBar, OfflineBanner, BakaSurRail } from '../shell';
 import { useStore } from '../../store/useStore';
@@ -86,6 +88,7 @@ export const Layout: React.FC = () => {
 
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
+  const [showFirstRunSetup, setShowFirstRunSetup] = useState(false);
 
   // Auto-load demo data for guest users exploring the app.
   useEffect(() => {
@@ -93,6 +96,11 @@ export const Layout: React.FC = () => {
       loadDemoData();
     }
   }, [isGuest, habits.length, loadDemoData]);
+
+  // Onboarding gate: authenticated first-time users see the choice screen.
+  // Guest users and returning users skip this entirely.
+  // Initialize directly from data — no effect needed.
+  const needsOnboarding = !isGuest && !!user?.id && !isOnboardingComplete(user.id);
 
   // Phase 3: First-run gate for authenticated accounts with no data yet.
   // A brand-new Google user lands here (empty D1) and chooses a starting
@@ -103,6 +111,22 @@ export const Layout: React.FC = () => {
     tasks.length === 0 &&
     journal.length === 0 &&
     localStorage.getItem('bt_first_run') !== 'done';
+
+  // Onboarding choice — shown before anything else for first-time authenticated users.
+  if (needsOnboarding && !showFirstRunSetup) {
+    return (
+      <OnboardingChoice
+        userId={user?.id || ''}
+        onWalkthrough={() => setShowFirstRunSetup(true)}
+        onSkip={() => {}}
+      />
+    );
+  }
+
+  // Walkthrough — launched from the onboarding choice.
+  if (showFirstRunSetup) {
+    return <FirstRunSetup />;
+  }
 
   if (isFirstRunEmpty) {
     return <FirstRunSetup />;
@@ -157,6 +181,24 @@ export const Layout: React.FC = () => {
       </main>
       <BakaSurRail collapsed={assistantCollapsedEffective} onToggle={toggleAssistant} />
       </div>
+
+      {/* Mobile floating BakaSur trigger — visible only when collapsed, above bottom nav */}
+      {assistantCollapsedEffective && !isEditorRoute && (
+        <button
+          type="button"
+          onClick={toggleAssistant}
+          className="md:hidden fixed bottom-[88px] right-4 z-50 flex items-center gap-1.5 px-4 py-2.5 rounded-full border text-xs font-bold shadow-lg"
+          style={{
+            background: 'linear-gradient(135deg, #1a1625 0%, #2a2342 100%)',
+            borderColor: 'rgba(139,92,246,0.35)',
+            color: 'var(--obs-paper)',
+            boxShadow: '0 4px 20px rgba(139,92,246,0.25), 0 2px 8px rgba(0,0,0,0.4)',
+          }}
+          aria-label="Open BakaSur assistant"
+        >
+          <span aria-hidden="true">✦</span> BakaSur
+        </button>
+      )}
 
       {/* Settings Modal (Bottom Sheet on Mobile) — mounts fresh on every open,
           which reproduces the old opener-side input seeding exactly. */}

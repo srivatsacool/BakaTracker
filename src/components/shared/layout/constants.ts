@@ -1,4 +1,3 @@
-import { BookOpen, Compass, Flame, LayoutGrid, ListTodo, NotebookPen, Target } from 'lucide-react';
 import type { NotifTone } from '../../../services/notificationSettings';
 
 /** BakaSur personality tone → display label (settings modal). */
@@ -22,20 +21,31 @@ export const NAV_TONES: Record<string, string> = {
   '/notes': 'var(--arcade-magenta)',
 };
 
+/** Pixelarticons name per nav item (Refinement Phase 2 — personality icons). */
+export const NAV_PIXEL_ICONS: Record<string, string> = {
+  '/today': 'goal',
+  '/habits': 'fire',
+  '/tasks': 'checkbox',
+  '/eisenhower': 'grid',
+  '/journal': 'book',
+  '/journey': 'compass',
+  '/notes': 'notes',
+};
+
 export interface NavItem {
   path: string;
   name: string;
-  icon: typeof Target;
+  icon: string;
 }
 
 export const NAV_ITEMS: NavItem[] = [
-  { path: '/today', name: 'Today', icon: Target },
-  { path: '/habits', name: 'Habits', icon: Flame },
-  { path: '/tasks', name: 'Tasks', icon: ListTodo },
-  { path: '/eisenhower', name: 'Matrix', icon: LayoutGrid },
-  { path: '/journal', name: 'Journal', icon: BookOpen },
-  { path: '/journey', name: 'Journey', icon: Compass },
-  { path: '/notes', name: 'Notes', icon: NotebookPen },
+  { path: '/today', name: 'Today', icon: 'goal' },
+  { path: '/habits', name: 'Habits', icon: 'fire' },
+  { path: '/tasks', name: 'Tasks', icon: 'checkbox' },
+  { path: '/eisenhower', name: 'Matrix', icon: 'grid' },
+  { path: '/journal', name: 'Journal', icon: 'book' },
+  { path: '/journey', name: 'Journey', icon: 'compass' },
+  { path: '/notes', name: 'Notes', icon: 'notes' },
 ];
 
 /**

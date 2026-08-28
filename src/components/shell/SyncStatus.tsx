@@ -3,6 +3,7 @@ import { Check, CloudOff, RefreshCw, WifiOff } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import { useShallow } from 'zustand/react/shallow';
 import { useAuth } from '../../features/auth';
+import { PixelBadge } from '../ui';
 
 interface SyncStatusProps {
   /** compact = LED-only, for the collapsed rail */
@@ -12,7 +13,6 @@ interface SyncStatusProps {
 /**
  * SyncStatus — the save lamp. The backend's truth in one LED, in the
  * observatory grammar: a status light. OBSERVING / RECORDING… / OFFLINE /
- * OUT OF ORDER
  * OUT OF ORDER. Error state is actionable: click retries the sync.
  */
 export const SyncStatus: React.FC<SyncStatusProps> = ({ compact = false }) => {
@@ -42,7 +42,7 @@ export const SyncStatus: React.FC<SyncStatusProps> = ({ compact = false }) => {
     return (
       <span className={`save-lamp is-local${compact ? ' save-lamp-compact' : ''}`} title={title} aria-label={title}>
         <span className="lamp-dot" aria-hidden="true" />
-        {!compact && <span>Offline · local</span>}
+        {!compact && <PixelBadge tone="default">LOCAL</PixelBadge>}
       </span>
     );
   }
@@ -56,13 +56,13 @@ export const SyncStatus: React.FC<SyncStatusProps> = ({ compact = false }) => {
         : 'synced';
 
   const config = {
-    synced: { Icon: Check, label: 'Observing', cls: 'is-saved' },
-    syncing: { Icon: RefreshCw, label: 'Recording…', cls: 'is-syncing' },
-    offline: { Icon: WifiOff, label: 'Offline — saved here', cls: 'is-offline' },
-    error: { Icon: CloudOff, label: 'Out of order — retry', cls: 'is-error' },
+    synced: { Icon: Check, label: 'OBSERVING', cls: 'is-saved', tone: 'success' as const },
+    syncing: { Icon: RefreshCw, label: 'RECORDING', cls: 'is-syncing', tone: 'primary' as const },
+    offline: { Icon: WifiOff, label: 'OFFLINE', cls: 'is-offline', tone: 'default' as const },
+    error: { Icon: CloudOff, label: 'OUT OF ORDER', cls: 'is-error', tone: 'danger' as const },
   }[state];
 
-  const { Icon, label, cls } = config;
+  const { Icon, label, cls, tone } = config;
   const title =
     state === 'error'
       ? `Save failed — ${syncError ?? 'unknown reason'}. Click to try again.`
@@ -75,7 +75,7 @@ export const SyncStatus: React.FC<SyncStatusProps> = ({ compact = false }) => {
     return (
       <button type="button" className={clsName} onClick={() => pushSync()} title={title} aria-label={title}>
         <Icon className={compact ? 'w-3 h-3' : 'w-3.5 h-3.5'} aria-hidden="true" />
-        {!compact && <span>{label}</span>}
+        {!compact && <PixelBadge tone={tone}>{label}</PixelBadge>}
       </button>
     );
   }
@@ -87,7 +87,7 @@ export const SyncStatus: React.FC<SyncStatusProps> = ({ compact = false }) => {
       ) : (
         <>
           <Icon className={state === 'syncing' ? 'w-3.5 h-3.5 animate-spin' : 'w-3.5 h-3.5'} aria-hidden="true" />
-          <span>{label}</span>
+          <PixelBadge tone={tone}>{label}</PixelBadge>
         </>
       )}
     </span>

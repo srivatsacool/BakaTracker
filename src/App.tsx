@@ -5,12 +5,12 @@ import { useStore } from './store/useStore';
 import { Layout } from './components/shared/Layout';
 import { ProtectedRoute, useAuth } from './features/auth';
 import { useApiClient } from './api/authFetch';
-import AppBackground from './components/background/AppBackground';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
 // Route-level code splitting: heavy pages (Journey/recharts, Notes/excalidraw)
 // load only when their route is entered, not on first paint.
-const Landing = lazy(() => import('./pages/Landing').then(m => ({ default: m.Landing })));
+const Home = lazy(() => import('./pages/Home').then(m => ({ default: m.Home })));
+const Philosophy = lazy(() => import('./pages/Philosophy').then(m => ({ default: m.Philosophy })));
 const Habits = lazy(() => import('./pages/Habits').then(m => ({ default: m.Habits })));
 const Tasks = lazy(() => import('./pages/Tasks').then(m => ({ default: m.Tasks })));
 const Today = lazy(() => import('./pages/Today').then(m => ({ default: m.Today })));
@@ -18,6 +18,7 @@ const Journal = lazy(() => import('./pages/Journal').then(m => ({ default: m.Jou
 const Journey = lazy(() => import('./pages/Journey').then(m => ({ default: m.Journey })));
 const Eisenhower = lazy(() => import('./pages/Eisenhower').then(m => ({ default: m.Eisenhower })));
 const Notes = lazy(() => import('./pages/Notes').then(m => ({ default: m.Notes })));
+const BakaSurPage = lazy(() => import('./pages/BakaSurPage').then(m => ({ default: m.BakaSurPage })));
 const PageWorkspace = lazy(() => import('./pages/PageWorkspace').then(m => ({ default: m.PageWorkspace })));
 
 function App() {
@@ -37,14 +38,14 @@ function App() {
 
   return (
     <BrowserRouter>
-      {/* Arcade lobby background — fixed, behind everything */}
-      <AppBackground />
+      {/* Background removed for V3.2.1 — quiet dark canvas */}
 
-      {/* App content — floats above the lobby */}
+      {/* App content */}
       <ErrorBoundary>
       <Suspense fallback={<RouteFallback />}>
         <Routes>
-          <Route path="/" element={<Landing />} />
+          <Route path="/" element={<Home />} />
+          <Route path="/philosophy" element={<Philosophy />} />
           <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
             <Route path="/journey" element={<Journey />} />
             <Route path="/habits" element={<Habits />} />
@@ -54,6 +55,7 @@ function App() {
             <Route path="/journal" element={<Journal />} />
             <Route path="/notes" element={<Notes />} />
             <Route path="/notes/:pageId" element={<PageWorkspace />} />
+            <Route path="/bakasur" element={<BakaSurPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

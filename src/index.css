@@ -104,6 +104,24 @@
   unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
 
+/* ============================================================================
+   BAKATRACKER REFINEMENT — IBM Plex + VT323 (fontsource, self-hosted)
+   Per Refinement Master Pack DESIGN.md §4 typography hierarchy:
+     normal UI     → IBM Plex Sans
+     system/readout→ IBM Plex Mono
+     BakaSur/term   → VT323
+   Existing Archivo / Fragment Mono / Inter remain registered for backward
+   compatibility; the new tokens below are the canonical refinement voices.
+   ============================================================================ */
+@import "@fontsource/ibm-plex-sans/400.css";
+@import "@fontsource/ibm-plex-sans/500.css";
+@import "@fontsource/ibm-plex-sans/600.css";
+@import "@fontsource/ibm-plex-sans/700.css";
+@import "@fontsource/ibm-plex-mono/400.css";
+@import "@fontsource/ibm-plex-mono/500.css";
+@import "@fontsource/ibm-plex-mono/600.css";
+@import "@fontsource/vt323/400.css";
+
 :root {
   /* --- The tunnel void --- */
   --obs-void: #060714;
@@ -152,6 +170,11 @@
   --font-display: "Archivo", "Arial Black", system-ui, sans-serif;
   --font-body: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   --font-instrument: "Fragment Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* --- Refinement typography tokens (DESIGN.md §4) --- */
+  --font-plex-sans: "IBM Plex Sans", "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-plex-mono: "IBM Plex Mono", "Fragment Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --font-vt323: "VT323", "Fragment Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 
   color-scheme: dark;
   --bg-primary: var(--obs-void);
@@ -206,6 +229,62 @@
 }
 
 /* ============================================================================
+   BAKATRACKER CANONICAL TOKEN LAYER (Refinement Phase 1)
+   Maps the existing --obs-* / --arcade-* primitives into a single canonical
+   BakaTracker token vocabulary per DESIGN.md §2–§3. Existing variables are
+   preserved (no destructive rewrite); this layer is additive and provides the
+   stable names the refinement components consume.
+   ============================================================================ */
+:root {
+  /* Backgrounds */
+  --bt-bg: var(--obs-void);
+  --bt-bg-deep: var(--obs-void-deep);
+  --bt-bg-elevated: var(--obs-void-lift);
+
+  /* Glass surfaces */
+  --bt-surface: var(--glass-pane);
+  --bt-surface-elevated: linear-gradient(180deg, rgba(233, 230, 242, 0.10) 0%, rgba(233, 230, 242, 0.05) 100%);
+  --bt-glass-blur: var(--glass-blur);
+  --bt-glass-shadow: var(--glass-shadow);
+
+  /* Borders */
+  --bt-border: var(--glass-hairline);
+  --bt-border-soft: var(--glass-hairline-soft);
+  --bt-border-strong: var(--obs-glass-15);
+
+  /* Brand + semantic */
+  --bt-primary: var(--obs-aurora);
+  --bt-primary-deep: var(--obs-aurora-deep);
+  --bt-primary-bright: var(--obs-aurora-bright);
+  --bt-success: var(--obs-teal);
+  --bt-warning: var(--obs-amber);
+  --bt-danger: var(--obs-coral);
+  --bt-info: var(--obs-cobalt);
+  --bt-rose: var(--obs-rose);
+
+  /* Text */
+  --bt-text: var(--obs-paper);
+  --bt-text-dim: var(--obs-paper-dim);
+  --bt-text-muted: var(--obs-paper-muted);
+  --bt-text-disabled: var(--obs-paper-disabled);
+
+  /* Glow */
+  --bt-glow: var(--aurora-glow);
+  --bt-led-glow: var(--led-glow);
+
+  /* Pixel border (subtle 8-bit frame; low-opacity, never noisy) */
+  --bt-pixel-border: 1px solid var(--obs-glass-12);
+  --bt-pixel-border-strong: 2px solid rgba(139, 92, 246, 0.35);
+
+  /* RPG / progression */
+  --bt-xp: var(--obs-aurora);
+  --bt-xp-bright: var(--obs-aurora-bright);
+  --bt-level: var(--obs-gold, #e8b45a);
+  --bt-streak: #fb923c;
+  --bt-achievement: #fbbf24;
+}
+
+/* ============================================================================
    BASE
    ============================================================================ */
 * {
@@ -244,7 +323,7 @@ body {
 }
 * {
   scrollbar-width: thin;
-  scrollbar-color: var(--obs-aurora) var(--obs-void-deep);
+  scrollbar-color: rgba(233, 230, 242, 0.15) var(--obs-void-deep);
 }
 *::-webkit-scrollbar {
   width: 10px;
@@ -419,7 +498,7 @@ h1, h2, h3, h4, h5, h6 {
   font-size: 0.68rem;
   font-weight: 400;
 }
-.chip--aurora { color: var(--obs-aurora-bright); border-color: rgba(139, 92, 246, 0.35); background: rgba(139, 92, 246, 0.08); }
+.chip--aurora { color: var(--obs-aurora-bright); border-color: rgba(139, 92, 246, 0.2); background: rgba(139, 92, 246, 0.05); }
 .chip--teal { color: var(--obs-teal); border-color: rgba(52, 211, 153, 0.3); background: rgba(52, 211, 153, 0.07); }
 .chip--coral { color: var(--obs-coral); border-color: rgba(248, 113, 113, 0.3); background: rgba(248, 113, 113, 0.07); }
 .chip--amber { color: var(--obs-amber); border-color: rgba(232, 180, 90, 0.3); background: rgba(232, 180, 90, 0.07); }
@@ -427,7 +506,7 @@ h1, h2, h3, h4, h5, h6 {
 .chip--cobalt { color: var(--obs-cobalt); border-color: rgba(56, 189, 248, 0.3); background: rgba(56, 189, 248, 0.07); }
 
 /* Legacy chip aliases (arcade-era names → observatory tones) */
-.chip--gold { color: var(--obs-aurora-bright); border-color: rgba(139, 92, 246, 0.35); background: rgba(139, 92, 246, 0.08); }
+.chip--gold { color: var(--obs-gold, #e8b45a); border-color: rgba(232, 180, 90, 0.25); background: rgba(232, 180, 90, 0.06); }
 .chip--green { color: var(--obs-teal); border-color: rgba(52, 211, 153, 0.3); background: rgba(52, 211, 153, 0.07); }
 .chip--red { color: var(--obs-coral); border-color: rgba(248, 113, 113, 0.3); background: rgba(248, 113, 113, 0.07); }
 .chip--magenta { color: var(--obs-rose); border-color: rgba(244, 114, 182, 0.3); background: rgba(244, 114, 182, 0.07); }
@@ -547,7 +626,7 @@ select.obs-input {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: var(--obs-aurora);
+  background: var(--obs-gold, #e8b45a);
   opacity: 0.3;
   animation: dot-pulse 1.4s ease-in-out infinite;
 }
@@ -980,7 +1059,7 @@ select.obs-input {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: var(--obs-aurora);
+  background: var(--obs-gold, #e8b45a);
   opacity: 0.3;
   animation: dot-pulse 1.4s ease-in-out infinite;
 }
@@ -1028,12 +1107,12 @@ select.obs-input {
     min-height: 0;
     height: calc(100vh - 40px);
     border-radius: 20px;
-    border: 1px solid rgba(233, 230, 242, 0.1);
-    background: linear-gradient(180deg, rgba(13, 11, 26, 0.78) 0%, rgba(8, 7, 20, 0.72) 100%);
+    border: 1px solid rgba(233, 230, 242, 0.08);
+    background: linear-gradient(180deg, rgba(15, 14, 20, 0.98) 0%, rgba(10, 9, 14, 0.99) 100%);
     box-shadow:
-      0 24px 64px rgba(0, 0, 0, 0.55),
-      0 8px 32px rgba(0, 0, 0, 0.45),
-      inset 0 1px 0 rgba(233, 230, 242, 0.09);
+      0 24px 64px rgba(0, 0, 0, 0.6),
+      0 8px 32px rgba(0, 0, 0, 0.5),
+      inset 0 1px 0 rgba(233, 230, 242, 0.06);
     overflow: hidden;
   }
   /* The desktop main scrolls inside the frame (it was h-screen before the
@@ -1082,7 +1161,7 @@ select.obs-input {
   box-shadow: 0 0 20px rgba(139, 92, 246, 0.12);
 }
 .cabinet-nav-item.is-active .nav-led {
-  background: var(--obs-aurora);
+  background: var(--obs-gold, #e8b45a);
   box-shadow: var(--led-glow);
 }
 /* Tool-tone hairline — the active instrument's left-edge band (design gap
@@ -1206,17 +1285,17 @@ select.obs-input {
   width: 52px;
   flex-shrink: 0;
   padding: 12px 6px 10px;
-  border: 1px solid rgba(139, 92, 246, 0.12);
-  border-radius: 16px;
-  background: rgba(13, 11, 22, 0.35);
+  border: 1px solid rgba(233, 230, 242, 0.08);
+    border-radius: 12px;
+    background: rgba(20, 18, 28, 0.6);
   box-shadow: none;
   transition: border-color 250ms cubic-bezier(0.16, 1, 0.3, 1), background 250ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 250ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 .assistant-rail-collapsed:hover,
 .assistant-rail-collapsed:focus-within {
-  border-color: rgba(139, 92, 246, 0.3);
-  background: rgba(20, 16, 36, 0.6);
-  box-shadow: 0 0 24px rgba(139, 92, 246, 0.18), inset 0 1px 0 rgba(233, 230, 242, 0.1);
+  border-color: rgba(233, 230, 242, 0.12);
+  background: rgba(20, 18, 28, 0.7);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(233, 230, 242, 0.06);
 }
 .assistant-rail-collapsed .assistant-rail-expand {
   display: flex;
@@ -1889,7 +1968,7 @@ select.obs-input {
   height: 7px;
   border-radius: 50%;
   flex-shrink: 0;
-  background: var(--obs-aurora);
+  background: var(--obs-gold, #e8b45a);
   box-shadow: var(--led-glow);
 }
 .f11-cockpit-title {
@@ -1938,7 +2017,7 @@ select.obs-input {
   height: 7px;
   border-radius: 50%;
   flex-shrink: 0;
-  background: var(--obs-aurora);
+  background: var(--obs-gold, #e8b45a);
   box-shadow: var(--led-glow);
 }
 .f11-settings-title {
@@ -2014,7 +2093,7 @@ select.obs-input {
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: var(--obs-aurora);
+  background: var(--obs-gold, #e8b45a);
   box-shadow: 0 0 10px var(--obs-aurora);
   animation: hud-breathe 3s ease-in-out infinite;
 }
@@ -2031,7 +2110,7 @@ select.obs-input {
 .hud-status-dot.is-synced { background: var(--obs-teal); box-shadow: 0 0 8px rgba(52, 211, 153, 0.5); }
 .hud-status-dot.is-local { background: var(--obs-paper-muted); }
 .hud-status-dot.is-offline { background: var(--obs-paper-disabled); }
-.hud-status-dot.is-syncing { background: var(--obs-aurora); box-shadow: 0 0 8px rgba(139, 92, 246, 0.6); }
+.hud-status-dot.is-syncing { background: var(--obs-gold, #e8b45a); box-shadow: 0 0 8px rgba(139, 92, 246, 0.6); }
 .hud-status-dot.is-error { background: var(--obs-coral); box-shadow: 0 0 8px rgba(248, 113, 113, 0.55); }
 .hud-xp-track {
   width: 100%;
@@ -2114,3 +2193,236 @@ select.obs-input {
 .hud-xp-fill {
   transition: width 300ms cubic-bezier(0.16, 1, 0.3, 1);
 }
+
+/* ============================================================================
+   HOME — the cinematic cover (supersedes the LANDING F5 marketing page)
+   One viewport: minimal nav, fullscreen decorative video SLOT over the shared
+   AppBackground, one editorial statement, one supporting sentence, one glass
+   control group (GitHub / Product / Philosophy). Reuses every token below —
+   no second design system. Landing-signin / landing-hero-copy remain shared.
+   ============================================================================ */
+
+.home-scene {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100vh;
+  min-height: 100svh;
+}
+
+/* --- Background video slot ------------------------------------------------
+   Sits between the AppBackground tunnel (z0/z1, mounted at root) and the
+   readability overlay re-rendered inside the scene. The layer stays at
+   opacity 0 until the video actually plays (`is-live`), so a missing asset
+   never shows a broken frame — the tunnel simply remains the cinema. The
+   poster role is played by the live tunnel itself until real footage lands. */
+.home-video-layer {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 900ms ease;
+}
+.home-video-layer.is-live { opacity: 1; }
+.home-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+/* The overlay stacks after the video layer in DOM order (absolute, inset 0),
+   so TEXT ALWAYS WINS holds here too — same rule as the root stack. */
+
+/* --- Composition: header / centered hero / ground line --- */
+.home-content {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  width: 100%;
+  max-width: 76rem;
+  margin: 0 auto;
+  padding: 20px clamp(20px, 5vw, 56px);
+}
+.home-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+/* The instrument sign-in must never wrap — it reads as one bracketed token. */
+.home-header .landing-signin { white-space: nowrap; flex-shrink: 0; }
+.home-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  text-decoration: none;
+}
+.home-brand-mark {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  object-fit: cover;
+  border: 1px solid rgba(139, 92, 246, 0.4);
+  box-shadow: 0 0 16px rgba(139, 92, 246, 0.25);
+}
+.home-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 0;
+  padding: 48px 0;
+}
+.home-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 22px;
+  color: rgba(233, 230, 242, 0.7);
+}
+.home-kicker-led {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--obs-aurora-bright);
+  box-shadow: 0 0 10px var(--obs-aurora-bright);
+  animation: led-blink 2.4s ease-in-out infinite;
+}
+.home-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(2.5rem, 7vw, 4.9rem);
+  line-height: 1.05;
+  letter-spacing: -0.025em;
+  text-wrap: balance;
+  color: var(--obs-paper);
+  text-shadow: 0 0 40px rgba(139, 92, 246, 0.28);
+}
+.home-main .landing-hero-copy {
+  margin-top: 26px;
+  max-width: 34rem;
+  text-align: center;
+}
+
+/* --- The one control group — GitHub · Product · Philosophy ---
+   A single segmented glass pill: one border, one blur, hairline dividers.
+   Buttons share the instrument register (Fragment Mono, tracked caps). */
+.home-cta-group {
+  display: inline-flex;
+  align-items: stretch;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px;
+  margin-top: 42px;
+  padding: 6px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--glass-hairline);
+  background: var(--obs-glass-5);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(233, 230, 242, 0.08);
+}
+.home-cta-divider {
+  width: 1px;
+  background: var(--glass-hairline-soft);
+  margin: 6px 2px;
+}
+.home-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 24px;
+  border-radius: var(--radius-pill);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--obs-paper-dim);
+  font-family: var(--font-instrument);
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  text-decoration: none;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 200ms cubic-bezier(0.16, 1, 0.3, 1), color 200ms cubic-bezier(0.16, 1, 0.3, 1), border-color 200ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 200ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.home-cta:hover {
+  background: rgba(139, 92, 246, 0.12);
+  border-color: rgba(139, 92, 246, 0.35);
+  color: var(--obs-paper);
+  box-shadow: 0 0 22px rgba(139, 92, 246, 0.22);
+}
+.home-cta-exit {
+  opacity: 0.55;
+  transition: transform 200ms cubic-bezier(0.16, 1, 0.3, 1), opacity 200ms ease;
+}
+.home-cta:hover .home-cta-exit {
+  transform: translate(1px, -1px);
+  opacity: 1;
+}
+
+/* --- Ground line --- */
+.home-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-family: var(--font-instrument);
+  font-size: 0.68rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--obs-paper-muted);
+}
+
+/* --- Entrance: staggered fade-and-rise (killed by reduced-motion globally) */
+@keyframes home-enter-rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.home-enter {
+  opacity: 0;
+  animation: home-enter-rise 700ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation-delay: var(--home-delay, 0ms);
+}
+
+/* --- Small screens: keep the single-viewport composition --- */
+@media (max-width: 640px) {
+  .home-brand-mark { width: 30px; height: 30px; }
+  .home-cta { padding: 10px 16px; letter-spacing: 0.12em; }
+  .home-cta-group { gap: 2px; padding: 5px; }
+  .home-footer { gap: 8px; }
+}
+
+/* ============================================================================
+   PHILOSOPHY — public route sharing the Home shell grammar
+   ============================================================================ */
+.philosophy-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  width: 100%;
+  max-width: 44rem;
+  margin: 0 auto;
+  padding: 56px 0 48px;
+}
+.philosophy-title {
+  font-size: clamp(1.7rem, 4vw, 2.7rem);
+  margin-bottom: 26px;
+}
+.philosophy-section { margin-top: 34px; }
+.philosophy-section h2 {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--obs-aurora-bright);
+  margin: 0 0 10px;
+}
+.philosophy-section .landing-hero-copy { margin-top: 0; }

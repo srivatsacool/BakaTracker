@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Bot, ChevronRight, Loader2, MessageCircle, Send, Sparkles, X } from 'lucide-react';
+import { ChevronRight, Loader2, Send, Sparkles, X } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import { useStore } from '../../store/useStore';
 import { useShallow } from 'zustand/react/shallow';
@@ -7,6 +7,7 @@ import { useAuth } from '../../features/auth';
 import { useApiClient } from '../../api/authFetch';
 import { getTodayDateString, isHabitCompleted } from '../../lib/utils';
 import { calculateHabitStreak } from '../../services/habits/calculateHabitStreak';
+import { PixelIcon, PixelBadge, TerminalText } from '../ui';
 import type { Habit, HabitLog, JournalEntry, Task, UserStats } from '../../types';
 
 interface Message {
@@ -431,34 +432,38 @@ export const BakaSurRail: React.FC<BakaSurRailProps> = ({ collapsed, onToggle })
           <span className="w-2.5 h-2.5 rounded-full" style={{ background: 'var(--arcade-gold)', boxShadow: '0 0 10px var(--arcade-gold)' }} aria-hidden="true" />
           <ChevronRight className="w-4 h-4" aria-hidden="true" />
         </button>
-        <span className="assistant-rail-label">BakaSur</span>
+        <span className="assistant-rail-label">
+          <TerminalText tone="primary">BAKASUR</TerminalText>
+        </span>
       </aside>
     );
   }
 
   return (
     <aside id="bakasur-rail" className="cabinet assistant-rail-expanded border-l border-solid" style={{ borderColor: 'rgba(139, 92, 246, 0.18)', background: 'linear-gradient(180deg, rgba(24,20,44,0.92), rgba(13,11,22,0.95))' }} aria-label="BakaSur global assistant">
+      {/* ASCII terminal header */}
       <div className="cabinet-marquee" style={{ borderColor: 'rgba(139, 92, 246, 0.2)' }}>
         <span className="cabinet-led" style={{ background: 'var(--obs-aurora)', boxShadow: '0 0 10px rgba(139, 92, 246, 0.6)' }} aria-hidden="true" />
-        <span className="cabinet-marquee-title" style={{ color: 'var(--obs-aurora-bright)' }}>BakaSur</span>
-        <button type="button" className="icon-button icon-button-small !ml-auto" onClick={onToggle} aria-label="Collapse BakaSur assistant" aria-expanded={true} title="Collapse BakaSur assistant"><X className="w-4 h-4" aria-hidden="true" /></button>
+        <TerminalText tone="primary" prompt>&gt; BAKASUR</TerminalText>
+        <PixelBadge tone="success" className="ml-auto">ONLINE</PixelBadge>
+        <button type="button" className="icon-button icon-button-small !ml-2" onClick={onToggle} aria-label="Collapse BakaSur assistant" aria-expanded={true} title="Collapse BakaSur assistant"><X className="w-4 h-4" aria-hidden="true" /></button>
       </div>
 
       <div className="flex items-center gap-2 px-4 py-2 font-mono text-[10px]" style={{ color: 'var(--arcade-paper-muted)', borderBottom: '1px solid var(--obs-glass-7)' }}>
-        <Sparkles className="w-3 h-3" style={{ color: 'var(--arcade-gold)' }} aria-hidden="true" />
-        <span>Context: <b style={{ color: 'var(--arcade-paper-dim)' }}>{routeName}</b></span>
-        {isGuest && <span className="chip chip--aurora !px-1.5 !py-0.5">Demo</span>}
+        <PixelIcon name="cpu" size={13} color="var(--arcade-gold)" />
+        <span>CTX: <b style={{ color: 'var(--arcade-paper-dim)' }}>{routeName}</b></span>
+        {isGuest && <PixelBadge tone="primary" className="ml-auto">DEMO</PixelBadge>}
       </div>
 
       <div className="assistant-messages flex-1 overflow-y-auto p-4 flex flex-col gap-3" aria-live="polite">
         {messages.map(message => (
           <article key={message.id} className={`flex gap-2 ${message.role === 'user' ? 'flex-row-reverse' : ''}`}>
             <div className="w-6 h-6 rounded flex items-center justify-center shrink-0" style={{ background: message.role === 'assistant' ? 'rgba(139, 92, 246,0.12)' : 'rgba(63,123,255,0.14)', color: message.role === 'assistant' ? 'var(--arcade-gold)' : 'var(--arcade-cobalt)' }} aria-hidden="true">
-              {message.role === 'assistant' ? <Bot className="w-3.5 h-3.5" /> : <MessageCircle className="w-3.5 h-3.5" />}
+              {message.role === 'assistant' ? <PixelIcon name="robot" size={16} color="var(--arcade-gold)" /> : <PixelIcon name="terminal" size={16} color="var(--arcade-cobalt)" />}
             </div>
             <div className={`flex flex-col gap-1 max-w-[85%] ${message.role === 'user' ? 'items-end' : ''}`}>
               <p className="m-0 text-[0.8rem] leading-relaxed" style={{ color: 'var(--arcade-paper)' }}>{message.content}</p>
-              {message.source && <small className="font-mono text-[9px]" style={{ color: 'var(--arcade-paper-muted)' }}>{message.source}</small>}
+              {message.source && <TerminalText tone="muted" className="text-[9px]">{message.source}</TerminalText>}
             </div>
           </article>
         ))}
@@ -468,7 +473,7 @@ export const BakaSurRail: React.FC<BakaSurRailProps> = ({ collapsed, onToggle })
       <div className="px-4 pb-2 flex flex-col gap-2">
         <p className="m-0 font-mono text-[10px] leading-relaxed flex items-center gap-1.5" style={{ color: 'var(--arcade-paper-muted)' }}>
           <Sparkles className="w-3 h-3 shrink-0" style={{ color: 'var(--obs-aurora-bright)' }} aria-hidden="true" />
-          <span>{suggestions.insight}</span>
+          <TerminalText tone="muted">{suggestions.insight}</TerminalText>
         </p>
         <div role="group" aria-label="Suggested questions" className="flex flex-col gap-1.5">
           {suggestions.prompts.map(item => (

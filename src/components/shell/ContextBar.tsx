@@ -4,6 +4,7 @@ import { useStore } from '../../store/useStore';
 import { useShallow } from 'zustand/react/shallow';
 import { useAuth } from '../../features/auth';
 import { calculateDailyScore, getTodayDateString } from '../../lib/utils';
+import { SystemLabel, TerminalText } from '../ui';
 
 interface ContextBarProps {
   isOffline: boolean;
@@ -82,15 +83,15 @@ export const ContextBar: React.FC<ContextBarProps> = ({
       <div className="flex items-center gap-3">
         <Clock3 className="w-4 h-4" style={{ color: 'var(--arcade-gold)' }} aria-hidden="true" />
         <div className="flex flex-col leading-tight">
-          <strong className="score-readout text-sm">{timeLabel}</strong>
-          <span className="font-mono text-[10px]" style={{ color: 'var(--arcade-paper-muted)' }}>{dateLabel}</span>
+          <TerminalText tone="default">{timeLabel}</TerminalText>
+          <SystemLabel tone="muted">{dateLabel}</SystemLabel>
         </div>
       </div>
 
       <div className="context-metrics" role="group" aria-label="Daily progress">
-        <span className="context-metric"><Target className="metric-icon icon-gold" aria-hidden="true" /><b>{dailyScore}%</b> today</span>
-        <span className="context-metric"><Zap className="metric-icon icon-cobalt" aria-hidden="true" /><b>{stats.xp}</b> / {settings.xp_per_level} XP</span>
-        <span className="context-metric"><CalendarDays className="metric-icon" aria-hidden="true" /><b>{pendingQuests}</b> quests left</span>
+        <span className="context-metric"><Target className="metric-icon icon-gold" aria-hidden="true" /><b>{dailyScore}%</b> <SystemLabel tone="muted">today</SystemLabel></span>
+        <span className="context-metric"><Zap className="metric-icon icon-cobalt" aria-hidden="true" /><b>{stats.xp}</b> / {settings.xp_per_level} <SystemLabel tone="muted">XP</SystemLabel></span>
+        <span className="context-metric"><CalendarDays className="metric-icon" aria-hidden="true" /><b>{pendingQuests}</b> <SystemLabel tone="muted">quests left</SystemLabel></span>
       </div>
 
       <div className="flex items-center gap-2">
@@ -105,7 +106,7 @@ export const ContextBar: React.FC<ContextBarProps> = ({
         )}
         {isGuest && <span className="chip chip--aurora">Demo</span>}
         <div className="flex items-center gap-2" aria-label={`Level ${stats.level}, ${Math.round(xpProgress)} percent to next level`}>
-          <span className="score-readout text-xs" style={{ color: 'var(--arcade-gold)' }}>LVL {stats.level}</span>
+          <SystemLabel k="LVL" tone="primary">{stats.level}</SystemLabel>
           <span className="w-14 h-1.5 rounded-full overflow-hidden relative" style={{ background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(139, 92, 246,0.2)' }}>
             <span className="block h-full transition-all duration-300" style={{ width: `${xpProgress}%`, background: 'linear-gradient(90deg, var(--arcade-gold-deep), var(--arcade-gold))', boxShadow: '0 0 8px rgba(139, 92, 246, 0.5)' }} />
           </span>

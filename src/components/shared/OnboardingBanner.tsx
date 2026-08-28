@@ -74,7 +74,7 @@ export const OnboardingBanner: React.FC = () => {
           <X className="w-4 h-4" aria-hidden="true" />
         </button>
       </div>
-      <div className="cabinet-screen !py-4">
+      <div className="cabinet-screen !py-3 md:!py-4">
         {allCompleted ? (
           <div className="flex items-center gap-3">
             <Trophy className="w-5 h-5 shrink-0" style={{ color: 'var(--arcade-gold)' }} aria-hidden="true" />
@@ -83,25 +83,25 @@ export const OnboardingBanner: React.FC = () => {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 md:gap-3">
             {steps.map(step => (
               <Link
                 key={step.id}
                 to={step.link}
-                className={`flex items-start gap-2.5 p-2.5 rounded-lg no-underline transition hover:scale-[1.02] ${step.completed ? '' : ''}`}
+                className={`flex items-start gap-2 md:gap-2.5 p-2 md:p-2.5 rounded-lg no-underline transition hover:scale-[1.02] ${step.completed ? '' : ''}`}
                 style={{
                   background: step.completed ? 'rgba(61,220,132,0.07)' : 'rgba(242,242,242,0.03)',
                   border: `1px solid ${step.completed ? 'rgba(61,220,132,0.25)' : 'var(--obs-glass-8)'}`,
                 }}
               >
                 {step.completed ? (
-                  <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" style={{ color: 'var(--arcade-green)' }} aria-hidden="true" />
+                  <CheckCircle2 className="w-3.5 h-3.5 md:w-4 md:h-4 shrink-0 mt-0.5" style={{ color: 'var(--arcade-green)' }} aria-hidden="true" />
                 ) : (
-                  <Circle className="w-4 h-4 shrink-0 mt-0.5" style={{ color: 'var(--arcade-paper-disabled)' }} aria-hidden="true" />
+                  <Circle className="w-3.5 h-3.5 md:w-4 md:h-4 shrink-0 mt-0.5" style={{ color: 'var(--arcade-paper-disabled)' }} aria-hidden="true" />
                 )}
                 <span className="flex flex-col gap-0.5 min-w-0">
-                  <span className="text-[11px] font-bold leading-tight" style={{ color: 'var(--arcade-paper)' }}>{step.title}</span>
-                  <span className="font-mono text-[9px]" style={{ color: step.completed ? 'var(--arcade-green)' : 'var(--arcade-paper-muted)' }}>
+                  <span className="text-[10px] md:text-[11px] font-bold leading-tight" style={{ color: 'var(--arcade-paper)' }}>{step.title}</span>
+                  <span className="font-mono text-[8px] md:text-[9px]" style={{ color: step.completed ? 'var(--arcade-green)' : 'var(--arcade-paper-muted)' }}>
                     {step.label}
                   </span>
                 </span>
