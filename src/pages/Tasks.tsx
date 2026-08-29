@@ -1,6 +1,7 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { useStore } from '../store/useStore';
 import { useShallow } from 'zustand/react/shallow';
+import { calculateDailyXP, sumDailyXP } from '../services/stats/calculateDailyXP';
 import type { Task, TaskStatus, TaskArea } from '../types';
 import { Search, Zap } from 'lucide-react';
 import { UndoToast } from '../components/shared/UndoToast';
@@ -16,12 +17,15 @@ type ViewMode = 'command' | 'board';
  * Secondary: Board view (Kanban for organization).
  */
 export const Tasks: React.FC = () => {
-  const { tasks, addTask, moveTask, toggleTodayTask, deleteTask } = useStore(useShallow(s => ({
+  const { tasks, addTask, moveTask, toggleTodayTask, deleteTask, habits, habitLogs, journal } = useStore(useShallow(s => ({
     tasks: s.tasks,
     addTask: s.addTask,
     moveTask: s.moveTask,
     toggleTodayTask: s.toggleTodayTask,
     deleteTask: s.deleteTask,
+    habits: s.habits,
+    habitLogs: s.habitLogs,
+    journal: s.journal,
   })));
 
   const [view, setView] = useState<ViewMode>(() => {
@@ -109,7 +113,10 @@ export const Tasks: React.FC = () => {
   const urgentTasks = openTasks.filter(t => t.due_date && t.due_date <= new Date().toISOString().slice(0, 10));
   const totalXpAvailable = openTasks.reduce((sum, t) => sum + t.xp, 0);
   const completedToday = filteredTasks.filter(t => t.status === 'done' && t.completed_at && t.completed_at.startsWith(new Date().toISOString().slice(0, 10))).length;
-  const xpEarnedToday = completedToday * 10; // Approximate
+  // Canonical daily XP from habit logs, tasks completed today, and journal entries
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const dailyXP = calculateDailyXP(todayStr, habits, habitLogs, tasks, journal);
+  const xpEarnedToday = sumDailyXP(dailyXP);
 
   // Command view: active quest = first doing, then first todo
   const activeQuest = filteredTasks.find(t => t.status === 'doing') || filteredTasks.find(t => t.status === 'todo');
@@ -229,7 +236,10 @@ export const Tasks: React.FC = () => {
             {activeQuest ? (
               <div className="mt-3 rounded-xl border p-6" style={{ background: 'linear-gradient(180deg, rgba(232,180,90,0.06) 0%, rgba(233,230,242,0.03) 100%)', borderColor: 'rgba(232,180,90,0.3)', boxShadow: '0 4px 24px rgba(232,180,90,0.08)' }}>
                 <div className="flex items-start justify-between mb-2">
-                  <span className="font-mono text-[10px] font-bold tracking-widest px-2 py-0.5 rounded" style={{ color: 'var(--obs-gold, #e8b45a)', background: 'rgba(232,180,90,0.12)', border: '1px solid rgba(232,180,90,0.25)' }}>CURRENT QUEST · +{activeQuest.xp} XP</span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-[10px] font-bold tracking-widest px-2 py-0.5 rounded" style={{ color: 'var(--obs-gold, #e8b45a)', background: 'rgba(232,180,90,0.12)', border: '1px solid rgba(232,180,90,0.25)' }}>CURRENT QUEST · +{activeQuest.xp} XP</span>
+                    <span className="font-mono text-[10px] px-2 py-0.5 rounded" style={{ color: 'var(--bt-text-muted)', background: 'rgba(233,230,242,0.05)', border: '1px solid rgba(233,230,242,0.08)' }}>{activeQuest.area.toUpperCase()} → +{activeQuest.xp}</span>
+                  </div>
                   {activeQuest.due_date && (
                     <span className="font-mono text-[10px] px-2 py-0.5 rounded" style={{
                       color: activeQuest.due_date <= new Date().toISOString().slice(0, 10) ? 'var(--bt-danger)' : 'var(--bt-text-muted)',

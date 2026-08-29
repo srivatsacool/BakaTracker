@@ -123,11 +123,12 @@ export const Habits: React.FC = () => {
           {(Object.keys(STAT_LABELS) as StatType[]).map(stat => {
             const info = STAT_LABELS[stat];
             const impact = statImpact[stat];
+            const isZero = impact.totalXp === 0;
             return (
-              <div key={stat} className="rounded-lg border p-2.5 text-center" style={{ background: 'rgba(233,230,242,0.03)', borderColor: 'rgba(233,230,242,0.06)' }}>
-                <PixelIcon name={info.icon as never} size={16} color={info.color} />
+              <div key={stat} className={`rounded-lg border p-2.5 text-center ${isZero ? 'opacity-40' : ''}`} style={{ background: 'rgba(233,230,242,0.03)', borderColor: 'rgba(233,230,242,0.06)' }}>
+                <PixelIcon name={info.icon as never} size={16} color={isZero ? 'var(--bt-text-disabled)' : info.color} />
                 <div className="font-mono text-[10px] font-bold mt-1" style={{ color: 'var(--bt-text)' }}>{info.label}</div>
-                <div className="font-mono text-sm font-bold" style={{ color: info.color }}>+{impact.totalXp}</div>
+                <div className="font-mono text-sm font-bold" style={{ color: isZero ? 'var(--bt-text-muted)' : info.color }}>+{impact.totalXp}</div>
                 <div className="font-mono text-[9px]" style={{ color: 'var(--bt-text-muted)' }}>{impact.count} habit{impact.count !== 1 ? 's' : ''}</div>
               </div>
             );
