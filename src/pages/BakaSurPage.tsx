@@ -7,6 +7,8 @@ import { useApiClient } from '../api/authFetch';
 import { getTodayDateString, isHabitCompleted } from '../lib/utils';
 import { calculateHabitStreak } from '../services/habits/calculateHabitStreak';
 import { PixelIcon, PixelBadge, SystemLabel, TerminalText } from '../components/ui';
+import { BaksurCharacter } from '../components/shell/BaksurCharacter';
+import { BAKASUR_COLOR_HEXES } from '../lib/baksurPreferences';
 import type { Habit, HabitLog, JournalEntry, Task, UserStats } from '../types';
 
 interface Message {
@@ -128,6 +130,7 @@ export const BakaSurPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const routeName = useMemo(() => routeNames[location.pathname] || 'Current workspace', [location.pathname]);
   const isGuest = user?.provider === 'guest';
+  const bColor = BAKASUR_COLOR_HEXES.violet;
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const suggestions = useMemo(
@@ -182,12 +185,12 @@ export const BakaSurPage: React.FC = () => {
     <div className="max-w-3xl mx-auto flex flex-col gap-6 relative pb-12">
       {/* Character + Status Header */}
       <div className="rounded-xl p-4 flex items-center gap-4 border" style={{ background: 'linear-gradient(180deg, rgba(233,230,242,0.04) 0%, rgba(6,7,20,0.4) 100%)', borderColor: 'var(--bt-border-strong)', boxShadow: '0 0 24px rgba(139,92,246,0.12)' }}>
-        <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'linear-gradient(135deg, rgba(232,180,90,0.15) 0%, rgba(232,180,90,0.05) 100%)', border: '2px solid rgba(232,180,90,0.25)', boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }}>
-          <PixelIcon name="robot" size={24} color="var(--bt-primary-bright)" />
+        <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 overflow-hidden" style={{ background: 'radial-gradient(circle at 30% 30%, rgba(139,92,246,0.15) 0%, rgba(6,7,20,0.6) 70%)', border: '2px solid rgba(139,92,246,0.25)', boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }}>
+          <BaksurCharacter direction="flamehorn" state="IDLE" size={40} bodyColor={bColor.body} moodColor={bColor.mood} restExpression="mefiant" decorative />
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <TerminalText tone="primary" prompt>&gt; BAKASUR</TerminalText>
+            <TerminalText tone="primary" prompt>BAKASUR</TerminalText>
             <PixelBadge tone="success">ONLINE</PixelBadge>
             {isGuest && <PixelBadge tone="primary">DEMO</PixelBadge>}
           </div>
@@ -221,7 +224,7 @@ export const BakaSurPage: React.FC = () => {
         {messages.map(message => (
           <article key={message.id} className={`flex gap-3 ${message.role === 'user' ? 'flex-row-reverse' : ''}`}>
             <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: message.role === 'assistant' ? 'rgba(233,230,242,0.06)' : 'rgba(63,123,255,0.1)' }} aria-hidden="true">
-              {message.role === 'assistant' ? <PixelIcon name="robot" size={16} color="var(--bt-primary-bright)" /> : <PixelIcon name="terminal" size={16} color="var(--bt-info)" />}
+              {message.role === 'assistant' ? <BaksurCharacter direction="flamehorn" state="IDLE" size={28} bodyColor={BAKASUR_COLOR_HEXES.violet.body} moodColor={BAKASUR_COLOR_HEXES.violet.mood} decorative /> : <PixelIcon name="terminal" size={16} color="var(--bt-info)" />}
             </div>
             <div className={`flex flex-col gap-1 max-w-[85%] ${message.role === 'user' ? 'items-end' : ''}`}>
               <span className="font-mono text-[9px] font-bold uppercase tracking-wider" style={{ color: 'var(--bt-text-muted)' }}>{message.role === 'assistant' ? 'BAKASUR' : 'YOU'}</span>
@@ -232,7 +235,7 @@ export const BakaSurPage: React.FC = () => {
         ))}
         {busy && (
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'rgba(233,230,242,0.06)' }}><PixelIcon name="robot" size={16} color="var(--bt-primary-bright)" /></div>
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'rgba(233,230,242,0.06)' }}><BaksurCharacter direction="flamehorn" state="THINKING" size={28} bodyColor={BAKASUR_COLOR_HEXES.violet.body} moodColor={BAKASUR_COLOR_HEXES.violet.mood} decorative /></div>
             <div className="flex gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-[var(--bt-primary)] animate-pulse" />
               <span className="w-1.5 h-1.5 rounded-full bg-[var(--bt-primary)] animate-pulse" style={{ animationDelay: '0.2s' }} />

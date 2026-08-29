@@ -19,6 +19,7 @@ export const NAV_TONES: Record<string, string> = {
   '/journal': 'var(--arcade-magenta)',
   '/journey': 'var(--arcade-cobalt)',
   '/notes': 'var(--arcade-magenta)',
+  '/bakasur': 'var(--arcade-cobalt)',
 };
 
 /** Pixelarticons name per nav item (Refinement Phase 2 — personality icons). */
@@ -30,6 +31,7 @@ export const NAV_PIXEL_ICONS: Record<string, string> = {
   '/journal': 'book',
   '/journey': 'compass',
   '/notes': 'notes',
+  '/bakasur': 'robot',
 };
 
 export interface NavItem {

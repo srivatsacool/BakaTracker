@@ -1,5 +1,7 @@
 import React from 'react';
-import { PixelIcon, PixelBadge, SystemLabel, TerminalText, XPBar } from '../ui';
+import { BaksurCharacter } from '../shell/BaksurCharacter';
+import { BAKASUR_COLOR_HEXES } from '../../lib/baksurPreferences';
+import { PixelBadge, SystemLabel, TerminalText, XPBar } from '../ui';
 
 export interface CharacterCardProps {
   level: number;
@@ -16,6 +18,7 @@ export const CharacterCard: React.FC<CharacterCardProps> = ({
 }) => {
   const xpProgress = Math.min(100, Math.max(0, (xp / Math.max(1, xpPerLevel)) * 100));
   const xpToNext = Math.max(0, xpPerLevel - xp);
+  const color = BAKASUR_COLOR_HEXES.violet;
 
   return (
     <div
@@ -26,17 +29,27 @@ export const CharacterCard: React.FC<CharacterCardProps> = ({
         boxShadow: '0 0 24px rgba(139,92,246,0.12), inset 0 1px 0 rgba(233,230,242,0.06)',
       }}
     >
-      {/* Character avatar area */}
+      {/* BakaSur character — the real SVG, large and centered */}
       <div className="relative">
         <div
-          className="w-20 h-20 rounded-xl flex items-center justify-center"
+          className="rounded-2xl flex items-center justify-center overflow-hidden"
           style={{
-            background: 'linear-gradient(135deg, rgba(232,180,90,0.15) 0%, rgba(232,180,90,0.05) 100%)',
-            border: '2px solid rgba(232,180,90,0.25)',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
+            width: 140,
+            height: 140,
+            background: 'radial-gradient(circle at 30% 30%, rgba(139,92,246,0.12) 0%, rgba(6,7,20,0.6) 70%)',
+            border: '2px solid rgba(139,92,246,0.25)',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.4), 0 0 40px rgba(139,92,246,0.1)',
           }}
         >
-          <PixelIcon name="robot" size={36} color="var(--bt-primary-bright)" />
+          <BaksurCharacter
+            direction="flamehorn"
+            state="IDLE"
+            size={120}
+            bodyColor={color.body}
+            moodColor={color.mood}
+            restExpression="mefiant"
+            decorative
+          />
         </div>
         <PixelBadge tone="primary" className="absolute -bottom-2 left-1/2 -translate-x-1/2">
           LVL {level}
@@ -45,7 +58,7 @@ export const CharacterCard: React.FC<CharacterCardProps> = ({
 
       {/* Character info */}
       <div className="text-center">
-        <TerminalText tone="primary" className="!text-xl">BAKA</TerminalText>
+        <TerminalText tone="primary" className="!text-xl">BAKASUR</TerminalText>
         <SystemLabel tone="muted">{title}</SystemLabel>
       </div>
 

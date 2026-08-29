@@ -133,10 +133,10 @@ export const Journey: React.FC = () => {
 
   const insights = generateInsights(habitLogs, tasks, habits);
 
-  // Chart data — 14 days
+  // Chart data — full 30-day demo world period
   const chartData = (() => {
     const data = []; const today = new Date();
-    for (let i = 13; i >= 0; i--) {
+    for (let i = 29; i >= 0; i--) {
       const d = new Date(today); d.setDate(d.getDate() - i);
       const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
       const dayEvents = events.filter(e => (e.timestamp || '').slice(0, 10) === dateStr);
@@ -163,7 +163,7 @@ export const Journey: React.FC = () => {
     };
 
   return (
-    <div className="max-w-6xl mx-auto flex flex-col gap-6">
+    <div className="w-full max-w-[1600px] mx-auto flex flex-col gap-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 z-10">
         <div>
@@ -315,22 +315,22 @@ export const Journey: React.FC = () => {
         </defs>
       </svg>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 z-10">
-        <GlassPane as="section" state="off" tone="cobalt" paneTitle="XP OVER TIME" screenClassName="!p-4 h-52">
+        <GlassPane as="section" state="off" tone="cobalt" paneTitle="XP OVER TIME" screenClassName="!p-4 h-64">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={chartData} margin={{ top: 6, right: 8, left: 0, bottom: 0 }}>
               <CartesianGrid stroke="rgba(233,230,242,0.06)" vertical={false} />
-              <XAxis dataKey="date" tickLine={false} axisLine={{ stroke: 'rgba(233,230,242,0.12)' }} tick={{ fill: '#7f7c93', fontSize: 10, fontFamily: 'Fragment Mono, ui-monospace, monospace' }} dy={4} minTickGap={28} />
+              <XAxis dataKey="date" tickLine={false} axisLine={{ stroke: 'rgba(233,230,242,0.12)' }} tick={{ fill: '#7f7c93', fontSize: 9, fontFamily: 'Fragment Mono, ui-monospace, monospace' }} dy={4} minTickGap={12} interval={2} />
               <YAxis width={30} tickLine={false} axisLine={{ stroke: 'rgba(233,230,242,0.12)' }} tick={{ fill: '#7f7c93', fontSize: 10, fontFamily: 'Fragment Mono, ui-monospace, monospace' }} allowDecimals={false} />
               <Tooltip content={XP_TOOLTIP} cursor={XP_CURSOR} />
               <Bar dataKey="xp" name="XP" fill="url(#f11XpFill)" maxBarSize={10} radius={[3, 3, 0, 0]} isAnimationActive={false} />
             </BarChart>
           </ResponsiveContainer>
         </GlassPane>
-        <GlassPane as="section" state="off" tone="aurora" paneTitle="DAILY ACTIVITY" screenClassName="!p-4 h-52">
+        <GlassPane as="section" state="off" tone="aurora" paneTitle="DAILY ACTIVITY" screenClassName="!p-4 h-64">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={chartData} margin={{ top: 6, right: 8, left: 0, bottom: 0 }}>
               <CartesianGrid stroke="rgba(233,230,242,0.06)" vertical={false} />
-              <XAxis dataKey="date" tickLine={false} axisLine={{ stroke: 'rgba(233,230,242,0.12)' }} tick={{ fill: '#7f7c93', fontSize: 10, fontFamily: 'Fragment Mono, ui-monospace, monospace' }} dy={4} minTickGap={28} />
+              <XAxis dataKey="date" tickLine={false} axisLine={{ stroke: 'rgba(233,230,242,0.12)' }} tick={{ fill: '#7f7c93', fontSize: 9, fontFamily: 'Fragment Mono, ui-monospace, monospace' }} dy={4} minTickGap={12} interval={2} />
               <YAxis width={30} tickLine={false} axisLine={{ stroke: 'rgba(233,230,242,0.12)' }} tick={{ fill: '#7f7c93', fontSize: 10, fontFamily: 'Fragment Mono, ui-monospace, monospace' }} allowDecimals={false} />
               <Tooltip content={ACTIVITY_TOOLTIP} cursor={ACTIVITY_CURSOR} />
               <Bar dataKey="habits" stackId="a" name="Habits" fill="url(#f11HabitFill)" maxBarSize={10} isAnimationActive={false} />

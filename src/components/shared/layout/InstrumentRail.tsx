@@ -18,7 +18,7 @@ interface InstrumentRailProps {
   dailyScore: number;
   deferredPrompt: BeforeInstallPromptEvent | null;
   onInstallClick: () => void;
-  onOpenSettings: (seedFromSettings: boolean) => void;
+  onOpenSettings: () => void;
 }
 
 /**
@@ -76,9 +76,9 @@ export const InstrumentRail: React.FC<InstrumentRailProps> = ({
             {!railCollapsed && (
               <button
                 id="settings-btn"
-                onClick={() => onOpenSettings(true)}
+                onClick={() => onOpenSettings()}
                 className="p-1.5 rounded-lg transition hover:scale-105 cursor-pointer shrink-0"
-                style={{ border: '1px solid var(--obs-glass-15)', background: 'rgba(242,242,242,0.04)' }}
+                style={{ border: '1px solid rgba(139, 92, 246, 0.3)', background: 'rgba(139, 92, 246, 0.08)' }}
                 title="Settings"
                 aria-label="Settings"
               >
@@ -111,9 +111,9 @@ export const InstrumentRail: React.FC<InstrumentRailProps> = ({
                 {/* Settings Toggle */}
                 <button
                   id="settings-btn-collapsed"
-                  onClick={() => onOpenSettings(true)}
+                  onClick={() => onOpenSettings()}
                   className="p-1.5 rounded border transition hover:scale-105 cursor-pointer"
-                  style={{ border: '1px solid var(--obs-glass-15)', background: 'rgba(242,242,242,0.04)' }}
+                  style={{ border: '1px solid rgba(139, 92, 246, 0.3)', background: 'rgba(139, 92, 246, 0.08)' }}
                   title="Settings"
                 >
                   <PixelIcon name="settings" size={14} color="var(--arcade-paper)" />
@@ -191,7 +191,7 @@ export const InstrumentRail: React.FC<InstrumentRailProps> = ({
               <div className="flex-1 min-w-0">
                 <p className="font-black text-[10px] leading-tight uppercase m-0" style={{ color: 'var(--arcade-gold)' }}>First Light</p>
                 <p className="font-mono text-[9px] leading-tight mt-0.5 m-0" style={{ color: 'var(--arcade-paper-muted)' }}>
-                  Exploring with sample data.
+                  Poking around the demo world.
                   {isAuthConfigured ? (
                     <button onClick={() => login()} className="ml-1 underline font-bold cursor-pointer" style={{ color: 'var(--arcade-gold)' }}>
                       Sign in to sync
