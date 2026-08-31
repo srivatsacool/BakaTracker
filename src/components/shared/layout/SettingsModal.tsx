@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Download, LogOut, Play, X } from 'lucide-react';
+import { useSyncExternalStore } from 'react';
 import { useFocusTrap } from '../../../hooks/useFocusTrap';
 import { SyncStatus } from '../../shell';
 import { subscribeToPush, unsubscribeFromPush, isPushSubscribed } from '../../../services/push';
@@ -10,7 +11,13 @@ import {
 } from '../../../services/notificationSettings';
 import { seedDemoData } from '../../../services/demoMode';
 import type { ApiClient } from '../../../api/apiClient';
-import { TONE_LABELS, ACCENT_SWATCHES } from './constants';
+import { TONE_LABELS } from './constants';
+import {
+  BAKASUR_COLOR_HEXES, loadBakaSurPreferences, saveBakaSurPreferences,
+  subscribeBakaSurPreferences, type BakaSurColorId, type BakaSurPresence,
+  type BakaSurMotion, type BakaSurScale, type BakaSurProactiveFreq,
+} from '../../../lib/baksurPreferences';
+import { fetchAiSettings as fetchServerAiSettings, saveAiSettings as saveServerAiSettings } from '../../../services/assistantChat';
 import type { User } from '../../../features/auth/types';
 import { PixelIcon, PixelBadge, SystemLabel, TerminalText } from '../../ui';
 
@@ -24,42 +31,82 @@ interface SettingsModalProps {
   apiClient: ApiClient;
   init: (apiClient?: ApiClient) => Promise<void>;
   clearDataByDays: (days: number | 'all') => Promise<void>;
-  setAccentColors: (light: string, dark: string) => void;
-  startTour: () => void;
-  initialAccentLight: string;
-  initialAccentDark: string;
+  /** V3.5: launches THE canonical walkthrough (replaces the intro.js tour). */
+  onReplayWalkthrough: () => void;
   onClose: () => void;
   onRequestExport: () => void;
 }
 
 /**
- * SettingsModal — system control panel. Clean, precise, technical.
- * Lowest RPG intensity in the application.
+ * SettingsModal — system control panel (V3.5 overhaul).
+ *
+ * Every control here changes real behavior. Removed in V3.5 as dead: the
+ * 'Theme: Dark' badge (nothing reads bt_theme; the app is dark-only), the
+ * Day/Night accent pickers (they wrote CSS vars with zero consumers), the
+ * broken 'Reset Defaults' (reset to a swatch, not the defaults), and the
+ * Cancel/Save ceremony around settings that already auto-save.
+ *
+ * Groups: ACCOUNT · BAKASUR · NOTIFICATIONS · DATA · ABOUT.
  */
 export const SettingsModal: React.FC<SettingsModalProps> = ({
   user, isGuest, isAuthConfigured, login, logout, getAccessToken, apiClient,
-  init, clearDataByDays, setAccentColors, startTour, initialAccentLight,
-  initialAccentDark, onClose, onRequestExport,
+  init, clearDataByDays, onReplayWalkthrough,
+  onClose, onRequestExport,
 }) => {
   const navigate = useNavigate();
   const [settingsClosing, setSettingsClosing] = useState(false);
   const settingsDialogRef = useFocusTrap<HTMLDivElement>(!settingsClosing, { onEscape: () => requestClose() });
 
-  const [inputAccentLight, setInputAccentLight] = useState(initialAccentLight);
-  const [inputAccentDark, setInputAccentDark] = useState(initialAccentDark);
-
   const requestClose = () => { setSettingsClosing(true); setTimeout(onClose, 150); };
 
+  /* BakaSur preferences (device chrome — lives outside the ledger store) */
+  const prefs = useSyncExternalStore(subscribeBakaSurPreferences, loadBakaSurPreferences, loadBakaSurPreferences);
+
+  /* Push */
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [pushBusy, setPushBusy] = useState(false);
   useEffect(() => { isPushSubscribed().then(setIsSubscribed); }, []);
 
+  /* Server-side BakaSur notification policy (real: engine.ts + policy.ts) */
   const [notifSettings, setNotifSettings] = useState<NotificationSettings | null>(null);
   const [notifSaving, setNotifSaving] = useState(false);
   const [notifError, setNotifError] = useState<string | null>(null);
   const [notifSaved, setNotifSaved] = useState(false);
   const notifSaveSeq = useRef(0);
   const notifLoading = !isGuest && !notifSettings && !notifError;
+
+  /* AI quota (Phase 2B: userSelectedQuota capped by plan/host, server authoritative) */
+  const [aiSettings, setAiSettings] = useState<{ ai_turns_per_day: number; effectiveQuota: number; planMax: number; hostCap?: number } | null>(null);
+  const [aiQuota, setAiQuota] = useState<{ remaining: number; used: number; resetAt?: string } | null>(null);
+  const [aiBusy, setAiBusy] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+  const [aiSaved, setAiSaved] = useState(false);
+
+  useEffect(() => {
+    if (isGuest || !apiClient) return;
+    let cancelled = false;
+    fetchServerAiSettings(apiClient).then(res => {
+      if (cancelled || !res) return;
+      setAiSettings({ ai_turns_per_day: res.ai_turns_per_day, effectiveQuota: res.effectiveQuota, planMax: res.planMax, hostCap: res.hostCap });
+      setAiQuota({ remaining: res.quota.remaining ?? 0, used: res.quota.used ?? 0, resetAt: (res.quota as any).resetAt });
+    }).catch(() => { if (!cancelled) setAiError('Failed to load AI settings'); });
+    return () => { cancelled = true; };
+  }, [isGuest, apiClient]);
+
+  const handleAiChange = async (nextVal: number) => {
+    if (!apiClient || !aiSettings) return;
+    setAiBusy(true); setAiError(null); setAiSaved(false);
+    try {
+      const res = await saveServerAiSettings(apiClient, nextVal);
+      if (!res) throw new Error('no response');
+      setAiSettings({ ai_turns_per_day: res.ai_turns_per_day, effectiveQuota: res.effectiveQuota, planMax: res.planMax, hostCap: res.hostCap });
+      setAiQuota({ remaining: res.quota.remaining ?? 0, used: (res.quota as any).used ?? 0, resetAt: (res.quota as any).resetAt });
+      setAiSaved(true);
+      window.setTimeout(() => setAiSaved(false), 2500);
+    } catch (e) {
+      setAiError(e instanceof Error ? e.message : 'Failed to save AI setting');
+    } finally { setAiBusy(false); }
+  };
 
   useEffect(() => {
     if (isGuest || !apiClient) return;
@@ -68,9 +115,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       .catch(e => { if (!cancelled) setNotifError(`Failed to load settings — ${e instanceof Error ? e.message : 'unknown error'}`); });
     return () => { cancelled = true; };
   }, [isGuest, apiClient]);
-
-  const handleSaveSettings = (e: React.FormEvent) => { e.preventDefault(); setAccentColors(inputAccentLight, inputAccentDark); requestClose(); };
-  const handleResetColors = () => { setInputAccentLight('#8B5CF6'); setInputAccentDark('#8B5CF6'); };
 
   const handleLeaveDemo = async () => { requestClose(); await logout(); navigate('/'); };
 
@@ -96,6 +140,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     } finally { if (seq === notifSaveSeq.current) setNotifSaving(false); }
   };
 
+  /* Trial data (authenticated accounts only — server seed) */
   const [demoBusy, setDemoBusy] = useState(false);
   const [demoResult, setDemoResult] = useState<{ ok: boolean; skipped: boolean; message: string } | null>(null);
 
@@ -112,6 +157,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     finally { setDemoBusy(false); }
   };
 
+  /* Danger zone */
   const [resetBusy, setResetBusy] = useState(false);
   const [resetResult, setResetResult] = useState<string | null>(null);
   const [clearDays, setClearDays] = useState<number | 'all'>(7);
@@ -147,7 +193,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           Your workspace is local-first. Sign in only when you want to sync.
         </p>
 
-        {/* Account */}
+        {/* ── ACCOUNT ── */}
         <div className="f11-settings-section">
           <div className="f11-settings-header">
             <span className="f11-settings-led" aria-hidden="true" />
@@ -193,150 +239,236 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           )}
         </div>
 
-        {/* Appearance */}
-        <form onSubmit={handleSaveSettings} className="flex flex-col gap-4">
-          <div className="f11-settings-section">
-            <div className="f11-settings-header">
-              <span className="f11-settings-led" aria-hidden="true" />
-              <h4 className="f11-settings-title">Appearance</h4>
-            </div>
+        {/* ── BAKASUR (V3.5: real controls wired to the presence renderer) ── */}
+        <div className="f11-settings-section">
+          <div className="f11-settings-header">
+            <span className="f11-settings-led" aria-hidden="true" />
+            <h4 className="f11-settings-title">BakaSur</h4>
+          </div>
+          <p className="m-0 text-[10px] leading-relaxed font-mono" style={{ color: 'var(--bt-text-muted)' }}>
+            Your companion's look and presence. Changes apply instantly on this device.
+          </p>
 
+          {/* Color */}
+          <div className="flex flex-col gap-1.5">
+            <SystemLabel>Color</SystemLabel>
+            <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="BakaSur color">
+              {(Object.keys(BAKASUR_COLOR_HEXES) as BakaSurColorId[]).map(id => {
+                const active = prefs.color === id;
+                return (
+                  <button key={id} type="button" role="radio" aria-checked={active}
+                    onClick={() => saveBakaSurPreferences({ color: id })}
+                    className="w-11 h-11 rounded-xl cursor-pointer transition hover:scale-105"
+                    style={{
+                      background: `radial-gradient(circle at 32% 26%, ${BAKASUR_COLOR_HEXES[id].mood} 0%, rgba(0,0,0,0) 68%), #1a1625`,
+                      border: `2px solid ${active ? 'var(--bt-primary)' : 'var(--bt-border)'}`,
+                      boxShadow: active ? '0 0 10px rgba(139,92,246,0.35)' : 'none',
+                    }}
+                    aria-label={BAKASUR_COLOR_HEXES[id].label} title={BAKASUR_COLOR_HEXES[id].label}
+                  />
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Presence */}
+          <div className="flex flex-col gap-1.5">
+            <SystemLabel>Presence</SystemLabel>
+            <Segmented
+              value={prefs.presence}
+              options={[
+                { id: 'normal', label: 'Normal' },
+                { id: 'subtle', label: 'Subtle' },
+                { id: 'hidden', label: 'Hidden' },
+              ]}
+              onChange={(v) => saveBakaSurPreferences({ presence: v as BakaSurPresence })}
+              hint="Hidden removes the floating companion; the chat stays reachable from the header ⌘K-style pill."
+            />
+          </div>
+
+          {/* Motion */}
+          <div className="flex flex-col gap-1.5">
+            <SystemLabel>Animation</SystemLabel>
+            <Segmented
+              value={prefs.motion}
+              options={[
+                { id: 'full', label: 'Full' },
+                { id: 'reduced', label: 'Reduced' },
+              ]}
+              onChange={(v) => saveBakaSurPreferences({ motion: v as BakaSurMotion })}
+              hint="Reduced freezes ambient motion; reactions still change pose. Your system-level reduced-motion setting always wins."
+            />
+          </div>
+
+          {/* Scale */}
+          <div className="flex flex-col gap-1.5">
+            <SystemLabel>Scale</SystemLabel>
+            <Segmented
+              value={prefs.scale}
+              options={[
+                { id: 'small', label: 'Small' },
+                { id: 'standard', label: 'Standard' },
+                { id: 'large', label: 'Large' },
+              ]}
+              onChange={(v) => saveBakaSurPreferences({ scale: v as BakaSurScale })}
+              hint="Hero size on your screen — clamped safely on phones."
+            />
+          </div>
+
+          {/* Proactive message frequency */}
+          <div className="flex flex-col gap-1.5">
+            <SystemLabel>Messages</SystemLabel>
+            <Segmented
+              value={prefs.proactiveFrequency}
+              options={[
+                { id: '10s', label: '10s' },
+                { id: '30s', label: '30s' },
+                { id: '1m', label: '1m' },
+                { id: '5m', label: '5m' },
+                { id: 'off', label: 'Off' },
+              ]}
+              onChange={(v) => saveBakaSurPreferences({ proactiveFrequency: v as BakaSurProactiveFreq })}
+              hint="How often BakaSur can proactively speak. Off silences in-app nudges entirely."
+            />
+          </div>
+
+          {/* Phase 2B: AI quota — user-controlled daily turns capped by plan/host (server authoritative) */}
+          <div className="flex flex-col gap-1.5">
             <div className="flex items-center justify-between">
-              <SystemLabel>Theme</SystemLabel>
-              <span className="btn-ghost !py-1.5 !text-xs opacity-50 cursor-default">
-                <PixelIcon name="moon" size={12} className="mr-1" /> Dark
-              </span>
+              <SystemLabel>BakaSur AI turns/day</SystemLabel>
+              {aiSettings && <PixelBadge tone={aiQuota && aiQuota.remaining === 0 ? 'danger' : 'success'}>{aiQuota ? `${aiQuota.remaining} left` : `${aiSettings.effectiveQuota}/day`}</PixelBadge>}
             </div>
-
-            <div className="flex flex-col gap-3">
-              <div className="flex justify-between items-center">
-                <SystemLabel>Accent Colors</SystemLabel>
-                <button type="button" onClick={handleResetColors} className="btn-ghost !text-[10px]">Reset Defaults</button>
-              </div>
-
-              {/* Light Accent */}
-              <div className="flex flex-col gap-1">
-                <SystemLabel tone="muted">Day Accent</SystemLabel>
+            {isGuest ? (
+              <SystemLabel tone="muted">Sign in to configure AI turns. Demo is limited to 3 turns/session.</SystemLabel>
+            ) : !aiSettings ? (
+              <SystemLabel tone="muted">{aiBusy ? 'Loading AI settings…' : aiError ? aiError : 'Loading…'}</SystemLabel>
+            ) : (
+              <>
+                <p className="m-0 text-[10px] leading-relaxed font-mono" style={{ color: 'var(--bt-text-muted)' }}>
+                  Your plan allows up to <b style={{ color: 'var(--bt-text)' }}>{aiSettings.planMax}</b> turns/day{aiSettings.hostCap !== undefined ? ` (host cap ${aiSettings.hostCap})` : ''}. Effective: <b style={{ color: 'var(--bt-text)' }}>{aiSettings.effectiveQuota}/day</b>. Server is authoritative — client cannot exceed the ceiling.
+                </p>
                 <div className="flex items-center gap-2">
-                  <input type="color" value={inputAccentLight} onChange={e => setInputAccentLight(e.target.value)}
-                    className="w-8 h-8 rounded cursor-pointer shrink-0" style={{ border: '1px solid var(--bt-border)', background: 'transparent' }} />
-                  <input type="text" value={inputAccentLight} onChange={e => setInputAccentLight(e.target.value)} placeholder="#8B5CF6"
-                    className="arcade-input !text-xs w-24 uppercase font-mono py-1 px-2 shrink-0" maxLength={7} pattern="^#[0-9A-Fa-f]{6}$" required />
-                  <div className="flex gap-1.5 ml-auto overflow-x-auto no-scrollbar py-1">
-                    {ACCENT_SWATCHES.map(c => (
-                      <button key={c} type="button" onClick={() => setInputAccentLight(c)}
-                        className="w-4.5 h-4.5 rounded-full cursor-pointer shrink-0 transition hover:scale-110"
-                        style={{ backgroundColor: c, border: '1px solid var(--bt-border)' }} aria-label={`Set day accent to ${c}`} />
-                    ))}
-                  </div>
+                  <input
+                    type="range"
+                    min={1}
+                    max={aiSettings.planMax}
+                    value={aiSettings.ai_turns_per_day}
+                    onChange={e => handleAiChange(Number(e.target.value))}
+                    disabled={aiBusy}
+                    className="flex-1 accent-[var(--bt-primary)]"
+                    aria-label="AI turns per day"
+                  />
+                  <span className="font-mono text-xs px-2 py-1 rounded" style={{ background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.25)', color: 'var(--bt-text)', minWidth: 44, textAlign: 'center' }}>
+                    {aiSettings.ai_turns_per_day}
+                  </span>
                 </div>
-              </div>
-
-              {/* Dark Accent */}
-              <div className="flex flex-col gap-1 mt-1">
-                <SystemLabel tone="muted">Night Accent</SystemLabel>
                 <div className="flex items-center gap-2">
-                  <input type="color" value={inputAccentDark} onChange={e => setInputAccentDark(e.target.value)}
-                    className="w-8 h-8 rounded cursor-pointer shrink-0" style={{ border: '1px solid var(--bt-border)', background: 'transparent' }} />
-                  <input type="text" value={inputAccentDark} onChange={e => setInputAccentDark(e.target.value)} placeholder="#8B5CF6"
-                    className="arcade-input !text-xs w-24 uppercase font-mono py-1 px-2 shrink-0" maxLength={7} pattern="^#[0-9A-Fa-f]{6}$" required />
-                  <div className="flex gap-1.5 ml-auto overflow-x-auto no-scrollbar py-1">
-                    {ACCENT_SWATCHES.map(c => (
-                      <button key={c} type="button" onClick={() => setInputAccentDark(c)}
-                        className="w-4.5 h-4.5 rounded-full cursor-pointer shrink-0 transition hover:scale-110"
-                        style={{ backgroundColor: c, border: '1px solid var(--bt-border)' }} aria-label={`Set night accent to ${c}`} />
+                  <select
+                    value={aiSettings.ai_turns_per_day}
+                    onChange={e => handleAiChange(Number(e.target.value))}
+                    disabled={aiBusy}
+                    className="arcade-input !text-xs font-mono flex-1"
+                    aria-label="AI turns per day (select)"
+                  >
+                    {[1,5,10,15,20,25,30].filter(v => v <= aiSettings.planMax).concat(aiSettings.planMax > 30 ? [aiSettings.planMax] : []).filter((v,i,a) => a.indexOf(v)===i).sort((a,b)=>a-b).map(v => (
+                      <option key={v} value={v}>{v} turns/day</option>
                     ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Notifications */}
-          <div className="f11-settings-section">
-            <div className="f11-settings-header">
-              <span className="f11-settings-led" aria-hidden="true" />
-              <h4 className="f11-settings-title">Notifications</h4>
-            </div>
-
-            {/* Push */}
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center justify-between">
-                <SystemLabel>Push Notifications</SystemLabel>
-                <PixelBadge tone={isSubscribed ? 'success' : 'default'}>{isSubscribed ? 'ACTIVE' : 'OFF'}</PixelBadge>
-              </div>
-              <p className="m-0 text-[10px] leading-relaxed font-mono" style={{ color: 'var(--bt-text-muted)' }}>
-                Receive proactive reminders from BakaSur when habits lapse, tasks are due, or milestones are reached.
-              </p>
-              <button type="button" disabled={pushBusy} onClick={async () => {
-                const token = await getAccessToken(); if (!token) return;
-                setPushBusy(true);
-                if (isSubscribed) { await unsubscribeFromPush(token); setIsSubscribed(false); }
-                else { const result = await subscribeToPush(token); if (result.success) setIsSubscribed(true); if (result.message) alert(result.message); }
-                setPushBusy(false);
-              }} className="btn-ghost self-start !py-1.5 !text-xs">
-                {pushBusy ? '...' : isSubscribed ? 'Disable Push' : 'Enable Push'}
-              </button>
-            </div>
-
-            {/* BakaSur Notifications */}
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center justify-between">
-                <SystemLabel>BakaSur Notifications</SystemLabel>
-                <PixelBadge tone={notifSettings?.enabled ? 'success' : 'default'}>{notifSettings?.enabled ? 'ACTIVE' : 'OFF'}</PixelBadge>
-              </div>
-              <p className="m-0 text-[10px] leading-relaxed font-mono" style={{ color: 'var(--bt-text-muted)' }}>
-                Let BakaSur nudge you when habits lapse, tasks are due, or milestones are reached.
-              </p>
-              {notifLoading ? (
-                <SystemLabel tone="muted">Loading settings…</SystemLabel>
-              ) : notifSettings ? (
-                <>
-                  <div className="flex items-center justify-between gap-2">
-                    <SystemLabel tone="muted">Proactive reminders</SystemLabel>
-                    <button type="button" disabled={notifSaving} onClick={() => handleNotifChange({ enabled: !notifSettings.enabled })} className="btn-ghost !py-1.5 !text-xs">
-                      {notifSaving ? '...' : notifSettings.enabled ? 'On' : 'Off'}
-                    </button>
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <SystemLabel tone="muted">BakaSur personality</SystemLabel>
-                    <select value={notifSettings.tone} onChange={e => handleNotifChange({ tone: e.target.value as NotifTone })} className="arcade-input !text-xs font-mono">
-                      {NOTIF_TONES.map(t => <option key={t} value={t}>{TONE_LABELS[t]}</option>)}
-                    </select>
-                  </div>
-                  <div className="flex flex-col gap-1.5">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input type="checkbox" checked={notifSettings.quiet_hours.enabled}
-                        onChange={e => handleNotifChange({ quiet_hours: { ...notifSettings.quiet_hours, enabled: e.target.checked } })}
-                        className="w-4 h-4 accent-[var(--bt-primary)]" />
-                      <SystemLabel tone="muted">Quiet hours</SystemLabel>
-                    </label>
-                    {notifSettings.quiet_hours.enabled && (
-                      <div className="flex items-center gap-2">
-                        <input type="time" value={notifSettings.quiet_hours.start}
-                          onChange={e => handleNotifChange({ quiet_hours: { ...notifSettings.quiet_hours, start: e.target.value } })}
-                          className="arcade-input !text-xs font-mono" />
-                        <SystemLabel tone="muted">to</SystemLabel>
-                        <input type="time" value={notifSettings.quiet_hours.end}
-                          onChange={e => handleNotifChange({ quiet_hours: { ...notifSettings.quiet_hours, end: e.target.value } })}
-                          className="arcade-input !text-xs font-mono" />
-                      </div>
+                    {!([1,5,10,15,20,25,30, aiSettings.planMax].includes(aiSettings.ai_turns_per_day)) && (
+                      <option value={aiSettings.ai_turns_per_day}>{aiSettings.ai_turns_per_day} turns/day (custom)</option>
                     )}
-                  </div>
-                  {notifError && <p className="m-0 text-[10px] font-mono" style={{ color: 'var(--bt-danger)' }}>{notifError}</p>}
-                  {notifSaved && !notifError && <p className="m-0 text-[10px] font-mono" style={{ color: 'var(--bt-success)' }}>Saved ✓</p>}
-                </>
-              ) : notifError ? <p className="m-0 text-[10px] font-mono" style={{ color: 'var(--bt-danger)' }}>{notifError}</p> : null}
+                  </select>
+                  {aiBusy && <span className="font-mono text-[10px]" style={{ color: 'var(--bt-text-muted)' }}>Saving…</span>}
+                </div>
+                {aiQuota && <p className="m-0 text-[10px] font-mono" style={{ color: 'var(--bt-text-muted)' }}>Today: {aiQuota.used} used · {aiQuota.remaining} remaining{aiQuota.resetAt ? ` · resets ${new Date(aiQuota.resetAt).toLocaleTimeString()}` : ''}</p>}
+                {aiError && <p className="m-0 text-[10px] font-mono" style={{ color: 'var(--bt-danger)' }}>{aiError}</p>}
+                {aiSaved && !aiError && <p className="m-0 text-[10px] font-mono" style={{ color: 'var(--bt-success)' }}>Saved ✓ — effective {aiSettings.effectiveQuota}/day</p>}
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* ── NOTIFICATIONS (server-side policy; auto-saves) ── */}
+        <div className="f11-settings-section">
+          <div className="f11-settings-header">
+            <span className="f11-settings-led" aria-hidden="true" />
+            <h4 className="f11-settings-title">Notifications</h4>
+          </div>
+
+          {/* Push */}
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <SystemLabel>Push Notifications</SystemLabel>
+              <PixelBadge tone={isSubscribed ? 'success' : 'default'}>{isSubscribed ? 'ACTIVE' : 'OFF'}</PixelBadge>
             </div>
+            <p className="m-0 text-[10px] leading-relaxed font-mono" style={{ color: 'var(--bt-text-muted)' }}>
+              Device alerts from your scheduled reminders.
+            </p>
+            <button type="button" disabled={pushBusy} onClick={async () => {
+              const token = await getAccessToken(); if (!token) return;
+              setPushBusy(true);
+              if (isSubscribed) { await unsubscribeFromPush(token); setIsSubscribed(false); }
+              else { const result = await subscribeToPush(token); if (result.success) setIsSubscribed(true); if (result.message) alert(result.message); }
+              setPushBusy(false);
+            }} className="btn-ghost self-start !py-1.5 !text-xs">
+              {pushBusy ? '...' : isSubscribed ? 'Disable Push' : 'Enable Push'}
+            </button>
           </div>
 
-          <div className="flex justify-end gap-3 mt-2">
-            <button type="button" onClick={requestClose} className="btn-ghost !text-sm">Cancel</button>
-            <button type="submit" className="insert-coin !py-2 !px-4 !text-sm">Save preferences</button>
+          {/* BakaSur proactive reminders (real: engine.ts + policy.ts) */}
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <SystemLabel>BakaSur Reminders</SystemLabel>
+              <PixelBadge tone={notifSettings?.enabled ? 'success' : 'default'}>{notifSettings?.enabled ? 'ACTIVE' : 'OFF'}</PixelBadge>
+            </div>
+            <p className="m-0 text-[10px] leading-relaxed font-mono" style={{ color: 'var(--bt-text-muted)' }}>
+              Scheduled nudges when habits lapse, tasks are due, or milestones land.
+            </p>
+            {notifLoading ? (
+              <SystemLabel tone="muted">Loading settings…</SystemLabel>
+            ) : notifSettings ? (
+              <>
+                <div className="flex items-center justify-between gap-2">
+                  <SystemLabel tone="muted">Proactive reminders</SystemLabel>
+                  <button type="button" disabled={notifSaving} onClick={() => handleNotifChange({ enabled: !notifSettings.enabled })} className="btn-ghost !py-1.5 !text-xs">
+                    {notifSaving ? '...' : notifSettings.enabled ? 'On' : 'Off'}
+                  </button>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <SystemLabel tone="muted">BakaSur personality</SystemLabel>
+                  <select value={notifSettings.tone} onChange={e => handleNotifChange({ tone: e.target.value as NotifTone })} className="arcade-input !text-xs font-mono">
+                    {NOTIF_TONES.map(t => <option key={t} value={t}>{TONE_LABELS[t]}</option>)}
+                  </select>
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" checked={notifSettings.quiet_hours.enabled}
+                      onChange={e => handleNotifChange({ quiet_hours: { ...notifSettings.quiet_hours, enabled: e.target.checked } })}
+                      className="w-4 h-4 accent-[var(--bt-primary)]" />
+                    <SystemLabel tone="muted">Quiet hours</SystemLabel>
+                  </label>
+                  {notifSettings.quiet_hours.enabled && (
+                    <div className="flex items-center gap-2">
+                      <input type="time" value={notifSettings.quiet_hours.start}
+                        onChange={e => handleNotifChange({ quiet_hours: { ...notifSettings.quiet_hours, start: e.target.value } })}
+                        className="arcade-input !text-xs font-mono" />
+                      <SystemLabel tone="muted">to</SystemLabel>
+                      <input type="time" value={notifSettings.quiet_hours.end}
+                        onChange={e => handleNotifChange({ quiet_hours: { ...notifSettings.quiet_hours, end: e.target.value } })}
+                        className="arcade-input !text-xs font-mono" />
+                    </div>
+                  )}
+                </div>
+                {notifError && <p className="m-0 text-[10px] font-mono" style={{ color: 'var(--bt-danger)' }}>{notifError}</p>}
+                {notifSaved && !notifError && <p className="m-0 text-[10px] font-mono" style={{ color: 'var(--bt-success)' }}>Saved ✓</p>}
+              </>
+            ) : notifError ? <p className="m-0 text-[10px] font-mono" style={{ color: 'var(--bt-danger)' }}>{notifError}</p> : null}
           </div>
-        </form>
+          {isGuest && (
+            <SystemLabel tone="muted">Notifications require sign-in.</SystemLabel>
+          )}
+        </div>
 
-        {/* Data */}
+        {/* ── DATA ── */}
         <div className="f11-settings-section">
           <div className="f11-settings-header">
             <span className="f11-settings-led" aria-hidden="true" />
@@ -362,16 +494,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <PixelIcon name="zap" size={14} color="var(--bt-primary)" className="mr-1" />
               {demoBusy ? 'Loading Trial Data...' : 'Load Trial Data'}
             </button>
-            <SystemLabel tone="muted" className="text-center">Adds sample habits, tasks, journal entries and a note.</SystemLabel>
+            <SystemLabel tone="muted" className="text-center">Adds a sample set to your signed-in account (server-side).</SystemLabel>
             {demoResult && (
-              <p className={`text-[10px] font-mono text-center m-0 ${demoResult.ok ? '' : ''}`} style={{ color: demoResult.ok ? 'var(--bt-success)' : 'var(--bt-danger)' }}>
+              <p className="text-[10px] font-mono text-center m-0" style={{ color: demoResult.ok ? 'var(--bt-success)' : 'var(--bt-danger)' }}>
                 {demoResult.message}
               </p>
             )}
 
-            <button type="button" onClick={() => { requestClose(); setTimeout(() => startTour(), 300); }}
+            <button type="button" onClick={() => { requestClose(); setTimeout(() => onReplayWalkthrough(), 300); }}
               className="btn-ghost w-full !text-xs py-2">
-              <Play className="w-4 h-4" style={{ color: 'var(--bt-primary)' }} aria-hidden="true" /> Replay App Tour
+              <Play className="w-4 h-4" style={{ color: 'var(--bt-primary)' }} aria-hidden="true" /> Replay Walkthrough
             </button>
           </div>
 
@@ -382,14 +514,17 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </span>
 
             <div className="flex flex-col gap-1.5">
-              <SystemLabel>Clear Data Duration</SystemLabel>
+              <SystemLabel>Delete Recent Activity</SystemLabel>
               <select value={clearDays} onChange={e => setClearDays(e.target.value === 'all' ? 'all' : Number(e.target.value))}
                 className="arcade-input !text-xs font-mono">
-                <option value={7}>Last 7 Days</option>
-                <option value={14}>Last 14 Days</option>
-                <option value={30}>Last 30 Days</option>
-                <option value="all">All Time (Full Reset)</option>
+                <option value={7}>The last 7 days</option>
+                <option value={14}>The last 14 days</option>
+                <option value={30}>The last 30 days</option>
+                <option value="all">Everything (full account reset)</option>
               </select>
+              <p className="m-0 text-[10px] leading-relaxed font-mono" style={{ color: 'var(--bt-text-muted)' }}>
+                Deletes logs, events and completions from the most recent window. Older history is kept. Everything resets cannot be undone.
+              </p>
             </div>
 
             <div className="flex flex-col gap-1.5">
@@ -412,7 +547,48 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             {resetResult && <p className="text-[10px] font-mono text-center m-0" style={{ color: 'var(--bt-danger)' }}>{resetResult}</p>}
           </div>
         </div>
+
+        {/* ── ABOUT ── */}
+        <div className="f11-settings-section">
+          <div className="f11-settings-header">
+            <span className="f11-settings-led" aria-hidden="true" />
+            <h4 className="f11-settings-title">About</h4>
+          </div>
+          <p className="m-0 text-[10px] leading-relaxed font-mono" style={{ color: 'var(--bt-text-muted)' }}>
+            BakaTracker — a personal life OS built by Build.Srivatsa. Your life, slotted like a cartridge; your companion, watching the save file.
+          </p>
+          <SystemLabel tone="muted">v3.5 · local-first · Cloudflare-ready</SystemLabel>
+        </div>
       </div>
     </div>
   );
 };
+
+/** Compact segmented control — shared shape for presence/motion/scale. */
+const Segmented: React.FC<{
+  value: string;
+  options: { id: string; label: string }[];
+  onChange: (id: string) => void;
+  hint?: string;
+}> = ({ value, options, onChange, hint }) => (
+  <div className="flex flex-col gap-1">
+    <div className="flex gap-1 rounded-xl p-1" role="radiogroup" style={{ background: 'rgba(233,230,242,0.04)', border: '1px solid var(--bt-border-soft)' }}>
+      {options.map(o => {
+        const active = value === o.id;
+        return (
+          <button key={o.id} type="button" role="radio" aria-checked={active}
+            onClick={() => onChange(o.id)}
+            className="flex-1 font-mono text-[10px] uppercase py-2 rounded-lg cursor-pointer transition"
+            style={{
+              background: active ? 'rgba(139,92,246,0.16)' : 'transparent',
+              color: active ? 'var(--bt-text)' : 'var(--bt-text-muted)',
+              border: `1px solid ${active ? 'rgba(139,92,246,0.5)' : 'transparent'}`,
+            }}>
+            {o.label}
+          </button>
+        );
+      })}
+    </div>
+    {hint && <p className="m-0 text-[9px] leading-relaxed font-mono" style={{ color: 'var(--bt-text-disabled)' }}>{hint}</p>}
+  </div>
+);

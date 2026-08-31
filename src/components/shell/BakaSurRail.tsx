@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { ChevronRight, Loader2, Send, Sparkles, X } from 'lucide-react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Loader2, Send, Sparkles, X } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import { useStore } from '../../store/useStore';
 import { useShallow } from 'zustand/react/shallow';
@@ -8,6 +8,10 @@ import { useApiClient } from '../../api/authFetch';
 import { getTodayDateString, isHabitCompleted } from '../../lib/utils';
 import { calculateHabitStreak } from '../../services/habits/calculateHabitStreak';
 import { PixelIcon, PixelBadge, TerminalText } from '../ui';
+import { useBakaSurBusyReporter, useBakaSurPrefs, useBakaSurPresenceSlot } from './bakaSurPresenceContext';
+import { BAKASUR_COLOR_HEXES, railSizeFor } from '../../lib/baksurPreferences';
+import { baksurLine, type BakaSurEnvironment, type BakaSurIntent } from '../../lib/baksurMessages';
+import { fetchAiQuota, getGuestRemaining, isGuestQuotaExhausted } from '../../services/assistantChat';
 import type { Habit, HabitLog, JournalEntry, Task, UserStats } from '../../types';
 
 interface Message {
@@ -189,10 +193,7 @@ function buildRouteSuggestions(route: string, data: { tasks: Task[]; habits: Hab
         };
       }
       if (openTasks.length > 0) {
-        return {
-          insight: `${openTasks.length} open quest${plural(openTasks.length)} · none assigned`,
-          prompts: [{ label: 'Assign your quests to quadrants', prompt: 'Which of my open quests belong in Do First?' }],
-        };
+        return { insight: `${openTasks.length} open quest${plural(openTasks.length)} · none assigned`, prompts: [{ label: 'Assign your quests to quadrants', prompt: 'Which of my open quests belong in Do First?' }] };
       }
       return { insight: 'No quests yet', prompts: [startPrompt] };
     }
@@ -211,105 +212,33 @@ function buildRouteSuggestions(route: string, data: { tasks: Task[]; habits: Hab
   }
 }
 
-function demoReply(question: string, route: string, tasks: Task[], habits: Habit[], habitLogs: HabitLog[], stats: UserStats, journal: JournalEntry[]): { content: string; source: string } {
+/** Keyword → scripted intent. Deterministic, no LLM, no guessing. */
+function classifyIntent(question: string): BakaSurIntent {
   const q = question.toLowerCase();
-  const today = getTodayDateString();
-  const openToday = tasks.filter(task => task.today && task.status !== 'done');
-  const activeHabits = habits.filter(habit => habit.active);
-  const overdue = tasks.filter(task => task.status !== 'done' && task.due_date && task.due_date < today);
-  const dueToday = tasks.filter(task => task.status !== 'done' && task.due_date === today);
-  const doneTodayCount = doneHabitsToday(habits, habitLogs);
-  const atRisk = habitsAtRisk(habits, habitLogs);
-  const journalToday = journal.find(entry => entry.date === today);
-  const latest = journal.at(-1);
-
-  if (q.includes('overdue') || q.includes('late')) {
-    return overdue.length
-      ? { content: `I found ${overdue.length} overdue quest${overdue.length === 1 ? '' : 's'}. Start with “${overdue[0].title}”, then move one task into Doing.`, source: 'Tasks · demo data' }
-      : { content: 'No overdue quests in the demo ledger. That is a clean board — pick one Today task and protect a short focus block.', source: 'Tasks · demo data' };
-  }
-  if (q.includes('habit') || q.includes('streak') || q.includes('log')) {
-    if (atRisk[0]) {
-      return { content: `“${atRisk[0].habit.name}” is at ${atRisk[0].streak} days and not logged yet today — the streak survives with the smallest version.`, source: 'Habits · demo data' };
-    }
-    return { content: `You have ${activeHabits.length} active habit${activeHabits.length === 1 ? '' : 's'} configured; ${doneTodayCount} done today. Log the smallest version first; consistency earns the XP, not a perfect session.`, source: 'Habits · demo data' };
-  }
-  if (q.includes('journal') || q.includes('feel') || q.includes('pattern') || q.includes('reflect') || q.includes('highlight')) {
-    if (journalToday?.highlight?.trim()) {
-      return {
-        content: `Today's highlight is logged: “${truncate(journalToday.highlight, 90)}”. A useful next step is to write one sentence about what made it work.`,
-        source: 'Journal · demo data',
-      };
-    }
-    return {
-      content: latest?.highlight
-        ? `Your latest highlight was “${truncate(latest.highlight, 90)}”. Today's entry is still open — one honest sentence is enough.`
-        : 'Your journal is ready for its first highlight. One honest sentence is enough.',
-      source: 'Journal · demo data',
-    };
-  }
-  if (q.includes('note')) {
-    return { content: 'Notes live on your instance — I can turn a page into quests once you are signed in. Ask me about your quests, habits, or journal meanwhile.', source: 'Notes · demo data' };
-  }
-  if (q.includes('focus') || q.includes('today') || q.includes('priorit')) {
-    return openToday.length
-      ? { content: `Your best next move is “${openToday[0].title}”. You have ${openToday.length} active quest${openToday.length === 1 ? '' : 's'} today; keep the next block small and finishable.`, source: 'Today · demo data' }
-      : { content: `Your ledger is quiet today. Add one quest, complete one habit, and let the day earn its first ${stats.xp || 0} XP.`, source: 'Today · demo data' };
-  }
-  // Route-aware fallback (gap #3): guest mode answers from the same real
-  // ledger the suggestions derive from, so clicking a suggestion never dead-ends.
-  switch (route) {
-    case '/today': {
-      const top = topOpenTodayQuest(tasks);
-      if (top) return { content: `Your highest-priority quest today is “${top.title}” (+${top.xp} XP). Keep the next block small and finishable.`, source: 'Today · demo data' };
-      return { content: 'Your board is quiet today — star one quest and protect a short focus block.', source: 'Today · demo data' };
-    }
-    case '/tasks': {
-      if (overdue.length) return { content: `${overdue.length} quest${plural(overdue.length)} overdue — start with “${overdue[0].title}”.`, source: 'Tasks · demo data' };
-      if (dueToday.length) return { content: `${dueToday.length} quest${plural(dueToday.length)} due today — “${dueToday[0].title}” is the nearest one.`, source: 'Tasks · demo data' };
-      if (openToday.length || tasks.length) {
-        const count = openToday.length || tasks.filter(task => task.status !== 'done').length;
-        return { content: `${count} open quest${plural(count)} in the ledger. The next move is usually the one with a due date or a Today star.`, source: 'Tasks · demo data' };
-      }
-      return { content: 'No quests yet — the smallest first quest still earns XP.', source: 'Tasks · demo data' };
-    }
-    case '/habits': {
-      if (atRisk[0]) return { content: `“${atRisk[0].habit.name}” is at ${atRisk[0].streak} days — log it today or the streak resets. The smallest version still counts.`, source: 'Habits · demo data' };
-      if (activeHabits.length) {
-        return doneTodayCount > 0
-          ? { content: `${doneTodayCount} of ${activeHabits.length} habits done today; the rest are still open.`, source: 'Habits · demo data' }
-          : { content: 'No habits logged today yet — one check-in is enough to start the chain.', source: 'Habits · demo data' };
-      }
-      return { content: 'No habits configured yet — add one and check it in to earn your first XP.', source: 'Habits · demo data' };
-    }
-    case '/journal': {
-      if (journalToday?.highlight?.trim()) return { content: `Today's highlight is logged: “${truncate(journalToday.highlight, 90)}”. One more sentence about what made it work would close the day.`, source: 'Journal · demo data' };
-      if (latest?.highlight) return { content: `Your latest highlight was “${truncate(latest.highlight, 90)}” — today's entry is still open. One honest sentence is enough.`, source: 'Journal · demo data' };
-      return { content: 'Your journal is ready for its first highlight. One honest sentence is enough.', source: 'Journal · demo data' };
-    }
-    case '/notes':
-      return { content: 'Notes live on your instance — I can turn a page into quests once you are signed in. Ask me about your quests, habits, or journal meanwhile.', source: 'Notes · demo data' };
-    case '/eisenhower': {
-      const doFirstCount = tasks.filter(task => task.status !== 'done' && task.quadrant === 'do').length;
-      return doFirstCount > 0
-        ? { content: `${doFirstCount} quest${plural(doFirstCount)} sit in Do First — those are the ones worth the next block.`, source: 'Matrix · demo data' }
-        : { content: 'Do First is empty — assign your inbox quests a quadrant and the matrix will tell you where to start.', source: 'Matrix · demo data' };
-    }
-    case '/journey':
-      return { content: `You are level ${stats.level} with ${stats.xp} XP. In the demo ledger that is ${tasks.length} quests, ${habits.length} habits, and ${journal.length} journal entries — ask me what it means.`, source: 'Journey · demo data' };
-    default:
-      return { content: `I’m BakaSur in demo mode. I can help you reason about ${tasks.length} quests, ${habits.length} habits, ${journal.length} journal entries, and your level ${stats.level} character. Try “What should I focus on today?”`, source: 'BakaSur · demo data' };
-  }
+  if (q.includes('overdue') || q.includes('late')) return 'ask_habits';
+  if (q.includes('habit') || q.includes('streak') || q.includes('check in') || q.includes('check-in')) return 'ask_habits';
+  if (q.includes('journal') || q.includes('reflect') || q.includes('highlight') || q.includes('mood') || q.includes('feel')) return 'ask_journal';
+  if (q.includes('level') || q.includes(' xp') || q.startsWith('xp') || q.includes('stat') || q.includes('progress') || q.includes('journey')) return 'ask_stats';
+  if (q.includes('note')) return 'ask_notes';
+  if (q.includes('focus') || q.includes('today') || q.includes('priorit') || q.includes('next') || q.includes('quest') || q.includes('task')) return 'ask_focus';
+  if (q.includes('hello') || q.includes('hey') || q.includes('hi ')) return 'greeting';
+  return 'fallback';
 }
 
 /**
- * BakaSurRail — the assistant pane. The attendant booth in the corner
- * of the dome: ask about your day, quests, habits, journal, or notes.
- * Guest mode → local demo reasoning; authenticated → Worker chat.
+ * BakaSurRail — the chat panel. V3.5: the collapsed dock column is GONE;
+ * the single living character (BakaSurPresence) sits as a hero over the
+ * canvas and flies into the header slot this rail reserves when open.
  *
- * F4: route-aware contextual suggestions derived from real store data,
- * Escape-to-close (mobile sheet + desktop rail), violet intelligence
- * presence on the orb and identity header.
+ * Structure (scrollbar fix, docs V3.5 §17): the aside NEVER scrolls.
+ *   aside (flex column, h:100%)
+ *   ├─ header (fixed)  — slot + title + close
+ *   ├─ ctx strip (fixed)
+ *   ├─ .baksur-rail-scroll — independent viewport (messages + suggestions)
+ *   └─ form (fixed footer)
+ *
+ * Chat contract unchanged: guest → deterministic registry replies;
+ * authenticated → POST /api/v1/assistant/chat exactly as before.
  */
 export const BakaSurRail: React.FC<BakaSurRailProps> = ({ collapsed, onToggle }) => {
   const location = useLocation();
@@ -333,8 +262,49 @@ export const BakaSurRail: React.FC<BakaSurRailProps> = ({ collapsed, onToggle })
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Phase 2B quota display — authenticated daily remaining vs guest session vs offline
+  const [quota, setQuota] = useState<{ remaining: number; effective: number } | null>(null);
+
+  // V3.5 single-instance character: register the header slot he lands in,
+  // report busy so THINKING is visible wherever he currently sits.
+  const registerSlot = useBakaSurPresenceSlot();
+  const reportBusy = useBakaSurBusyReporter();
+  const prefs = useBakaSurPrefs();
+  const slotSize = railSizeFor(prefs.scale, prefs.presence);
+  const bodyColor = (BAKASUR_COLOR_HEXES[prefs.color] ?? BAKASUR_COLOR_HEXES.graphite).mood;
+  useEffect(() => { reportBusy(busy); }, [busy, reportBusy]);
+  useEffect(() => () => reportBusy(false), [reportBusy]);
+
   const routeName = useMemo(() => routeNames[location.pathname] || 'Current workspace', [location.pathname]);
   const isGuest = user?.provider === 'guest';
+  const offline = typeof navigator !== 'undefined' ? !navigator.onLine : false;
+
+  // Phase 2B: fetch authoritative quota on mount / auth change (live only)
+  useEffect(() => {
+    if (isGuest || !apiClient) {
+      // Guest: show session quota (3/session); offline handled inline
+      try { setQuota({ remaining: getGuestRemaining(), effective: 3 }); } catch { setQuota(null); }
+      return;
+    }
+    let cancelled = false;
+    if (offline) { setQuota({ remaining: 0, effective: 0 }); return; }
+    fetchAiQuota(apiClient).then(res => {
+      if (cancelled || !res) return;
+      const remaining = res.quota.remaining ?? 0;
+      const effective = res.quota.effectiveQuota ?? (res.settings?.effectiveQuota ?? 30);
+      setQuota({ remaining, effective });
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [isGuest, apiClient, offline]);
+
+  // Scripted replies rotate deterministically per intent (no randomness).
+  const replyCounters = useRef<Partial<Record<BakaSurIntent, number>>>({});
+  const scripted = (intent: BakaSurIntent): { line: string; env: BakaSurEnvironment } => {
+    const env: BakaSurEnvironment = isGuest ? 'demo' : !navigator.onLine ? 'offline' : 'live';
+    const n = (replyCounters.current[intent] ?? -1) + 1;
+    replyCounters.current[intent] = n;
+    return { line: baksurLine(env, intent, n), env };
+  };
 
   // Route-aware suggestions (gap #3): recompute whenever the route or any of
   // the underlying store slices change — the numbers always match the ledger.
@@ -343,9 +313,8 @@ export const BakaSurRail: React.FC<BakaSurRailProps> = ({ collapsed, onToggle })
     [location.pathname, tasks, habits, habitLogs, journal, stats],
   );
 
-  // Escape-to-close (gap #10): Escape collapses an expanded rail to the orb;
-  // on mobile it dismisses the bottom sheet. Modals are F9's territory — this
-  // handler only ever touches the rail's own open state.
+  // Escape-to-close (gap #10): Escape collapses an expanded rail; on mobile
+  // it dismisses the bottom sheet. Only ever touches the rail's own state.
   useEffect(() => {
     if (collapsed) return;
     const onKeyDown = (event: KeyboardEvent) => {
@@ -361,24 +330,63 @@ export const BakaSurRail: React.FC<BakaSurRailProps> = ({ collapsed, onToggle })
   const ask = async (rawQuestion: string) => {
     const question = rawQuestion.trim();
     if (!question || busy) return;
+    // Phase 2B: offline always goes deterministic (0 AI calls); guest 3/session hard limit before any server call
+    const offline = !navigator.onLine;
+    if (isGuest && isGuestQuotaExhausted()) {
+      setError(`Demo limit reached (3 turns per session). Sign in for live AI.`);
+      setMessages(prev => [...prev,
+        { id: Date.now(), role: 'user', content: question },
+        { id: Date.now() + 1, role: 'assistant', content: `Demo limit reached — 3 turns per session. Sign in for 30 turns/day, or refresh to reset the demo counter.`, source: 'Demo · limit' },
+      ]);
+      setQuota({ remaining: 0, effective: 3 });
+      return;
+    }
+    if (offline && !isGuest) {
+      // Offline = 0 AI calls, deterministic reply only
+      const intent = classifyIntent(question);
+      const { line } = scripted(intent);
+      setMessages(prev => [...prev, { id: Date.now(), role: 'user', content: question }]);
+      await new Promise(resolve => window.setTimeout(resolve, 220));
+      setMessages(prev => [...prev, { id: Date.now() + 1, role: 'assistant', content: `${line}\nOffline · local ledger only. Reconnect for live coaching.`, source: 'Offline · local-first' }]);
+      setQuota({ remaining: 0, effective: 0 });
+      return;
+    }
     setInput('');
     setError(null);
     setMessages(prev => [...prev, { id: Date.now(), role: 'user', content: question }]);
     setBusy(true);
 
     try {
-      if (isGuest) {
-        const reply = demoReply(question, location.pathname, tasks, habits, habitLogs, stats, journal);
+      if (isGuest || !apiClient) {
+        // Demo: deterministic registry line + an honest readout of
+        // the real ledger numbers (no prose is invented, no LLM is called).
+        // Guest quota is decremented per turn; remaining is shown in header.
+        const intent = classifyIntent(question);
+        const { line, env } = scripted(intent);
+        const openToday = tasks.filter(t => t.today && t.status !== 'done').length;
+        const doneHabits = doneHabitsToday(habits, habitLogs);
+        const readout = `Board: ${openToday} quest${plural(openToday)} today · ${doneHabits}/${habits.filter(h => h.active).length} habits · LVL ${stats.level}.`;
         await new Promise(resolve => window.setTimeout(resolve, 320));
-        setMessages(prev => [...prev, { id: Date.now() + 1, role: 'assistant', ...reply }]);
-      } else if (apiClient) {
+        setMessages(prev => [...prev, {
+          id: Date.now() + 1,
+          role: 'assistant',
+          content: env === 'live' && !apiClient
+            ? 'The Worker is not configured — I’m reading your local ledger only. Ask me about quests, habits or journal.'
+            : `${line}\n${readout}`,
+          source: env === 'demo' ? 'Demo · synthetic ledger' : env === 'offline' ? 'Offline · local-first' : 'Local · registry',
+        }]);
+        try {
+          // Update guest remaining after local turn
+          setQuota({ remaining: getGuestRemaining(), effective: 3 });
+        } catch {}
+      } else {
         // Build history from the live transcript INCLUDING the just-typed
         // question (setMessages is async, so `messages` is one turn stale).
         const history = [...messages, { role: 'user' as const, content: question }]
           .filter(m => !(m.role === 'assistant' && m.source?.startsWith('Unavailable')))
           .slice(-6)
           .map(m => ({ role: m.role, content: m.content }));
-        const response = await apiClient.post<{ ok: boolean; result?: { answer?: string; reply?: string; source?: string }; message?: string }>(
+        const response = await apiClient.post<{ ok: boolean; result?: { answer?: string; reply?: string; source?: string }; message?: string; quota?: { remaining: number; effectiveQuota: number; used?: number }; error?: string }>(
           '/api/v1/assistant/chat',
           {
             message: question,
@@ -406,85 +414,114 @@ export const BakaSurRail: React.FC<BakaSurRailProps> = ({ collapsed, onToggle })
           },
         );
         const answer = response.result?.reply || response.result?.answer;
-        if (!answer) throw new Error(response.message || 'BakaSur returned no answer.');
-        setMessages(prev => [...prev, { id: Date.now() + 1, role: 'assistant', content: answer, source: response.result?.source || 'BakaSur · Worker' }]);
-      } else {
-        throw new Error('The BakaTracker Worker is not configured.');
+        if (!answer) throw new Error((response as any).message || 'BakaSur returned no answer.');
+        // Update quota from authoritative server envelope
+        if ((response as any).quota) {
+          const q = (response as any).quota as { remaining: number; effectiveQuota: number };
+          setQuota({ remaining: q.remaining ?? 0, effective: q.effectiveQuota ?? 30 });
+        } else {
+          // Fallback: refresh from server
+          fetchAiQuota(apiClient).then(r => { if (r) setQuota({ remaining: r.quota.remaining, effective: r.quota.effectiveQuota }); }).catch(()=>{});
+        }
+        setMessages(prev => [...prev, { id: Date.now() + 1, role: 'assistant', content: answer, source: (response.result as any)?.source || 'BakaSur · Worker' }]);
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'BakaSur is unavailable right now.';
-      setError(message);
-      setMessages(prev => [...prev, {
-        id: Date.now() + 1,
-        role: 'assistant',
-        content: 'I could not reach the global assistant service. Your workspace is still available locally; try again when the Worker is online.',
-        source: 'Unavailable · recoverable',
-      }]);
+      const be = err as { status?: number; body?: { error?: string; message?: string; quota?: { remaining: number; effectiveQuota: number } }; message?: string };
+      const status = (be as any)?.status;
+      const body = (be as any)?.body;
+      const quotaFromErr = body?.quota as { remaining?: number; effectiveQuota?: number } | undefined;
+      if (quotaFromErr) setQuota({ remaining: quotaFromErr.remaining ?? 0, effective: quotaFromErr.effectiveQuota ?? quota?.effective ?? 30 });
+      if (status === 429 || body?.error === 'quota_exceeded') {
+        const msg = body?.message || 'Daily AI limit reached. Try again tomorrow.';
+        setError(msg);
+        setMessages(prev => [...prev, {
+          id: Date.now() + 1,
+          role: 'assistant',
+          content: msg,
+          source: 'Limit · 429',
+        }]);
+      } else {
+        const message = err instanceof Error ? err.message : 'BakaSur is unavailable right now.';
+        setError(message);
+        setMessages(prev => [...prev, {
+          id: Date.now() + 1,
+          role: 'assistant',
+          content: 'I could not reach the global assistant service. Your workspace is still available locally; try again when the Worker is online.',
+          source: 'Unavailable · recoverable',
+        }]);
+      }
     } finally {
       setBusy(false);
     }
   };
 
-  if (collapsed) {
-    return (
-      <aside id="bakasur-rail" className="assistant-rail assistant-rail-collapsed" aria-label="BakaSur assistant collapsed">
-        <button type="button" className="assistant-rail-expand" onClick={onToggle} aria-label="Open BakaSur assistant" aria-expanded={false} title="Open BakaSur assistant">
-          <span className="w-2.5 h-2.5 rounded-full" style={{ background: 'var(--arcade-gold)', boxShadow: '0 0 10px var(--arcade-gold)' }} aria-hidden="true" />
-          <ChevronRight className="w-4 h-4" aria-hidden="true" />
-        </button>
-        <span className="assistant-rail-label">
-          <TerminalText tone="primary">BAKASUR</TerminalText>
-        </span>
-      </aside>
-    );
-  }
+  // V3.5: collapsed renders NOTHING — the hero Presence owns the closed
+  // state. (Keyboard/aria path to open it moved with the hero button.)
+  if (collapsed) return null;
 
   return (
     <aside id="bakasur-rail" className="cabinet assistant-rail-expanded border-l border-solid" style={{ borderColor: 'rgba(139, 92, 246, 0.18)', background: 'linear-gradient(180deg, rgba(24,20,44,0.92), rgba(13,11,22,0.95))' }} aria-label="BakaSur global assistant">
-      {/* ASCII terminal header */}
-      <div className="cabinet-marquee" style={{ borderColor: 'rgba(139, 92, 246, 0.2)' }}>
-        <span className="cabinet-led" style={{ background: 'var(--obs-aurora)', boxShadow: '0 0 10px rgba(139, 92, 246, 0.6)' }} aria-hidden="true" />
-        <TerminalText tone="primary" prompt>&gt; BAKASUR</TerminalText>
-        <PixelBadge tone="success" className="ml-auto">ONLINE</PixelBadge>
-        <button type="button" className="icon-button icon-button-small !ml-2" onClick={onToggle} aria-label="Collapse BakaSur assistant" aria-expanded={true} title="Collapse BakaSur assistant"><X className="w-4 h-4" aria-hidden="true" /></button>
+      {/* ── Fixed header (never scrolls): slot reserved for the ONE living
+           character + title + close control. ── */}
+      <div className="cabinet-marquee baksur-rail-header" style={{ borderColor: 'rgba(139, 92, 246, 0.2)' }}>
+        <span
+          ref={registerSlot}
+          className="baksur-rail-slot"
+          aria-hidden="true"
+          style={{ width: slotSize, height: slotSize, flexShrink: 0 }}
+          data-baksur-slot-color={bodyColor}
+        />
+        <TerminalText tone="primary" prompt>BAKASUR</TerminalText>
+        <PixelBadge tone="success" className="ml-auto shrink-0">ONLINE</PixelBadge>
+        <button type="button" className="icon-button icon-button-small !ml-2 shrink-0" onClick={onToggle} aria-label="Collapse BakaSur assistant" aria-expanded={true} title="Collapse BakaSur assistant"><X className="w-4 h-4" aria-hidden="true" /></button>
       </div>
 
-      <div className="flex items-center gap-2 px-4 py-2 font-mono text-[10px]" style={{ color: 'var(--arcade-paper-muted)', borderBottom: '1px solid var(--obs-glass-7)' }}>
+      <div className="baksur-rail-ctx flex items-center gap-2 px-4 py-2 font-mono text-[10px] shrink-0" style={{ color: 'var(--arcade-paper-muted)', borderBottom: '1px solid var(--obs-glass-7)' }}>
         <PixelIcon name="cpu" size={13} color="var(--arcade-gold)" />
         <span>CTX: <b style={{ color: 'var(--arcade-paper-dim)' }}>{routeName}</b></span>
+        {quota && (
+          <span className="ml-1 px-1.5 py-0.5 rounded font-mono text-[9px]" style={{ background: quota.remaining === 0 ? 'rgba(248,113,113,0.12)' : 'rgba(139,92,246,0.12)', color: quota.remaining === 0 ? 'var(--bt-danger)' : 'var(--bt-primary)', border: `1px solid ${quota.remaining === 0 ? 'rgba(248,113,113,0.25)' : 'rgba(139,92,246,0.25)'}` }}>
+            {isGuest ? `${quota.remaining}/${quota.effective} demo` : offline ? `offline` : `${quota.remaining}/${quota.effective} turns`}
+          </span>
+        )}
         {isGuest && <PixelBadge tone="primary" className="ml-auto">DEMO</PixelBadge>}
+        {!isGuest && quota && quota.remaining === 0 && <PixelBadge tone="danger" className="ml-auto">LIMIT</PixelBadge>}
       </div>
 
-      <div className="assistant-messages flex-1 overflow-y-auto p-4 flex flex-col gap-3" aria-live="polite">
-        {messages.map(message => (
-          <article key={message.id} className={`flex gap-2 ${message.role === 'user' ? 'flex-row-reverse' : ''}`}>
-            <div className="w-6 h-6 rounded flex items-center justify-center shrink-0" style={{ background: message.role === 'assistant' ? 'rgba(139, 92, 246,0.12)' : 'rgba(63,123,255,0.14)', color: message.role === 'assistant' ? 'var(--arcade-gold)' : 'var(--arcade-cobalt)' }} aria-hidden="true">
-              {message.role === 'assistant' ? <PixelIcon name="robot" size={16} color="var(--arcade-gold)" /> : <PixelIcon name="terminal" size={16} color="var(--arcade-cobalt)" />}
-            </div>
-            <div className={`flex flex-col gap-1 max-w-[85%] ${message.role === 'user' ? 'items-end' : ''}`}>
-              <p className="m-0 text-[0.8rem] leading-relaxed" style={{ color: 'var(--arcade-paper)' }}>{message.content}</p>
-              {message.source && <TerminalText tone="muted" className="text-[9px]">{message.source}</TerminalText>}
-            </div>
-          </article>
-        ))}
-        {busy && <div className="flex items-center gap-2 font-mono text-[10px]" style={{ color: 'var(--arcade-paper-muted)' }}><Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" /> BakaSur is thinking…</div>}
-      </div>
-
-      <div className="px-4 pb-2 flex flex-col gap-2">
-        <p className="m-0 font-mono text-[10px] leading-relaxed flex items-center gap-1.5" style={{ color: 'var(--arcade-paper-muted)' }}>
-          <Sparkles className="w-3 h-3 shrink-0" style={{ color: 'var(--obs-aurora-bright)' }} aria-hidden="true" />
-          <TerminalText tone="muted">{suggestions.insight}</TerminalText>
-        </p>
-        <div role="group" aria-label="Suggested questions" className="flex flex-col gap-1.5">
-          {suggestions.prompts.map(item => (
-            <button key={item.label} type="button" className="btn-text !justify-start !text-left !text-[11px]" onClick={() => ask(item.prompt)} disabled={busy}>{item.label}</button>
+      {/* ── Independent scroll viewport: the ONLY scrolling element. ── */}
+      <div className="baksur-rail-scroll flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 flex flex-col gap-3">
+        <div className="flex flex-col gap-3" aria-live="polite">
+          {messages.map(message => (
+            <article key={message.id} className={`flex gap-2 ${message.role === 'user' ? 'flex-row-reverse' : ''}`}>
+              <div className="w-6 h-6 rounded flex items-center justify-center shrink-0" style={{ background: message.role === 'assistant' ? 'rgba(139, 92, 246,0.12)' : 'rgba(63,123,255,0.14)', color: message.role === 'assistant' ? 'var(--arcade-gold)' : 'var(--arcade-cobalt)' }} aria-hidden="true">
+                {message.role === 'assistant' ? <PixelIcon name="robot" size={16} color="var(--arcade-gold)" /> : <PixelIcon name="terminal" size={16} color="var(--arcade-cobalt)" />}
+              </div>
+              <div className={`flex flex-col gap-1 max-w-[85%] ${message.role === 'user' ? 'items-end' : ''}`}>
+                <p className="m-0 text-[0.8rem] leading-relaxed whitespace-pre-line" style={{ color: 'var(--arcade-paper)' }}>{message.content}</p>
+                {message.source && <TerminalText tone="muted" className="text-[9px]">{message.source}</TerminalText>}
+              </div>
+            </article>
           ))}
+          {busy && <div className="flex items-center gap-2 font-mono text-[10px]" style={{ color: 'var(--arcade-paper-muted)' }}><Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" /> BakaSur is thinking…</div>}
         </div>
+
+        <div className="mt-auto pt-4 flex flex-col gap-2">
+          <p className="m-0 font-mono text-[10px] leading-relaxed flex items-center gap-1.5" style={{ color: 'var(--arcade-paper-muted)' }}>
+            <Sparkles className="w-3 h-3 shrink-0" style={{ color: 'var(--obs-aurora-bright)' }} aria-hidden="true" />
+            <TerminalText tone="muted">{suggestions.insight}</TerminalText>
+          </p>
+          <div role="group" aria-label="Suggested questions" className="flex flex-col gap-1.5">
+            {suggestions.prompts.map(item => (
+              <button key={item.label} type="button" className="btn-text !justify-start !text-left !text-[11px]" onClick={() => ask(item.prompt)} disabled={busy}>{item.label}</button>
+            ))}
+          </div>
+        </div>
+
+        {error && <p className="m-0 font-mono text-[10px]" style={{ color: 'var(--arcade-red)' }} role="alert">{error}</p>}
       </div>
 
-      {error && <p className="px-4 m-0 font-mono text-[10px]" style={{ color: 'var(--arcade-red)' }} role="alert">{error}</p>}
-
-      <form className="flex items-center gap-2 p-3 border-t" style={{ borderColor: 'var(--obs-glass-8)' }} onSubmit={event => { event.preventDefault(); void ask(input); }}>
+      {/* ── Fixed footer: input never inside the scroll viewport. ── */}
+      <form className="baksur-rail-footer flex items-center gap-2 p-3 border-t shrink-0" style={{ borderColor: 'var(--obs-glass-8)' }} onSubmit={event => { event.preventDefault(); void ask(input); }}>
         <input
           value={input}
           onChange={event => setInput(event.target.value)}
