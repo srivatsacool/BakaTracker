@@ -1,0 +1,152 @@
+== A. BAKASUR HERO — DESKTOP ==
+  ✓ A0 visitor greeting renders with maker credit
+  ✓ A1 visitor→demo launches canonical walkthrough
+  ✓ A2 walkthrough dismissed
+  ✓ A3 hero visible at 1440px (z=40) — 140px, z40
+  ✓ A4 no horizontal overflow at 1440px
+  ✓ A5 single character instance at 1440px
+  ✓ A6 hero fully inside viewport at 1440px
+  ✓ A3 hero visible at 1280px (z=40) — 140px, z40
+  ✓ A4 no horizontal overflow at 1280px
+  ✓ A5 single character instance at 1280px
+  ✓ A6 hero fully inside viewport at 1280px
+  ✓ A3 hero visible at 1024px (z=40) — 104px, z40
+  ✓ A4 no horizontal overflow at 1024px
+  ✓ A5 single character instance at 1024px
+  ✓ A6 hero fully inside viewport at 1024px
+  ✓ A7 hero on /habits
+  ✓ A8 no overflow on /habits
+  ✓ A7 hero on /tasks
+  ✓ A8 no overflow on /tasks
+  ✓ A7 hero on /journal
+  ✓ A8 no overflow on /journal
+  ✓ A7 hero on /journey
+  ✓ A8 no overflow on /journey
+  ✓ A7 hero on /notes
+  ✓ A8 no overflow on /notes
+  ✓ A9 idle animation live (engine advances) — animating
+  ✓ A10 hero does not cover nav/heading controls
+  ✓ A0 no page errors (desktop pass)
+== B. HERO ↔ RAIL ==
+  ✓ B1 starts collapsed as hero
+  ✓ B2 rail open (same instance, data-open=true)
+  ✓ B3 character moved (position differs from hero) — 732→30y
+  ✓ B4 no duplicate character while open
+  ✓ B5 character landed aligned with rail header slot — Δ0,0
+  ✓ B6 rail slot ≈3x old 24px header glyph — 72px
+  ✓ B7 rail header stable while content scrolls — stable
+  ✓ B8 chat replies (scripted demo path) — 3 messages
+  ✓ B9 returned to hero position — 1286,732
+  ✓ B10 no duplicate after close
+  ✓ B11 Escape closes rail
+== C. REACTIONS (live store) ==
+  ✓ C1 QUEST_COMPLETED fires from real completion — clicked=Complete Finish the client proposal draft sig=QUEST_COMPLETED
+  ✓ C2 real event persisted (event count +1) — 171→172
+  ✓ C3 reaction decays to rest
+  ✓ C4 HABIT_COMPLETED fires (preset or custom check-in) — sig=HABIT_COMPLETED
+  ✓ C5 JOURNAL_LOGGED fires from real journal save — field=filled sig=JOURNAL_LOGGED
+  ✓ C6 USER_OPENED_BAKASUR attentive edge fires — sig=USER_OPENED_BAKSUR
+  ✓ C7 no refire from rerender/relit store state
+== D. MOBILE HERO (390x844 / 375x812) ==
+  ✓ D1 hero visible 390px — 88px
+  ✓ D2 no horizontal overflow 390px
+  ✓ D3 hero clear of bottom nav at 390px — 0
+  ✓ D4 tap opens chat sheet at 390px
+  ✓ D5 still ONE character instance (no duplicate) at 390px
+  ✓ D6 character flew into sheet header at 390px
+  ✓ D7 chat input focusable at 390px
+  ✓ D8 close returns to hero at 390px
+  ✓ D1 hero visible 375px — 88px
+  ✓ D2 no horizontal overflow 375px
+  ✓ D3 hero clear of bottom nav at 375px — 0
+  ✓ D4 tap opens chat sheet at 375px
+  ✓ D5 still ONE character instance (no duplicate) at 375px
+  ✓ D6 character flew into sheet header at 375px
+  ✓ D7 chat input focusable at 375px
+  ✓ D8 close returns to hero at 375px
+== E. MOBILE NAV ==
+  ✓ E1 bottom-nav Habits navigates — http://localhost:5173/habits
+  ✓ E1 bottom-nav Tasks navigates — http://localhost:5173/tasks
+  ✓ E1 bottom-nav Matrix navigates — http://localhost:5173/eisenhower
+  ✓ E1 bottom-nav Today navigates — http://localhost:5173/today
+  ✓ E2 More sheet opens
+  ✓ E3 More → Journal navigates
+  ✓ E4 route change closes More sheet
+  ✓ E5 More → Journey — http://localhost:5173/journey
+  ✓ E5 More → Notes — http://localhost:5173/notes
+  ✓ E5 More → BakaSur Chat — http://localhost:5173/bakasur
+  ✓ E6 Settings reachable on mobile
+  ✓ E7 active-state signal present (nav aria-current or More) — {"cur":false,"moreBtn":true,"url":"/bakasur"}
+  ✓ E8 no horizontal overflow on mobile
+== F. MOBILE PAGE AUDIT ==
+  ✓ F1 /today no overflow — ov=0
+  ✓ F2 /today touch targets ok — 0 small: 
+  ✓ F1 /habits no overflow — ov=0
+  ✓ F2 /habits touch targets ok — 0 small: 
+  ✓ F1 /tasks no overflow — ov=0
+  ✓ F2 /tasks touch targets ok — 0 small: 
+  ✓ F1 /eisenhower no overflow — ov=0
+  ✓ F2 /eisenhower touch targets ok — 0 small: 
+  ✓ F1 /journal no overflow — ov=0
+  ✓ F2 /journal touch targets ok — 0 small: 
+  ✓ F1 /journey no overflow — ov=0
+  ✓ F2 /journey touch targets ok — 0 small: 
+  ✓ F1 /notes no overflow — ov=0
+  ✓ F2 /notes touch targets ok — 0 small: 
+== G. HABIT PRESETS ==
+  ✓ G1 preset Mood visible
+  ✓ G1 preset Water visible
+  ✓ G1 preset Sleep visible
+  ✓ G1 preset Reading visible
+  ✓ G1 preset Workout visible
+  ✓ G2 MOOD: five-face dial, tap records
+  ✓ G3 WATER: slider moves + persists in store — Water: 2.5L|Water: 2.5L
+  ✓ G4 SLEEP: half-hour values persist — Sleep: 8.5h|Sleep: 8.5h
+  ✓ G5a reading PAGES mode toggled + pages input found — {"clickedMode":true,"setAmount":true}
+  ✓ G5 READING: minutes/pages semantics + persists — ["p:12"]
+  ✓ G6 WORKOUT: body-part radio (shoulders selectable) — Shoulders
+  ✓ G7 WORKOUT: duration slider maxes at 180 — 180
+  ✓ G8 preset identity present on stored habits
+  ✓ G9 preset badges + custom affordances intact — {"presetCards":10,"customCards":4,"deleteable":4,"hasEdit":false}
+== H. SETTINGS ==
+  ✓ H1 obsolete controls removed: no Theme badge / accent pickers
+  ✓ H2 BAKASUR section present
+  ✓ H3 COLOR setting recolors hero — #000,#1a1625,#6f6a8a,#e9e6f2,#fff,url(#baksur-mood-_r_1_) → #000,#1a1625,#e0687a,#e9e6f2,#fff,url(#baksur-mood-_r_1_)
+  ✓ H4 SCALE setting grows hero — 140 → 184
+  ✓ H5 PRESENCE=hidden removes hero from screen
+  ✓ H6 hero hidden but assistant still reachable
+  ✓ H7 prefs persist in localStorage — {"color":"coral","presence":"hidden","motion":"full","scale":"large"}
+  ✓ H8 persistence survives reload — missing
+  ✓ H9 Settings → Replay Walkthrough launches canonical walkthrough
+== I. ONBOARDING (fresh state) ==
+  ✓ I1 greeting names BakaSur + BakaTracker + Build.Srivatsa — {"hasBakasur":true,"hasTracker":true,"hasMaker":true}
+  ✓ I2 visitor sees SIGN IN and ENTER DEMO — 2/1
+  ✓ I3 demo entry starts walkthrough at step 1 — Walkthrough step 1 of 12: Welcome to BakaTracker
+  ✓ I4 walkthrough advances to step 4 — Walkthrough step 4 of 12: Quests — the backlog of a life
+  ✓ I5 Skip dismisses walkthrough
+  ✓ I6 skipped walkthrough does NOT return on refresh
+  ✓ I7 zero legacy tutorial at runtime — {"wizard":false,"intro":false,"banner":false}
+  ✓ I8 guest rows are all demo-prefixed (isolation) — 0 un-prefixed rows
+== J. DEMO WORLD QUALITY ==
+  ✓ J1 Today quests read as human life, no dev/fixture strings
+  ✓ J2 Today has mixed done/open quests
+  ✓ J3 habits show streaks/consistency
+  ✓ J4 journey shows level/XP + 30d history
+  ✓ J5 journey chart rendered (bars) — 29 bars
+== K. SCRIPTED MESSAGES ==
+  ✓ K1 demo chat replies deterministically — Star one quest. Do that one first. The board rewards small and finished. Board: 3 quests t
+  ✓ K2 no chat API request made while guest (local registry)
+  ✓ K3 scripted lines rotate, never spam identical
+== L. WIDTH / M. HEADERS / N. A11Y / O. PERF ==
+  ✓ M1 no doubled markers anywhere on Habits
+  ✓ M2 no doubled markers on Tasks
+  ✓ N1 hero button keyboard-focusable
+  ✓ N2 visible focus treatment
+  ✓ N3 OS reduced-motion → character static — static
+  ✓ O1 single persistent hero element
+  ✓ O2 hidden tab pauses the rAF loop — paused
+== BACKEND ==
+  ✓ Z1 backend /whoami 200 — {"status":200,"body":"{\"sub\":\"live-qa\",\"name\":null,\"email\":null}"}
+  ✓ Z2 assistant endpoint responds (contract intact; local ai_unavailable expected) — {"status":503,"body":"{\"ok\":false,\"error\":\"ai_unavailable\",\"message\":\"Workers AI is not configured or is disabled.\"}"}
+
+================ V3.5 LIVE QA: 137 PASS / 0 FAIL ================

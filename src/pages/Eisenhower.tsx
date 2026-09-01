@@ -67,7 +67,7 @@ export const Eisenhower: React.FC = () => {
   const quadrantMeta = QUADRANTS.map(q => ({ key: q.key, label: q.label, icon: q.icon }));
 
   return (
-    <div className="max-w-6xl mx-auto flex flex-col gap-6">
+    <div className="w-full max-w-[1600px] mx-auto flex flex-col gap-6">
       {/* HUD */}
       <EisenhowerHUD totalAssigned={totalAssigned} urgent={urgent} important={important} unassigned={unassigned.length} />
 
@@ -189,7 +189,7 @@ export const Eisenhower: React.FC = () => {
                   <div className="flex flex-wrap gap-1 mt-1">
                     {QUADRANTS.map(q => (
                       <button key={q.key} type="button" onClick={() => assignQuadrant(task.id, q.key as EisenhowerQuadrant)}
-                        className="text-[8px] font-mono font-bold px-1.5 py-0.5 rounded cursor-pointer border transition hover:scale-105"
+                        className="text-[8px] font-mono font-bold px-2 py-1 min-h-[28px] rounded cursor-pointer border transition hover:scale-105"
                         style={{ color: 'var(--bt-text-muted)', borderColor: 'var(--bt-border-soft)', background: 'rgba(242,242,242,0.03)' }}
                         aria-label={`Move ${task.title} to ${q.label}`}>
                         → {q.label}

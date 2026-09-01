@@ -4,6 +4,8 @@ import { useShallow } from 'zustand/react/shallow';
 import { getTodayDateString, isHabitCompleted } from '../lib/utils';
 import { calculateHabitStreak, calculateBestStreak } from '../services/habits/calculateHabitStreak';
 import { UndoToast } from '../components/shared/UndoToast';
+import { MoodInstrument, WaterInstrument, SleepInstrument, ReadingInstrument, WorkoutInstrument, PresetCatalog } from '../components/habits/HabitInstruments';
+import { formatPresetValue } from '../lib/habitPresets';
 import { PixelIcon, SystemLabel, TerminalText } from '../components/ui';
 import type { Habit, StatType } from '../types';
 
@@ -23,10 +25,11 @@ const STAT_LABELS: Record<StatType, { label: string; icon: string; color: string
  */
 export const Habits: React.FC = () => {
   const {
-    habits, habitLogs, toggleHabit,
+    habits, habitLogs, toggleHabit, deleteHabit,
   } = useStore(useShallow(s => ({
     habits: s.habits, habitLogs: s.habitLogs,
     toggleHabit: s.toggleHabit,
+    deleteHabit: s.deleteHabit,
   })));
 
   const todayStr = getTodayDateString();
@@ -37,6 +40,11 @@ export const Habits: React.FC = () => {
   const [pendingDelete, setPendingDelete] = useState<{ name: string; id: string } | null>(null);
   const deleteTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const undoDeleteHabit = useCallback(() => { if (deleteTimerRef.current) clearTimeout(deleteTimerRef.current); setPendingDelete(null); }, []);
+  const requestDeleteHabit = useCallback((habit: Habit) => {
+    if (deleteTimerRef.current) clearTimeout(deleteTimerRef.current);
+    setPendingDelete({ name: habit.name, id: habit.id });
+    deleteTimerRef.current = setTimeout(() => { void deleteHabit(habit.id); setPendingDelete(null); }, 5000);
+  }, [deleteHabit]);
 
   // XP floating
   const [floatingXPs, setFloatingXPs] = useState<{ id: number; xp: number; stat: string }[]>([]);
@@ -101,7 +109,7 @@ export const Habits: React.FC = () => {
   const dayLabels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
   return (
-    <div className="max-w-4xl mx-auto flex flex-col gap-5">
+    <div className="w-full max-w-[1400px] mx-auto flex flex-col gap-5 md:pb-48 pb-20">
       {/* Floating XP */}
       {floatingXPs.map(item => (
         <div key={item.id} className="fixed z-30 pointer-events-none animate-fade-in" style={{ left: '50%', top: '20%', transform: 'translate(-50%, -50%)' }}>
@@ -112,13 +120,13 @@ export const Habits: React.FC = () => {
 
       {/* ─── HEADER ─── */}
       <div className="flex flex-col gap-2">
-        <TerminalText tone="primary" prompt>{'>'} HABIT_ENGINE</TerminalText>
+        <TerminalText tone="primary" prompt>HABIT_ENGINE</TerminalText>
         <SystemLabel tone="muted">{activeHabits.length} TRACKED · {activeStreaks} ACTIVE STREAKS · {consistencyPct}% CONSISTENCY</SystemLabel>
       </div>
 
       {/* ─── CHARACTER IMPACT ─── */}
       <section aria-label="Character impact">
-        <TerminalText prompt>{'>'} CHARACTER_IMPACT</TerminalText>
+        <TerminalText prompt>CHARACTER_IMPACT</TerminalText>
         <div className="mt-2 grid grid-cols-5 gap-2">
           {(Object.keys(STAT_LABELS) as StatType[]).map(stat => {
             const info = STAT_LABELS[stat];
@@ -150,7 +158,7 @@ export const Habits: React.FC = () => {
           TODAY VIEW
          ═══════════════════════════════════════════════════════════════════ */}
       {view === 'today' && (
-        <div className="flex flex-col gap-3">
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-3 items-start" data-tour="habit-list">
           {activeHabits.length === 0 ? (
             <div className="rounded-xl border p-8 text-center" style={{ background: 'rgba(233,230,242,0.02)', borderColor: 'rgba(233,230,242,0.06)' }}>
               <PixelIcon name="fire" size={32} color="var(--bt-text-disabled)" />
@@ -211,7 +219,26 @@ export const Habits: React.FC = () => {
                     );
                   })}
                 </div>
-                {/* Actions */}
+                {/* Actions — preset habits record through their instrument;
+                     custom habits keep CHECK IN / EDIT exactly as before. */}
+                {habit.preset ? (
+                  <div className="flex flex-col gap-2 pt-1">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        {bestStreak > 0 && <span className="font-mono text-[9px]" style={{ color: 'var(--bt-text-muted)' }}>BEST {bestStreak} DAYS</span>}
+                        {completed && log?.value !== undefined && (
+                          <span className="font-mono text-[9px]" style={{ color: 'var(--bt-success)' }}>TODAY · {formatPresetValue(habit.type, log.value)}</span>
+                        )}
+                      </div>
+                      <span className="font-mono text-[8px] uppercase px-1.5 py-0.5 rounded" style={{ color: 'var(--arcade-gold)', background: 'rgba(232,180,90,0.08)', border: '1px solid rgba(232,180,90,0.2)' }} title="Preset habits keep their identity — record values, never redefine the preset.">PRESET</span>
+                    </div>
+                    {habit.preset === 'mood' && <MoodInstrument habit={habit} log={log} />}
+                    {habit.preset === 'water' && <WaterInstrument habit={habit} log={log} />}
+                    {habit.preset === 'sleep' && <SleepInstrument habit={habit} log={log} />}
+                    {habit.preset === 'reading' && <ReadingInstrument habit={habit} log={log} />}
+                    {habit.preset === 'workout' && <WorkoutInstrument habit={habit} log={log} />}
+                  </div>
+                ) : (
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     {bestStreak > 0 && <span className="font-mono text-[9px]" style={{ color: 'var(--bt-text-muted)' }}>BEST {bestStreak} DAYS</span>}
@@ -229,16 +256,25 @@ export const Habits: React.FC = () => {
                       aria-label={completed ? `${habit.name} already checked in` : `Check in ${habit.name}`}>
                       {completed ? '✓ DONE' : 'CHECK IN'}
                     </button>
+                    <button onClick={() => requestDeleteHabit(habit)}
+                      className="font-mono text-[10px] px-2 py-1 rounded cursor-pointer transition hover:!text-[var(--bt-danger)]"
+                      style={{ color: 'var(--bt-text-muted)', border: '1px solid rgba(233,230,242,0.1)' }}
+                      aria-label={`Delete ${habit.name}`}>
+                      DEL
+                    </button>
                   </div>
                 </div>
+                )}
               </div>
             );
           })}
 
+          <PresetCatalog />
+
           {/* ─── SYSTEM ALERTS ─── */}
           {atRiskHabits.length > 0 && (
             <section aria-label="Streaks at risk">
-              <TerminalText prompt>{'>'} SYSTEM_ALERTS</TerminalText>
+              <TerminalText prompt>SYSTEM_ALERTS</TerminalText>
               <div className="mt-2 flex flex-col gap-1.5">
                 {atRiskHabits.map(habit => {
                   const streak = calculateHabitStreak(habit, habitLogs);
@@ -328,7 +364,7 @@ export const Habits: React.FC = () => {
         <div className="flex flex-col gap-5">
           {/* Character Growth This Week */}
           <section>
-            <TerminalText prompt>{'>'} CHARACTER_GROWTH</TerminalText>
+            <TerminalText prompt>CHARACTER_GROWTH</TerminalText>
             <SystemLabel tone="muted">THIS WEEK</SystemLabel>
             <div className="mt-2 flex flex-col gap-2">
               {(Object.keys(STAT_LABELS) as StatType[]).map(stat => {
@@ -365,7 +401,7 @@ export const Habits: React.FC = () => {
                 : `${top.stat.toUpperCase()} leads this week (+${top.xp} XP) — balanced progress across attributes.`;
             return (
               <section className="rounded-lg border p-3" style={{ background: 'rgba(233,230,242,0.03)', borderColor: 'rgba(233,230,242,0.06)' }}>
-                <TerminalText prompt>{'>'} WHAT_CHANGED</TerminalText>
+                <TerminalText prompt>WHAT_CHANGED</TerminalText>
                 <p className="font-mono text-[11px] m-0 mt-2" style={{ color: 'var(--bt-text-dim)' }}>{narrative}</p>
               </section>
             );

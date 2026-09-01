@@ -26,12 +26,14 @@ export const TerminalText = React.forwardRef<HTMLSpanElement, TerminalTextProps>
     return (
       <span
         ref={ref}
-        className={cn('font-[var(--font-vt323)] text-lg leading-tight', className)}
-        style={{ color: toneColor[tone], letterSpacing: '0.02em', ...style }}
+        className={cn('font-[var(--font-vt323)] text-xl leading-tight inline-flex items-baseline gap-2', className)}
+        style={{ color: toneColor[tone], letterSpacing: '0.04em', ...style }}
         {...props}
       >
-        {prompt && <span aria-hidden className="opacity-70">{'› '}</span>}
-        {children}
+        {/* V3.5 header contract: exactly ONE meaningful marker — a violet
+            block caret — never a duplicated '>>'. Call sites pass bare text. */}
+        {prompt && <span aria-hidden className="self-center" style={{ color: 'var(--bt-primary)', fontSize: '0.9em', textShadow: '0 0 10px rgba(139,92,246,0.45)' }}>{'▶'}</span>}
+        <span className="font-bold">{children}</span>
       </span>
     );
   },

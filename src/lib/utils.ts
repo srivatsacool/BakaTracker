@@ -1,6 +1,7 @@
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import type { Habit, HabitLog, Task, JournalEntry } from '../types';
+import { presetValueCounts } from './habitPresets';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -38,6 +39,11 @@ export function isHabitCompleted(habit: Habit, log: HabitLog | undefined): boole
   }
   if (habit.type === 'mood' || habit.type === 'energy') {
     return log.value !== undefined && log.value !== '';
+  }
+  // V3.5 preset types: encoded strings ('m:20' | 'p:45' | 'w:back:45').
+  // Any parsable positive payload counts as done for the day.
+  if (habit.type === 'reading' || habit.type === 'workout') {
+    return presetValueCounts(habit.type, log.value);
   }
   return false;
 }

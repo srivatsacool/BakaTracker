@@ -133,7 +133,7 @@ export const Tasks: React.FC = () => {
   const areas: (TaskArea | 'all')[] = ['all', 'health', 'career', 'learning', 'personal', 'creativity'];
 
   return (
-    <div className="max-w-6xl mx-auto flex flex-col gap-5">
+    <div className="w-full max-w-[1600px] mx-auto flex flex-col gap-5">
       {/* Undo toast */}
       {pendingDelete && <UndoToast message={`"${pendingDelete.title}" removing — tap Undo to keep`} onUndo={undoDeleteTask} />}
 
@@ -149,7 +149,7 @@ export const Tasks: React.FC = () => {
       <div className="flex flex-col gap-3">
         <div className="flex items-center justify-between">
           <div className="flex flex-col">
-            <TerminalText tone="primary" prompt>{'>'} QUEST_COMMAND</TerminalText>
+            <TerminalText tone="primary" prompt>QUEST_COMMAND</TerminalText>
             <SystemLabel tone="muted">{openTasks.length} OPEN · {urgentTasks.length} URGENT · {totalXpAvailable} XP AVAILABLE</SystemLabel>
           </div>
           <div className="flex items-center gap-2">
@@ -285,7 +285,7 @@ export const Tasks: React.FC = () => {
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="font-mono text-[10px] uppercase" style={{ color: 'var(--bt-text-muted)' }}>{task.area} · +{task.xp} XP</span>
-                      <button onClick={() => moveTask(task.id, 'doing')} className="font-mono text-[10px] font-bold px-2 py-0.5 rounded cursor-pointer transition"
+                      <button onClick={() => moveTask(task.id, 'doing')} className="font-mono text-[10px] font-bold px-2 py-0.5 min-h-[28px] rounded cursor-pointer transition"
                         style={{ color: 'var(--obs-gold, #e8b45a)', background: 'rgba(232,180,90,0.1)', border: '1px solid rgba(232,180,90,0.2)' }}
                         aria-label={`Start ${task.title}`}>
                         START

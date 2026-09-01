@@ -1,4 +1,5 @@
 import type { Habit, HabitLog, Task, JournalEntry, StatType, TaskArea } from '../../types';
+import { presetValueCounts } from '../../lib/habitPresets';
 
 export function areaToStat(area: TaskArea): StatType {
   switch (area) {
@@ -38,6 +39,10 @@ export function calculateXP(
     } else if (habit.type === 'numeric' && typeof log.value === 'number' && log.value > 0) {
       xpEarned = habit.xp;
     } else if ((habit.type === 'mood' || habit.type === 'energy') && log.value) {
+      xpEarned = habit.xp;
+    } else if ((habit.type === 'reading' || habit.type === 'workout') && presetValueCounts(habit.type, log.value)) {
+      // V3.5 presets: XP per day recorded, never per unit — consistency,
+      // not volume. Same semantics as the existing numeric/mood branches.
       xpEarned = habit.xp;
     }
 

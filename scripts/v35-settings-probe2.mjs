@@ -1,0 +1,40 @@
+#!/usr/bin/env node
+import { chromium } from 'playwright'
+const b = await chromium.launch()
+const ctx = await b.newContext({ viewport: { width: 1440, height: 900 } })
+await ctx.addInitScript(() => { try { localStorage.setItem('bt_demo_mode','true'); localStorage.setItem('bt_visit_choice','demo'); localStorage.setItem('bt_walkthrough:demo','skipped'); localStorage.setItem('bt_assistant_collapsed','true') } catch {} })
+const page = await ctx.newPage()
+await page.goto('http://localhost:5173/today', { waitUntil: 'networkidle', timeout: 90000 })
+await page.waitForTimeout(2600)
+const fills = () => page.evaluate(() => {
+  const paths = [...document.querySelectorAll('.baksur-presence-layer svg path, .baksur-presence-layer svg circle, .baksur-presence-layer svg ellipse')]
+  return [...new Set(paths.map(x => (x.getAttribute('fill') || '').toLowerCase()))].sort().join(',')
+})
+console.log('fills default:', await fills())
+await page.locator('#settings-btn').first().click({ force: true }); await page.waitForTimeout(600)
+await page.locator('[role="dialog"] [role="radio"][aria-label="Coral"]').click({ force: true }); await page.waitForTimeout(700)
+console.log('fills coral: ', await fills())
+await page.locator('[role="dialog"] [role="radio"][aria-label="Teal"]').click({ force: true }); await page.waitForTimeout(700)
+console.log('fills teal:  ', await fills())
+await page.keyboard.press('Escape'); await page.waitForTimeout(300)
+// motion=Reduced: hero should stop lerping + no cursor-follow; check data attr / svg stillness
+await page.locator('#settings-btn').first().click({ force: true }); await page.waitForTimeout(400)
+await page.locator('[role="dialog"] [role="radio"]', { hasText: /^Reduced$/i }).click({ force: true }); await page.waitForTimeout(500)
+await page.keyboard.press('Escape'); await page.waitForTimeout(400)
+const svg = await page.locator('.baksur-presence-layer svg').innerHTML()
+await page.waitForTimeout(1100)
+const svg2 = await page.locator('.baksur-presence-layer svg').innerHTML()
+console.log('reduced-motion stillness (true = static):', svg === svg2)
+// presence hidden → what stays reachable? open contextbar / header
+await page.locator('#settings-btn').first().click({ force: true }); await page.waitForTimeout(400)
+await page.locator('[role="dialog"] [role="radio"][aria-label="Graphite"]').click({ force: true })
+await page.locator('[role="dialog"] [role="radio"]', { hasText: /^Full$/i }).click({ force: true })
+await page.locator('[role="dialog"] [role="radio"]', { hasText: /^Hidden$/i }).click({ force: true })
+await page.waitForTimeout(500)
+await page.keyboard.press('Escape'); await page.waitForTimeout(600)
+const reachable = await page.evaluate(() => {
+  const cand = [...document.querySelectorAll('button')].filter(x => /bakasur|assistant|open chat/i.test((x.getAttribute('aria-label') || '') + ' ' + (x.textContent || '')) && x.getBoundingClientRect().width > 0)
+  return cand.map(x => (x.getAttribute('aria-label') || x.textContent || '').trim().slice(0, 40))
+})
+console.log('chat reach while hidden:', JSON.stringify(reachable))
+await b.close()

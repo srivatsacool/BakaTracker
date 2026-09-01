@@ -83,7 +83,7 @@ export const Journal: React.FC = () => {
   const moodLabel: Record<string, string> = { '😞': 'Low', '😐': 'Neutral', '🙂': 'Good', '😄': 'Great', '': 'None' };
 
   return (
-    <div className="max-w-3xl mx-auto flex flex-col gap-6">
+    <div className="w-full max-w-[1100px] mx-auto flex flex-col gap-6 md:pb-48 pb-20">
       {/* Journal HUD */}
       <JournalHUD daysLogged={journal.length} currentStreak={journalStreak} todayLogged={todayLogged} />
 

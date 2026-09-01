@@ -83,7 +83,7 @@ export const MatrixQuadrant: React.FC<MatrixQuadrantProps> = ({
                     key={q.key}
                     type="button"
                     onClick={() => onAssign(task.id, q.key)}
-                    className="text-[8px] font-mono font-bold px-1.5 py-0.5 rounded cursor-pointer border transition hover:scale-105"
+                    className="text-[8px] font-mono font-bold px-2 py-1 min-h-[28px] rounded cursor-pointer border transition hover:scale-105"
                     style={{ color: 'var(--bt-text-muted)', borderColor: 'var(--bt-border-soft)', background: 'rgba(242,242,242,0.03)' }}
                     aria-label={`Move ${task.title} to ${q.label}`}
                   >

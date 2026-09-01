@@ -116,7 +116,7 @@ export const Today: React.FC = () => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto flex flex-col gap-6 relative pb-12">
+    <div className="w-full max-w-[1400px] mx-auto flex flex-col gap-6 relative pb-20 md:pb-48">
       {/* Floating XP Elements */}
       {floatingXPs.map(item => (
         <div key={item.id} className="float-xp" style={{ left: `${item.x}px`, top: `${item.y}px`, transform: 'translate(-50%, -50%)' }}>

@@ -20,6 +20,10 @@ const Eisenhower = lazy(() => import('./pages/Eisenhower').then(m => ({ default:
 const Notes = lazy(() => import('./pages/Notes').then(m => ({ default: m.Notes })));
 const BakaSurPage = lazy(() => import('./pages/BakaSurPage').then(m => ({ default: m.BakaSurPage })));
 const PageWorkspace = lazy(() => import('./pages/PageWorkspace').then(m => ({ default: m.PageWorkspace })));
+// V3.4.1 dev-only fixture: Baksur direction prototypes. Hidden route, not in nav.
+const BaksurPrototypePage = lazy(() => import('./pages/BaksurPrototypePage').then(m => ({ default: m.BaksurPrototypePage })));
+// V3.4.3 dev-only fixture: Baksur reaction mapping board. Hidden route, not in nav.
+const BaksurReactionFixturePage = lazy(() => import('./pages/BaksurReactionFixturePage').then(m => ({ default: m.BaksurReactionFixturePage })));
 
 function App() {
   const init = useStore(state => state.init);
@@ -46,6 +50,10 @@ function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/philosophy" element={<Philosophy />} />
+          {/* V3.4.1 dev-only Baksur prototype fixture (design gate; remove before V3.4.4) */}
+          <Route path="/baksur-prototype" element={<BaksurPrototypePage />} />
+          {/* V3.4.3 dev-only reaction mapping board (remove before V3.4.4) */}
+          <Route path="/baksur-reactions" element={<BaksurReactionFixturePage />} />
           <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
             <Route path="/journey" element={<Journey />} />
             <Route path="/habits" element={<Habits />} />
