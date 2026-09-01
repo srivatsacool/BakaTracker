@@ -13,6 +13,7 @@ import { createJournalEntry } from '../services/journal/createJournalEntry';
 import { updateJournalEntry } from '../services/journal/updateJournalEntry';
 import { refreshQuote } from '../services/quotes/refreshQuote';
 import { calculateCharacterStats } from '../services/stats/calculateCharacterStats';
+import { PRESET_BY_ID, type PresetId } from '../lib/habitPresets';
 import { backfillEvents } from '../services/stats/backfillEvents';
 import { areaToStat } from '../services/stats/calculateXP';
 
@@ -49,6 +50,10 @@ interface BakaState {
   setNumericHabit: (id: string, date: string, value: number) => Promise<void>;
   setMoodHabit: (id: string, date: string, mood: string) => Promise<void>;
   setEnergyHabit: (id: string, date: string, energy: string) => Promise<void>;
+  /** V3.5 presets: generic value recorder ('m:20' | 'w:back:45' | liters/hours). */
+  setHabitValue: (id: string, date: string, value: number | string) => Promise<void>;
+  /** V3.5 presets: add a habit instance from the immutable registry. */
+  addPresetHabit: (presetId: string) => Promise<void>;
   addHabit: (habit: Omit<Habit, 'id' | 'active' | 'created_at' | 'updated_at'>) => Promise<void>;
   deleteHabit: (id: string) => Promise<void>;
   
@@ -935,6 +940,42 @@ export const useStore = create<BakaState>((set, get) => ({
     updateStatsAndSummaries(set, get, updatedHabits, habitLogs, tasks, journal, events);
     
     get().pushSync().catch(console.error);
+  },
+
+  setHabitValue: async (id: string, date: string, value: number | string) => {
+    const { habits, habitLogs, tasks, journal, events } = get();
+    const habit = habits.find(h => h.id === id);
+    if (!habit) return;
+    const empty = value === '' || value === 0 || value === null || value === undefined;
+    const idx = habitLogs.findIndex(l => l.habit_id === id && l.date === date);
+    const newLogs = [...habitLogs];
+    let newEvents = events.filter(e => !(e.entity_id === id && e.timestamp.startsWith(date)));
+    if (empty) {
+      if (idx > -1) newLogs.splice(idx, 1);
+    } else {
+      const entry = idx > -1
+        ? { ...newLogs[idx], value, xp_earned: habit.xp }
+        : { id: generateUUID('log_'), date, habit_id: id, value, xp_earned: habit.xp, created_at: new Date().toISOString() };
+      if (idx > -1) newLogs[idx] = entry; else newLogs.push(entry);
+      newEvents = [...newEvents, {
+        id: generateUUID('evt_'), type: 'habit_completed', source: 'habit',
+        entity: habit.name, entity_id: id, xp: habit.xp, stat: habit.stat,
+        metadata: JSON.stringify({ value }), timestamp: new Date(date + 'T12:00:00').toISOString(),
+      }];
+    }
+    set({ habitLogs: newLogs, events: newEvents });
+    localStorage.setItem('bt_logs', JSON.stringify(newLogs));
+    localStorage.setItem('bt_events', JSON.stringify(newEvents));
+    updateStatsAndSummaries(set, get, habits, newLogs, tasks, journal, newEvents);
+    get().pushSync().catch(console.error);
+  },
+
+  addPresetHabit: async (presetId: string) => {
+    const preset = PRESET_BY_ID.get(presetId as PresetId);
+    if (!preset) return;
+    const existing = get().habits.find(h => h.preset === preset.id);
+    if (existing) return;
+    await get().addHabit({ name: preset.name, type: preset.type, icon: preset.icon, xp: preset.xp, stat: preset.stat, preset: preset.id });
   },
 
   deleteHabit: async (id: string) => {

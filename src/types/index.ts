@@ -1,6 +1,11 @@
-export type HabitType = 'checkbox' | 'counter' | 'mood' | 'energy' | 'numeric';
+export type HabitType = 'checkbox' | 'counter' | 'mood' | 'energy' | 'numeric' | 'reading' | 'workout';
 
 export type StatType = 'discipline' | 'health' | 'knowledge' | 'creativity' | 'career';
+
+/** Canonical preset ids (V3.5 habit preset registry). Optional on Habit —
+ *  its presence marks a preset instance (immutable identity); absent means
+ *  a fully custom habit. Kept structurally here to avoid a lib import. */
+export type HabitPresetId = 'mood' | 'water' | 'sleep' | 'reading' | 'workout';
 
 export interface Habit {
   id: string;
@@ -10,6 +15,8 @@ export interface Habit {
   xp: number;
   stat: StatType;
   active: boolean;
+  /** V3.5: preset identity when this habit is an instance of a canonical preset. */
+  preset?: HabitPresetId;
   created_at: string; // ISO date
   updated_at: string; // ISO date
 }
