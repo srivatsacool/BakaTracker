@@ -277,11 +277,25 @@ export class AiService {
   }
 }
 
-/** Best-effort JSON extraction: direct parse, fenced block, or first {...} span. */
+/**
+ * Best-effort JSON extraction with progressive fallback.
+ *
+ * Strategy order:
+ *   1. Direct JSON.parse on trimmed output
+ *   2. Fenced code block (```json ... ``` or ``` ... ```)
+ *   3. First {...} span in the text
+ *   4. WRAP fallback: treat the entire output as a reply string
+ *      (small LLMs often return natural language instead of JSON)
+ *
+ * The wrap fallback ensures the pipeline never throws "not valid JSON" for
+ * model output that is perfectly good conversational text — it just isn't
+ * structured.  The caller's zod schema validates the wrapped object.
+ */
 function extractJson(raw: string): { ok: true; value: unknown } | { ok: false } {
   const text = raw.trim();
   if (!text) return { ok: false };
 
+  // --- strategies 1-3: try to find real JSON ---
   const candidates: string[] = [text];
   const fence = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
   if (fence?.[1]) candidates.unshift(fence[1].trim());
@@ -295,6 +309,17 @@ function extractJson(raw: string): { ok: true; value: unknown } | { ok: false } 
       // try the next candidate
     }
   }
+
+  // --- strategy 4: wrap raw text as a reply ---
+  // Strip markdown code fences that the model may have wrapped around prose.
+  const stripped = text
+    .replace(/^```(?:json|text)?\s*\n?/i, "")
+    .replace(/\n?```\s*$/i, "")
+    .trim();
+  if (stripped.length > 0) {
+    return { ok: true, value: { reply: stripped } };
+  }
+
   return { ok: false };
 }
 

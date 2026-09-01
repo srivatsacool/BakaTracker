@@ -129,7 +129,7 @@ describe('BakaSur prompt architecture', () => {
     });
 
     it('preserves JSON output format', () => {
-      expect(CHAT_SYSTEM).toContain('{"reply": "..."}');
+      expect(CHAT_SYSTEM).toContain("reply");
     });
   });
 

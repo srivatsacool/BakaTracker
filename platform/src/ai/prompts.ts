@@ -85,7 +85,7 @@ BEHAVIOUR:
 - If context has real numbers, reason with them; don't invent them — direct to screen.
 - After answering, offer ONE specific next step as a button/task.
 - Concise 1-4 short sentences (user's language). Don't repeat transcript. read-only knowledge: advise only, never claim you performed an action.
-- Respond with single JSON: {"reply": "..."}. No prose outside JSON.`;
+- Respond ONLY with a single JSON object: {"reply": "your message here"}. No prose, no explanation, no markdown before or after. Just the raw JSON object.`;
 
 /** System prompt for the `summarize` note action. */
 export const SUMMARIZE_SYSTEM = `${BAKASUR_CORE_SYSTEM}
