@@ -71,10 +71,14 @@ export async function handleAssistantChat(
   // We never read body.plan / body.quota / body.remaining — they are silently dropped.
 
   // 2. Resolve authoritative quota: min(userSelected, planMax, hostCap)
+  //    Phase 3: unlimited users get a sentinel effectiveQuota — the quota gate
+  //    is skipped entirely, but the response reflects "no daily limit".
   const aiSettings = await loadAiSettings(c.env.OAUTH_KV, user.sub);
   const planMax = getPlanMaxQuota(c.env as any, user.sub);
   const hostCap = getHostQuota(c.env as any);
-  const effectiveQuota = getEffectiveQuota(aiSettings.ai_turns_per_day, planMax, hostCap);
+  const effectiveQuota = aiSettings.unlimited
+    ? 999_999
+    : getEffectiveQuota(aiSettings.ai_turns_per_day, planMax, hostCap);
 
   // 3. Rebuild the USER message from bounded parts: Soul context, page context,
   //    transcript, question. Never the system prompt. Sanitize each part.
@@ -207,7 +211,9 @@ export async function handleGetQuota(
   const aiSettings = await loadAiSettings(c.env.OAUTH_KV, user.sub);
   const planMax = getPlanMaxQuota(c.env as any, user.sub);
   const hostCap = getHostQuota(c.env as any);
-  const effectiveQuota = getEffectiveQuota(aiSettings.ai_turns_per_day, planMax, hostCap);
+  const effectiveQuota = aiSettings.unlimited
+    ? 999_999
+    : getEffectiveQuota(aiSettings.ai_turns_per_day, planMax, hostCap);
   const status = await getQuotaStatus(c.env.BAKA_DB, user.sub, effectiveQuota);
   return c.json({
     ok: true,
@@ -234,7 +240,9 @@ export async function handleGetAiSettings(
   const aiSettings = await loadAiSettings(c.env.OAUTH_KV, user.sub);
   const planMax = getPlanMaxQuota(c.env as any, user.sub);
   const hostCap = getHostQuota(c.env as any);
-  const effectiveQuota = getEffectiveQuota(aiSettings.ai_turns_per_day, planMax, hostCap);
+  const effectiveQuota = aiSettings.unlimited
+    ? 999_999
+    : getEffectiveQuota(aiSettings.ai_turns_per_day, planMax, hostCap);
   const status = await getQuotaStatus(c.env.BAKA_DB, user.sub, effectiveQuota);
   return c.json({
     ok: true,
@@ -281,7 +289,9 @@ export async function handlePutAiSettings(
     // If they tried to exceed ceiling, clamp and inform, but don't error — Settings UX shows ceiling.
   }
   const saved = await saveAiSettings(c.env.OAUTH_KV, user.sub, { ai_turns_per_day: clampedSelected, unlimited });
-  const effectiveQuota = getEffectiveQuota(saved.ai_turns_per_day, planMax, hostCap);
+  const effectiveQuota = saved.unlimited
+    ? 999_999
+    : getEffectiveQuota(saved.ai_turns_per_day, planMax, hostCap);
   const status = await getQuotaStatus(c.env.BAKA_DB, user.sub, effectiveQuota);
   return c.json({
     ok: true,
