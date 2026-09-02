@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /assets/
+Disallow: /manifest.webmanifest
+Disallow: /sw.js
+Disallow: /registerSW.js
+
+Sitemap: https://bakatracker.buildsrivatsa.qzz.io/sitemap.xml
