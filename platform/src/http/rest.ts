@@ -35,6 +35,7 @@ import { handleGetSettings, handlePutSettings } from "./notifications";
 import { handlePostSubscription, handleDeleteSubscription } from "./push";
 import { nowISO } from "../shared/util";
 import { PageSaveConflictError, PageNotFoundError } from "../storage/repositories/notes";
+import { loadSoul, saveSoul, SoulSchema } from "../soul";
 
 export const REST_PREFIX = "/api/v1";
 
@@ -290,6 +291,27 @@ export function buildRestApp(options: RestAppOptions = {}): Hono<{ Bindings: RES
   app.get("/assistant/quota", handleGetQuota);
   app.get("/assistant/settings", handleGetAiSettings);
   app.put("/assistant/settings", handlePutAiSettings);
+
+  // --- Phase 3: BakaSur Soul (per-user identity context) --------------------
+  // Read/write the user's Soul markdown — server-authoritative, per-user scoped.
+  // Soul content is DATA for the AI pipeline, never higher-priority instructions.
+
+  app.get("/soul", async (c) => {
+    const user = c.get("user") as RESTVariables["user"];
+    const soul = await loadSoul(c.env.OAUTH_KV, user.sub);
+    return c.json({ ok: true, soul });
+  });
+
+  app.put("/soul", async (c) => {
+    const user = c.get("user") as RESTVariables["user"];
+    const body = await c.req.json().catch(() => null);
+    const parsed = SoulSchema.safeParse(body);
+    if (!parsed.success) {
+      return c.json({ ok: false, error: "invalid_input", message: "Soul content must be a string (max 8000 chars)." }, 400);
+    }
+    const saved = await saveSoul(c.env.OAUTH_KV, user.sub, parsed.data);
+    return c.json({ ok: true, soul: saved });
+  });
 
   // --- v2.1 Notebooks + Pages (Visual Notes persistence) ---------------------
   // Thin REST transport over the same Tool Registry tools — one business logic
