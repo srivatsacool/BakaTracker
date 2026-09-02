@@ -13,6 +13,11 @@ import { BAKASUR_COLOR_HEXES, railSizeFor } from '../../lib/baksurPreferences';
 import { baksurLine, type BakaSurEnvironment, type BakaSurIntent } from '../../lib/baksurMessages';
 import { sendAssistantChat, fetchAiQuota, getGuestRemaining, isGuestQuotaExhausted } from '../../services/assistantChat';
 import type { ChatResult } from '../../services/assistantChat';
+import {
+  ONBOARDING_STEPS,
+  loadOnboardingState,
+  persistSoulUpdate,
+} from '../../lib/soulOnboarding';
 import type { Habit, HabitLog, JournalEntry, Task, UserStats } from '../../types';
 
 interface Message {
@@ -266,6 +271,11 @@ export const BakaSurRail: React.FC<BakaSurRailProps> = ({ collapsed, onToggle })
   // Phase 2B quota display — authenticated daily remaining vs guest session vs offline
   const [quota, setQuota] = useState<{ remaining: number; effective: number } | null>(null);
 
+  // Phase 3: Progressive onboarding — server-authoritative (Soul is source of truth)
+  const [onboardingStep, setOnboardingStep] = useState<number>(-1); // -1 = not started, 0..N = active step, N+1 = complete
+  const [soulContent, setSoulContent] = useState<string>('');
+  const onboardingActive = onboardingStep >= 0 && onboardingStep < ONBOARDING_STEPS.length;
+
   // V3.5 single-instance character: register the header slot he lands in,
   // report busy so THINKING is visible wherever he currently sits.
   const registerSlot = useBakaSurPresenceSlot();
@@ -279,6 +289,33 @@ export const BakaSurRail: React.FC<BakaSurRailProps> = ({ collapsed, onToggle })
   const routeName = useMemo(() => routeNames[location.pathname] || 'Current workspace', [location.pathname]);
   const isGuest = user?.provider === 'guest';
   const offline = typeof navigator !== 'undefined' ? !navigator.onLine : false;
+
+  // Phase 3: Load Soul on mount to determine onboarding progress
+  // Soul is the source of truth — onboarding resumes from persisted state.
+  useEffect(() => {
+    if (isGuest || !apiClient) return; // Guest/offline: no onboarding
+    let cancelled = false;
+    loadOnboardingState(apiClient).then(({ soul, nextStep, isComplete }) => {
+      if (cancelled) return;
+      setSoulContent(soul.content);
+      if (!isComplete) {
+        setOnboardingStep(nextStep);
+        // Replace initial greeting with first onboarding question
+        const step = ONBOARDING_STEPS[nextStep];
+        if (step) {
+          setMessages([{
+            id: 1,
+            role: 'assistant',
+            content: `Hey! I'm BakaSur — I'll be your personal AI companion here. To help you better, I'd like to learn a bit about you.\n\n${step.question}`,
+            source: 'Onboarding · getting to know you',
+          }]);
+        }
+      } else {
+        setOnboardingStep(-1); // Complete — normal chat mode
+      }
+    }).catch(() => { if (!cancelled) setOnboardingStep(-1); });
+    return () => { cancelled = true; };
+  }, [isGuest, apiClient]);
 
   // Phase 2B: fetch authoritative quota on mount / auth change (live only)
   useEffect(() => {
@@ -355,6 +392,46 @@ export const BakaSurRail: React.FC<BakaSurRailProps> = ({ collapsed, onToggle })
     setInput('');
     setError(null);
     setMessages(prev => [...prev, { id: Date.now(), role: 'user', content: question }]);
+
+    // Phase 3: Onboarding — persist answer and advance to next question
+    if (onboardingActive && apiClient && !isGuest) {
+      setBusy(true);
+      try {
+        const step = ONBOARDING_STEPS[onboardingStep];
+        const updated = await persistSoulUpdate(apiClient, soulContent, step, question);
+        setSoulContent(updated.content);
+        const nextStep = onboardingStep + 1;
+        if (nextStep < ONBOARDING_STEPS.length) {
+          // More questions to ask
+          setOnboardingStep(nextStep);
+          const nextQ = ONBOARDING_STEPS[nextStep];
+          await new Promise(resolve => window.setTimeout(resolve, 400));
+          setMessages(prev => [...prev, {
+            id: Date.now() + 1,
+            role: 'assistant',
+            content: `Got it — thanks! One more thing: ${nextQ.question}`,
+            source: 'Onboarding · getting to know you',
+          }]);
+        } else {
+          // Onboarding complete — transition to normal chat
+          setOnboardingStep(-1);
+          await new Promise(resolve => window.setTimeout(resolve, 400));
+          setMessages(prev => [...prev, {
+            id: Date.now() + 1,
+            role: 'assistant',
+            content: "Perfect! I now know a bit about you. I'll use this to give you better advice. Ask me about your day, quests, habits, or anything else.",
+            source: 'Onboarding · complete',
+          }]);
+        }
+      } catch {
+        // Persist failed — continue with normal chat
+        setOnboardingStep(-1);
+      } finally {
+        setBusy(false);
+      }
+      return;
+    }
+
     setBusy(true);
 
     try {
