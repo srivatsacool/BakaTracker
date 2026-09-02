@@ -23,6 +23,7 @@ import { aiErrorStatus } from "./notes-ai";
 import { loadAiSettings, saveAiSettings } from "../ai/aiSettings";
 import { getPlanMaxQuota, getHostQuota, getEffectiveQuota } from "../ai/plans";
 import { tryConsumeQuota, refundQuota, getQuotaStatus, todayUtcISO } from "../ai/quota";
+import { loadSoul } from "../soul";
 
 /** Structurally identical to rest.ts's RESTBindings (no import cycle). */
 type RESTBindings = Env & { OAUTH_PROVIDER: OAuthHelpers };
@@ -75,8 +76,13 @@ export async function handleAssistantChat(
   const hostCap = getHostQuota(c.env as any);
   const effectiveQuota = getEffectiveQuota(aiSettings.ai_turns_per_day, planMax, hostCap);
 
-  // 3. Rebuild the USER message from bounded parts: page context, transcript,
-  //    question. Never the system prompt. Sanitize each part.
+  // 3. Rebuild the USER message from bounded parts: Soul context, page context,
+  //    transcript, question. Never the system prompt. Sanitize each part.
+  //    Soul is treated as DATA — never higher-priority instructions.
+  const soul = await loadSoul(c.env.OAUTH_KV, user.sub);
+  const soulLine = soul.content
+    ? `User profile:\n${sanitizeForPrompt(soul.content, 4000)}`
+    : "";
   const rawCtxLine = context?.route_name
     ? `Page: ${context.route_name}${context.date ? ` · ${context.date}` : ""}`
     : "";
@@ -85,7 +91,7 @@ export async function handleAssistantChat(
     .map((turn) => `${turn.role === "user" ? "User" : "BakaSur"}: ${sanitizeForPrompt(turn.content, 2000)}`)
     .join("\n");
   const safeMessage = sanitizeForPrompt(message, 2000);
-  const userMessage = [ctxLine, transcript ? `Recent conversation:\n${transcript}` : "", `Question: ${safeMessage}`]
+  const userMessage = [soulLine, ctxLine, transcript ? `Recent conversation:\n${transcript}` : "", `Question: ${safeMessage}`]
     .filter(Boolean)
     .join("\n\n");
 
