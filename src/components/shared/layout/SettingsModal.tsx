@@ -75,8 +75,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const notifSaveSeq = useRef(0);
   const notifLoading = !isGuest && !notifSettings && !notifError;
 
-  /* AI quota (Phase 2B: userSelectedQuota capped by plan/host, server authoritative) */
-  const [aiSettings, setAiSettings] = useState<{ ai_turns_per_day: number; effectiveQuota: number; planMax: number; hostCap?: number } | null>(null);
+  /* AI quota (Phase 2B+3: userSelectedQuota capped by plan/host, server authoritative + unlimited toggle) */
+  const [aiSettings, setAiSettings] = useState<{ ai_turns_per_day: number; unlimited: boolean; effectiveQuota: number; planMax: number; hostCap?: number } | null>(null);
   const [aiQuota, setAiQuota] = useState<{ remaining: number; used: number; resetAt?: string } | null>(null);
   const [aiBusy, setAiBusy] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
@@ -87,19 +87,20 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     let cancelled = false;
     fetchServerAiSettings(apiClient).then(res => {
       if (cancelled || !res) return;
-      setAiSettings({ ai_turns_per_day: res.ai_turns_per_day, effectiveQuota: res.effectiveQuota, planMax: res.planMax, hostCap: res.hostCap });
+      setAiSettings({ ai_turns_per_day: res.ai_turns_per_day, unlimited: res.unlimited ?? false, effectiveQuota: res.effectiveQuota, planMax: res.planMax, hostCap: res.hostCap });
       setAiQuota({ remaining: res.quota.remaining ?? 0, used: res.quota.used ?? 0, resetAt: (res.quota as any).resetAt });
     }).catch(() => { if (!cancelled) setAiError('Failed to load AI settings'); });
     return () => { cancelled = true; };
   }, [isGuest, apiClient]);
 
-  const handleAiChange = async (nextVal: number) => {
+  const handleAiChange = async (nextVal: number, nextUnlimited?: boolean) => {
     if (!apiClient || !aiSettings) return;
     setAiBusy(true); setAiError(null); setAiSaved(false);
     try {
-      const res = await saveServerAiSettings(apiClient, nextVal);
+      const unlimited = nextUnlimited ?? aiSettings.unlimited;
+      const res = await saveServerAiSettings(apiClient, nextVal, unlimited);
       if (!res) throw new Error('no response');
-      setAiSettings({ ai_turns_per_day: res.ai_turns_per_day, effectiveQuota: res.effectiveQuota, planMax: res.planMax, hostCap: res.hostCap });
+      setAiSettings({ ai_turns_per_day: res.ai_turns_per_day, unlimited: res.unlimited ?? false, effectiveQuota: res.effectiveQuota, planMax: res.planMax, hostCap: res.hostCap });
       setAiQuota({ remaining: res.quota.remaining ?? 0, used: (res.quota as any).used ?? 0, resetAt: (res.quota as any).resetAt });
       setAiSaved(true);
       window.setTimeout(() => setAiSaved(false), 2500);
@@ -381,7 +382,41 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 </div>
                 {aiQuota && <p className="m-0 text-[10px] font-mono" style={{ color: 'var(--bt-text-muted)' }}>Today: {aiQuota.used} used · {aiQuota.remaining} remaining{aiQuota.resetAt ? ` · resets ${new Date(aiQuota.resetAt).toLocaleTimeString()}` : ''}</p>}
                 {aiError && <p className="m-0 text-[10px] font-mono" style={{ color: 'var(--bt-danger)' }}>{aiError}</p>}
-                {aiSaved && !aiError && <p className="m-0 text-[10px] font-mono" style={{ color: 'var(--bt-success)' }}>Saved ✓ — effective {aiSettings.effectiveQuota}/day</p>}
+                {aiSaved && !aiError && <p className="m-0 text-[10px] font-mono" style={{ color: 'var(--bt-success)' }}>Saved ✓ — effective {aiSettings.unlimited ? 'Unlimited' : `${aiSettings.effectiveQuota}/day`}</p>}
+
+                {/* Phase 3: Limited / Unlimited toggle */}
+                <div className="flex items-center gap-3 mt-2 p-2 rounded" style={{ background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.15)' }}>
+                  <span className="text-[10px] font-mono" style={{ color: 'var(--bt-text-muted)' }}>Quota mode:</span>
+                  <button
+                    type="button"
+                    disabled={aiBusy}
+                    onClick={() => handleAiChange(aiSettings.ai_turns_per_day, false)}
+                    className="text-[10px] font-mono px-2 py-0.5 rounded transition-colors"
+                    style={{
+                      background: !aiSettings.unlimited ? 'rgba(139,92,246,0.3)' : 'transparent',
+                      border: `1px solid ${!aiSettings.unlimited ? 'rgba(139,92,246,0.5)' : 'rgba(255,255,255,0.1)'}`,
+                      color: !aiSettings.unlimited ? 'var(--bt-text)' : 'var(--bt-text-muted)',
+                    }}
+                  >
+                    Limited ({aiSettings.ai_turns_per_day}/day)
+                  </button>
+                  <button
+                    type="button"
+                    disabled={aiBusy}
+                    onClick={() => handleAiChange(aiSettings.ai_turns_per_day, true)}
+                    className="text-[10px] font-mono px-2 py-0.5 rounded transition-colors"
+                    style={{
+                      background: aiSettings.unlimited ? 'rgba(139,92,246,0.3)' : 'transparent',
+                      border: `1px solid ${aiSettings.unlimited ? 'rgba(139,92,246,0.5)' : 'rgba(255,255,255,0.1)'}`,
+                      color: aiSettings.unlimited ? 'var(--bt-text)' : 'var(--bt-text-muted)',
+                    }}
+                  >
+                    Unlimited
+                  </button>
+                  <span className="text-[9px] font-mono" style={{ color: 'var(--bt-text-muted)' }}>
+                    {aiSettings.unlimited ? 'No daily cap · provider limits still apply' : 'Capped by plan'}
+                  </span>
+                </div>
               </>
             )}
           </div>

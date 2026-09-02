@@ -128,6 +128,7 @@ describe("Phase 2B — AiSettingsResponse shape", () => {
   it("response has required fields", () => {
     const s: AiSettingsResponse = {
       ai_turns_per_day: 30,
+      unlimited: false,
       effectiveQuota: 30,
       planMax: 30,
       date: "2026-08-31",

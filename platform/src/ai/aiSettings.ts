@@ -1,9 +1,14 @@
 /**
- * Phase 2B — per-user AI settings (userSelectedQuota).
+ * Phase 2B+3 — per-user AI settings (userSelectedQuota + unlimited).
  *
  * The user controls their daily AI turn budget via Settings; the server
  * stores it in KV (OAUTH_KV) under `baka:ai:settings:{sub}` and enforces
  * `effective = min(selected, planMax, hostCap)`. Default is 30.
+ *
+ * Phase 3 adds `unlimited`: when true, BakaTracker's daily conversational
+ * quota is bypassed, but provider/platform/rate/abuse limits still apply.
+ * Server determines whether unlimited is permitted; client toggle is never
+ * authoritative.
  *
  * Server is authoritative: the value is read only from KV, never from the
  * request body. The PUT endpoint validates and clamps; the chat endpoint
@@ -14,11 +19,14 @@ import { z } from "zod";
 export const AiSettingsSchema = z.object({
   /** Daily AI turns the user wants (1..500, clamped by plan/host on read). */
   ai_turns_per_day: z.number().int().min(1).max(500).default(30),
+  /** Phase 3: when true, BakaTracker daily quota is bypassed.
+   *  Provider/platform/rate/abuse limits still apply. Server-authoritative. */
+  unlimited: z.boolean().default(false),
 });
 
 export type AiSettings = z.infer<typeof AiSettingsSchema>;
 
-export const DEFAULT_AI_SETTINGS: AiSettings = { ai_turns_per_day: 30 };
+export const DEFAULT_AI_SETTINGS: AiSettings = { ai_turns_per_day: 30, unlimited: false };
 
 const AI_SETTINGS_KEY = (sub: string) => `baka:ai:settings:${sub}`;
 

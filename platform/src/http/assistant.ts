@@ -108,27 +108,34 @@ export async function handleAssistantChat(
 
   // 4. Atomically consume quota BEFORE AI execution. 429 if exhausted.
   //    This is the sole quota gate — clients cannot bypass by crafting headers.
+  //    Phase 3: unlimited users skip BakaTracker's daily quota (provider/platform
+  //    rate/abuse limits still apply server-side).
   const dateUtc = todayUtcISO();
-  const consumed = await tryConsumeQuota(c.env.BAKA_DB, user.sub, effectiveQuota, dateUtc);
-  if (!consumed.allowed) {
-    const remaining = 0;
-    return c.json(
-      {
-        ok: false,
-        error: "quota_exceeded",
-        message: `Daily AI limit reached (${effectiveQuota} turns/day). Resets at ${consumed.status.resetAt}. Reduce your limit or wait until tomorrow.`,
-        quota: {
-          used: consumed.status.used,
-          remaining,
-          effectiveQuota,
-          planMax,
-          hostCap,
-          date: consumed.status.date,
-          resetAt: consumed.status.resetAt,
+  if (aiSettings.unlimited) {
+    // Unlimited: skip BakaTracker quota consumption. Provider limits still apply.
+    // Log for observability but do not consume from D1.
+  } else {
+    const consumed = await tryConsumeQuota(c.env.BAKA_DB, user.sub, effectiveQuota, dateUtc);
+    if (!consumed.allowed) {
+      const remaining = 0;
+      return c.json(
+        {
+          ok: false,
+          error: "quota_exceeded",
+          message: `Daily AI limit reached (${effectiveQuota} turns/day). Resets at ${consumed.status.resetAt}. Reduce your limit or wait until tomorrow.`,
+          quota: {
+            used: consumed.status.used,
+            remaining,
+            effectiveQuota,
+            planMax,
+            hostCap,
+            date: consumed.status.date,
+            resetAt: consumed.status.resetAt,
+          },
         },
-      },
-      429,
-    );
+        429,
+      );
+    }
   }
 
   // 5. Structured generation. Read-only; no ledger access in this path.
@@ -233,6 +240,7 @@ export async function handleGetAiSettings(
     ok: true,
     settings: {
       ai_turns_per_day: aiSettings.ai_turns_per_day,
+      unlimited: aiSettings.unlimited,
       effectiveQuota,
       planMax,
       hostCap,
@@ -256,12 +264,14 @@ export async function handlePutAiSettings(
 ): Promise<Response> {
   const user = c.get("user");
   const body = await c.req.json().catch(() => null);
-  const raw = (body ?? {}) as { ai_turns_per_day?: unknown; plan?: unknown; quota?: unknown };
+  const raw = (body ?? {}) as { ai_turns_per_day?: unknown; unlimited?: unknown; plan?: unknown; quota?: unknown };
   // Ignore any spoofed `plan` / `quota` / `remaining` fields — server is authoritative.
   const n = typeof raw.ai_turns_per_day === "number" ? raw.ai_turns_per_day : Number(raw.ai_turns_per_day);
   if (!Number.isFinite(n)) {
     return c.json({ ok: false, error: "invalid_input", message: "ai_turns_per_day (1-500) is required." }, 400);
   }
+  // Phase 3: unlimited is a boolean toggle — server stores it, never trusts client for bypass.
+  const unlimited = raw.unlimited === true;
   const planMax = getPlanMaxQuota(c.env as any, user.sub);
   const hostCap = getHostQuota(c.env as any);
   const ceiling = hostCap !== undefined ? Math.min(planMax, hostCap) : planMax;
@@ -270,13 +280,14 @@ export async function handlePutAiSettings(
   if (clampedSelected !== Math.floor(n)) {
     // If they tried to exceed ceiling, clamp and inform, but don't error — Settings UX shows ceiling.
   }
-  const saved = await saveAiSettings(c.env.OAUTH_KV, user.sub, { ai_turns_per_day: clampedSelected });
+  const saved = await saveAiSettings(c.env.OAUTH_KV, user.sub, { ai_turns_per_day: clampedSelected, unlimited });
   const effectiveQuota = getEffectiveQuota(saved.ai_turns_per_day, planMax, hostCap);
   const status = await getQuotaStatus(c.env.BAKA_DB, user.sub, effectiveQuota);
   return c.json({
     ok: true,
     settings: {
       ai_turns_per_day: saved.ai_turns_per_day,
+      unlimited: saved.unlimited,
       effectiveQuota,
       planMax,
       hostCap,
