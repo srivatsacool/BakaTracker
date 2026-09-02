@@ -11,7 +11,8 @@ import { PixelIcon, PixelBadge, TerminalText } from '../ui';
 import { useBakaSurBusyReporter, useBakaSurPrefs, useBakaSurPresenceSlot } from './bakaSurPresenceContext';
 import { BAKASUR_COLOR_HEXES, railSizeFor } from '../../lib/baksurPreferences';
 import { baksurLine, type BakaSurEnvironment, type BakaSurIntent } from '../../lib/baksurMessages';
-import { fetchAiQuota, getGuestRemaining, isGuestQuotaExhausted } from '../../services/assistantChat';
+import { sendAssistantChat, fetchAiQuota, getGuestRemaining, isGuestQuotaExhausted } from '../../services/assistantChat';
+import type { ChatResult } from '../../services/assistantChat';
 import type { Habit, HabitLog, JournalEntry, Task, UserStats } from '../../types';
 
 interface Message {
@@ -386,8 +387,9 @@ export const BakaSurRail: React.FC<BakaSurRailProps> = ({ collapsed, onToggle })
           .filter(m => !(m.role === 'assistant' && m.source?.startsWith('Unavailable')))
           .slice(-6)
           .map(m => ({ role: m.role, content: m.content }));
-        const response = await apiClient.post<{ ok: boolean; result?: { answer?: string; reply?: string; source?: string }; message?: string; quota?: { remaining: number; effectiveQuota: number; used?: number }; error?: string }>(
-          '/api/v1/assistant/chat',
+
+        const result: ChatResult = await sendAssistantChat(
+          apiClient,
           {
             message: question,
             history,
@@ -395,35 +397,50 @@ export const BakaSurRail: React.FC<BakaSurRailProps> = ({ collapsed, onToggle })
               route: location.pathname,
               route_name: routeName,
               date: getTodayDateString(),
-              // Compact, user-supplied ledger facts so BakaSur can reason about
-              // the real workspace (treated as DATA, never as instructions).
-              facts: {
-                open: tasks.filter(t => t.status !== 'done').length,
-                doneToday: tasks.filter(t => t.status === 'done' && t.updated_at ? new Date(t.updated_at).toDateString() === new Date().toDateString() : false).length,
-                overdue: tasks.filter(t => t.due_date && !t.today && t.status !== 'done' && new Date(t.due_date) < new Date()).length,
-                habitsDone: doneHabitsToday(habits, habitLogs),
-                atRiskStreaks: habitsAtRisk(habits, habitLogs).length,
-                level: stats.level,
-                xp: stats.xp,
-                journalToday: journal.some(j => j.date === getTodayDateString()),
-                // Route-aware page context: when editing /notes/:id, tell
-                // BakaSur which page is open so it can coach concretely.
-                pageId: location.pathname.startsWith('/notes/') ? location.pathname.slice('/notes/'.length) : undefined,
-              },
             },
           },
+          { isGuest: false, isOffline: false },
         );
-        const answer = response.result?.reply || response.result?.answer;
-        if (!answer) throw new Error((response as any).message || 'BakaSur returned no answer.');
-        // Update quota from authoritative server envelope
-        if ((response as any).quota) {
-          const q = (response as any).quota as { remaining: number; effectiveQuota: number };
-          setQuota({ remaining: q.remaining ?? 0, effective: q.effectiveQuota ?? 30 });
+
+        if (result.ok) {
+          // Successful AI reply
+          setMessages(prev => [...prev, {
+            id: Date.now() + 1,
+            role: 'assistant',
+            content: result.reply,
+            source: result.model ? `BakaSur · ${result.model}` : 'BakaSur · Worker',
+          }]);
+          // Update quota from authoritative server envelope
+          if (result.quota) {
+            setQuota({ remaining: result.quota.remaining ?? 0, effective: result.quota.effectiveQuota ?? 30 });
+          } else {
+            fetchAiQuota(apiClient).then(r => { if (r) setQuota({ remaining: r.quota.remaining, effective: r.quota.effectiveQuota }); }).catch(()=>{});
+          }
         } else {
-          // Fallback: refresh from server
-          fetchAiQuota(apiClient).then(r => { if (r) setQuota({ remaining: r.quota.remaining, effective: r.quota.effectiveQuota }); }).catch(()=>{});
+          // Error from sendAssistantChat (quota, offline, upstream, etc.)
+          const msg = result.message || 'BakaSur is unavailable right now.';
+          if (result.status === 429 || result.error === 'quota_exceeded') {
+            setError(msg);
+            setMessages(prev => [...prev, {
+              id: Date.now() + 1,
+              role: 'assistant',
+              content: msg,
+              source: 'Limit · 429',
+            }]);
+          } else {
+            setError(msg);
+            setMessages(prev => [...prev, {
+              id: Date.now() + 1,
+              role: 'assistant',
+              content: 'I could not reach the global assistant service. Your workspace is still available locally; try again when the Worker is online.',
+              source: 'Unavailable · recoverable',
+            }]);
+          }
+          // Update quota from error envelope if available
+          if (result.quota) {
+            setQuota({ remaining: result.quota.remaining ?? 0, effective: result.quota.effectiveQuota ?? quota?.effective ?? 30 });
+          }
         }
-        setMessages(prev => [...prev, { id: Date.now() + 1, role: 'assistant', content: answer, source: (response.result as any)?.source || 'BakaSur · Worker' }]);
       }
     } catch (err) {
       const be = err as { status?: number; body?: { error?: string; message?: string; quota?: { remaining: number; effectiveQuota: number } }; message?: string };
