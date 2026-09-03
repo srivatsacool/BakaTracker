@@ -83,7 +83,7 @@ export type ChatResult = ChatSuccess | ChatFailure;
 
 export interface AiSettingsResponse {
   ai_turns_per_day: number;
-  unlimited: boolean;
+  custom_turns: number | null;
   effectiveQuota: number;
   planMax: number;
   hostCap?: number;
@@ -226,10 +226,10 @@ export async function fetchAiSettings(apiClient: ApiClient): Promise<AiSettingsR
   } catch { return null; }
 }
 
-/** Persist user-selected daily turns + unlimited toggle (server validates and caps by plan/host). */
-export async function saveAiSettings(apiClient: ApiClient, ai_turns_per_day: number, unlimited: boolean = false): Promise<AiSettingsResponse & { quota: QuotaEnvelope } | null> {
+/** Persist user-selected daily turns + custom_turns override (server validates). */
+export async function saveAiSettings(apiClient: ApiClient, ai_turns_per_day: number, custom_turns: number | null = null): Promise<AiSettingsResponse & { quota: QuotaEnvelope } | null> {
   try {
-    const res = await apiClient.put<{ ok: boolean; settings: AiSettingsResponse; quota: QuotaEnvelope }>("/api/v1/assistant/settings", { ai_turns_per_day, unlimited });
+    const res = await apiClient.put<{ ok: boolean; settings: AiSettingsResponse; quota: QuotaEnvelope }>("/api/v1/assistant/settings", { ai_turns_per_day, custom_turns });
     if (res.ok) return { ...(res as any).settings, quota: (res as any).quota };
     return null;
   } catch { return null; }

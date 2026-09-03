@@ -75,8 +75,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const notifSaveSeq = useRef(0);
   const notifLoading = !isGuest && !notifSettings && !notifError;
 
-  /* AI quota (Phase 2B+3: userSelectedQuota capped by plan/host, server authoritative + unlimited toggle) */
-  const [aiSettings, setAiSettings] = useState<{ ai_turns_per_day: number; unlimited: boolean; effectiveQuota: number; planMax: number; hostCap?: number } | null>(null);
+  /* AI quota (Phase 2B+3: Limited/Custom modes, server authoritative) */
+  const [aiSettings, setAiSettings] = useState<{ ai_turns_per_day: number; custom_turns: number | null; effectiveQuota: number; planMax: number; hostCap?: number } | null>(null);
   const [aiQuota, setAiQuota] = useState<{ remaining: number; used: number; resetAt?: string } | null>(null);
   const [aiBusy, setAiBusy] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
@@ -87,20 +87,44 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     let cancelled = false;
     fetchServerAiSettings(apiClient).then(res => {
       if (cancelled || !res) return;
-      setAiSettings({ ai_turns_per_day: res.ai_turns_per_day, unlimited: res.unlimited ?? false, effectiveQuota: res.effectiveQuota, planMax: res.planMax, hostCap: res.hostCap });
+      setAiSettings({ ai_turns_per_day: res.ai_turns_per_day, custom_turns: res.custom_turns ?? null, effectiveQuota: res.effectiveQuota, planMax: res.planMax, hostCap: res.hostCap });
+      setCustomInput(res.custom_turns != null ? String(res.custom_turns) : '');
       setAiQuota({ remaining: res.quota.remaining ?? 0, used: res.quota.used ?? 0, resetAt: (res.quota as any).resetAt });
     }).catch(() => { if (!cancelled) setAiError('Failed to load AI settings'); });
     return () => { cancelled = true; };
   }, [isGuest, apiClient]);
 
-  const handleAiChange = async (nextVal: number, nextUnlimited?: boolean) => {
+  const isCustomMode = aiSettings?.custom_turns != null;
+  const [customInput, setCustomInput] = useState<string>('');
+
+  const handleLimitedChange = async (nextVal: number) => {
     if (!apiClient || !aiSettings) return;
     setAiBusy(true); setAiError(null); setAiSaved(false);
     try {
-      const unlimited = nextUnlimited ?? aiSettings.unlimited;
-      const res = await saveServerAiSettings(apiClient, nextVal, unlimited);
+      const res = await saveServerAiSettings(apiClient, nextVal, null);
       if (!res) throw new Error('no response');
-      setAiSettings({ ai_turns_per_day: res.ai_turns_per_day, unlimited: res.unlimited ?? false, effectiveQuota: res.effectiveQuota, planMax: res.planMax, hostCap: res.hostCap });
+      setAiSettings({ ai_turns_per_day: res.ai_turns_per_day, custom_turns: null, effectiveQuota: res.effectiveQuota, planMax: res.planMax, hostCap: res.hostCap });
+      setCustomInput('');
+      setAiQuota({ remaining: res.quota.remaining ?? 0, used: (res.quota as any).used ?? 0, resetAt: (res.quota as any).resetAt });
+      setAiSaved(true);
+      window.setTimeout(() => setAiSaved(false), 2500);
+    } catch (e) {
+      setAiError(e instanceof Error ? e.message : 'Failed to save AI setting');
+    } finally { setAiBusy(false); }
+  };
+
+  const handleCustomSave = async () => {
+    if (!apiClient || !aiSettings) return;
+    const val = parseInt(customInput, 10);
+    if (!Number.isFinite(val) || val < 1 || val > 100000 || !Number.isInteger(val)) {
+      setAiError('Custom turns must be a positive integer (1-100,000).');
+      return;
+    }
+    setAiBusy(true); setAiError(null); setAiSaved(false);
+    try {
+      const res = await saveServerAiSettings(apiClient, aiSettings.ai_turns_per_day, val);
+      if (!res) throw new Error('no response');
+      setAiSettings({ ai_turns_per_day: res.ai_turns_per_day, custom_turns: res.custom_turns, effectiveQuota: res.effectiveQuota, planMax: res.planMax, hostCap: res.hostCap });
       setAiQuota({ remaining: res.quota.remaining ?? 0, used: (res.quota as any).used ?? 0, resetAt: (res.quota as any).resetAt });
       setAiSaved(true);
       window.setTimeout(() => setAiSaved(false), 2500);
@@ -333,101 +357,51 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             />
           </div>
 
-          {/* Phase 2B+3: AI quota — Limited/Unlimited mode (server authoritative) */}
+          {/* Phase 2B+3: AI quota — Limited/Custom modes (server authoritative) */}
           <div className="flex flex-col gap-1.5">
             <div className="flex items-center justify-between">
               <SystemLabel>BakaSur AI</SystemLabel>
               {aiSettings && (
-                <PixelBadge tone={aiSettings.unlimited ? 'success' : aiQuota && aiQuota.remaining === 0 ? 'danger' : 'success'}>
-                  {aiSettings.unlimited ? 'Unlimited' : aiQuota ? `${aiQuota.remaining} left` : `${aiSettings.effectiveQuota}/day`}
+                <PixelBadge tone={aiQuota && aiQuota.remaining === 0 ? "danger" : "success"}>
+                  {isCustomMode ? `${aiSettings.effectiveQuota}/day (custom)` : aiQuota ? `${aiQuota.remaining} left` : `${aiSettings.effectiveQuota}/day`}
                 </PixelBadge>
               )}
             </div>
             {isGuest ? (
               <SystemLabel tone="muted">Sign in to configure AI. Demo is limited to 3 turns/session.</SystemLabel>
             ) : !aiSettings ? (
-              <SystemLabel tone="muted">{aiBusy ? 'Loading AI settings…' : aiError ? aiError : 'Loading…'}</SystemLabel>
+              <SystemLabel tone="muted">{aiBusy ? "Loading AI settings…" : aiError ? aiError : "Loading…"}</SystemLabel>
             ) : (
               <>
-                {/* Phase 3: Limited / Unlimited toggle — always visible */}
-                <div className="flex items-center gap-3 p-2 rounded" style={{ background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.15)' }}>
-                  <span className="text-[10px] font-mono" style={{ color: 'var(--bt-text-muted)' }}>Mode:</span>
-                  <button
-                    type="button"
-                    disabled={aiBusy}
-                    onClick={() => handleAiChange(aiSettings.ai_turns_per_day, false)}
-                    className="text-[10px] font-mono px-2 py-0.5 rounded transition-colors"
-                    style={{
-                      background: !aiSettings.unlimited ? 'rgba(139,92,246,0.3)' : 'transparent',
-                      border: `1px solid ${!aiSettings.unlimited ? 'rgba(139,92,246,0.5)' : 'rgba(255,255,255,0.1)'}`,
-                      color: !aiSettings.unlimited ? 'var(--bt-text)' : 'var(--bt-text-muted)',
-                    }}
-                  >
-                    Limited
-                  </button>
-                  <button
-                    type="button"
-                    disabled={aiBusy}
-                    onClick={() => handleAiChange(aiSettings.ai_turns_per_day, true)}
-                    className="text-[10px] font-mono px-2 py-0.5 rounded transition-colors"
-                    style={{
-                      background: aiSettings.unlimited ? 'rgba(139,92,246,0.3)' : 'transparent',
-                      border: `1px solid ${aiSettings.unlimited ? 'rgba(139,92,246,0.5)' : 'rgba(255,255,255,0.1)'}`,
-                      color: aiSettings.unlimited ? 'var(--bt-text)' : 'var(--bt-text-muted)',
-                    }}
-                  >
-                    Unlimited
-                  </button>
+                <div className="flex items-center gap-3 p-2 rounded" style={{ background: "rgba(139,92,246,0.06)", border: "1px solid rgba(139,92,246,0.15)" }}>
+                  <span className="text-[10px] font-mono" style={{ color: "var(--bt-text-muted)" }}>Mode:</span>
+                  <button type="button" disabled={aiBusy} onClick={() => handleLimitedChange(aiSettings.ai_turns_per_day)} className="text-[10px] font-mono px-2 py-0.5 rounded transition-colors" style={{ background: !isCustomMode ? "rgba(139,92,246,0.3)" : "transparent", border: `1px solid ${!isCustomMode ? "rgba(139,92,246,0.5)" : "rgba(255,255,255,0.1)"}`, color: !isCustomMode ? "var(--bt-text)" : "var(--bt-text-muted)" }}>Limited ({aiSettings.ai_turns_per_day}/day)</button>
+                  <button type="button" disabled={aiBusy} onClick={() => setCustomInput(isCustomMode ? String(aiSettings.custom_turns ?? "") : "")} className="text-[10px] font-mono px-2 py-0.5 rounded transition-colors" style={{ background: isCustomMode ? "rgba(139,92,246,0.3)" : "transparent", border: `1px solid ${isCustomMode ? "rgba(139,92,246,0.5)" : "rgba(255,255,255,0.1)"}`, color: isCustomMode ? "var(--bt-text)" : "var(--bt-text-muted)" }}>Custom</button>
                 </div>
-
-                {aiSettings.unlimited ? (
-                  /* Unlimited mode: no slider, clear copy */
-                  <p className="m-0 text-[10px] leading-relaxed font-mono" style={{ color: 'var(--bt-text-muted)' }}>
-                    No daily limit — subject to AI provider, platform, and rate limits. Server remains authoritative.
-                  </p>
+                {isCustomMode ? (
+                  <div className="flex flex-col gap-1.5">
+                    <p className="m-0 text-[10px] leading-relaxed font-mono" style={{ color: "var(--bt-text-muted)" }}>Enter any positive integer. No plan ceiling applies.</p>
+                    <div className="flex items-center gap-2">
+                      <input type="number" min={1} max={100000} value={customInput} onChange={e => setCustomInput(e.target.value)} placeholder="e.g. 50, 500, 10000" className="arcade-input !text-xs font-mono flex-1" aria-label="Custom AI turns per day" />
+                      <button type="button" disabled={aiBusy || !customInput} onClick={handleCustomSave} className="text-[10px] font-mono px-3 py-1 rounded transition-colors" style={{ background: "rgba(139,92,246,0.3)", border: "1px solid rgba(139,92,246,0.5)", color: "var(--bt-text)" }}>{aiBusy ? "Saving…" : "Save"}</button>
+                    </div>
+                  </div>
                 ) : (
-                  /* Limited mode: slider + select */
                   <>
-                    <p className="m-0 text-[10px] leading-relaxed font-mono" style={{ color: 'var(--bt-text-muted)' }}>
-                      Plan allows up to <b style={{ color: 'var(--bt-text)' }}>{aiSettings.planMax}</b> turns/day{aiSettings.hostCap !== undefined ? ` (host cap ${aiSettings.hostCap})` : ''}. Effective: <b style={{ color: 'var(--bt-text)' }}>{aiSettings.effectiveQuota}/day</b>.
-                    </p>
+                    <p className="m-0 text-[10px] leading-relaxed font-mono" style={{ color: "var(--bt-text-muted)" }}>Plan allows up to <b style={{ color: "var(--bt-text)" }}>{aiSettings.planMax}</b> turns/day{aiSettings.hostCap !== undefined ? ` (host cap ${aiSettings.hostCap})` : ""}. Effective: <b style={{ color: "var(--bt-text)" }}>{aiSettings.effectiveQuota}/day</b>.</p>
                     <div className="flex items-center gap-2">
-                      <input
-                        type="range"
-                        min={1}
-                        max={aiSettings.planMax}
-                        value={aiSettings.ai_turns_per_day}
-                        onChange={e => handleAiChange(Number(e.target.value))}
-                        disabled={aiBusy}
-                        className="flex-1 accent-[var(--bt-primary)]"
-                        aria-label="AI turns per day"
-                      />
-                      <span className="font-mono text-xs px-2 py-1 rounded" style={{ background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.25)', color: 'var(--bt-text)', minWidth: 44, textAlign: 'center' }}>
-                        {aiSettings.ai_turns_per_day}
-                      </span>
+                      <input type="range" min={1} max={aiSettings.planMax} value={aiSettings.ai_turns_per_day} onChange={e => handleLimitedChange(Number(e.target.value))} disabled={aiBusy} className="flex-1 accent-[var(--bt-primary)]" aria-label="AI turns per day" />
+                      <span className="font-mono text-xs px-2 py-1 rounded" style={{ background: "rgba(139,92,246,0.12)", border: "1px solid rgba(139,92,246,0.25)", color: "var(--bt-text)", minWidth: 44, textAlign: "center" }}>{aiSettings.ai_turns_per_day}</span>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <select
-                        value={aiSettings.ai_turns_per_day}
-                        onChange={e => handleAiChange(Number(e.target.value))}
-                        disabled={aiBusy}
-                        className="arcade-input !text-xs font-mono flex-1"
-                        aria-label="AI turns per day (select)"
-                      >
-                        {[1,5,10,15,20,25,30].filter(v => v <= aiSettings.planMax).concat(aiSettings.planMax > 30 ? [aiSettings.planMax] : []).filter((v,i,a) => a.indexOf(v)===i).sort((a,b)=>a-b).map(v => (
-                          <option key={v} value={v}>{v} turns/day</option>
-                        ))}
-                        {!([1,5,10,15,20,25,30, aiSettings.planMax].includes(aiSettings.ai_turns_per_day)) && (
-                          <option value={aiSettings.ai_turns_per_day}>{aiSettings.ai_turns_per_day} turns/day (custom)</option>
-                        )}
-                      </select>
-                    </div>
+                    <select value={aiSettings.ai_turns_per_day} onChange={e => handleLimitedChange(Number(e.target.value))} disabled={aiBusy} className="arcade-input !text-xs font-mono flex-1" aria-label="AI turns per day (select)">
+                      {[1,5,10,15,20,25,30].filter(v => v <= aiSettings.planMax).concat(aiSettings.planMax > 30 ? [aiSettings.planMax] : []).filter((v,i,a) => a.indexOf(v)===i).sort((a,b)=>a-b).map(v => (<option key={v} value={v}>{v} turns/day</option>))}
+                      {!([1,5,10,15,20,25,30, aiSettings.planMax].includes(aiSettings.ai_turns_per_day)) && (<option value={aiSettings.ai_turns_per_day}>{aiSettings.ai_turns_per_day} turns/day</option>)}
+                    </select>
                   </>
                 )}
-
-                {aiQuota && !aiSettings.unlimited && <p className="m-0 text-[10px] font-mono" style={{ color: 'var(--bt-text-muted)' }}>Today: {aiQuota.used} used · {aiQuota.remaining} remaining{aiQuota.resetAt ? ` · resets ${new Date(aiQuota.resetAt).toLocaleTimeString()}` : ''}</p>}
-                {aiError && <p className="m-0 text-[10px] font-mono" style={{ color: 'var(--bt-danger)' }}>{aiError}</p>}
-                {aiSaved && !aiError && <p className="m-0 text-[10px] font-mono" style={{ color: 'var(--bt-success)' }}>Saved ✓ — {aiSettings.unlimited ? 'Unlimited mode active' : `effective ${aiSettings.effectiveQuota}/day`}</p>}
+                {aiQuota && <p className="m-0 text-[10px] font-mono" style={{ color: "var(--bt-text-muted)" }}>Today: {aiQuota.used} used · {aiQuota.remaining} remaining{aiQuota.resetAt ? ` · resets ${new Date(aiQuota.resetAt).toLocaleTimeString()}` : ""}</p>}
+                {aiError && <p className="m-0 text-[10px] font-mono" style={{ color: "var(--bt-danger)" }}>{aiError}</p>}
+                {aiSaved && !aiError && <p className="m-0 text-[10px] font-mono" style={{ color: "var(--bt-success)" }}>Saved ✓ — effective {aiSettings.effectiveQuota}/day</p>}
               </>
             )}
           </div>

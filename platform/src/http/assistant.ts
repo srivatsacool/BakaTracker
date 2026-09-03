@@ -70,14 +70,13 @@ export async function handleAssistantChat(
   // Reject any attempt to spoof plan/quota via extra body fields (ignore but log).
   // We never read body.plan / body.quota / body.remaining — they are silently dropped.
 
-  // 2. Resolve authoritative quota: min(userSelected, planMax, hostCap)
-  //    Phase 3: unlimited users get a sentinel effectiveQuota — the quota gate
-  //    is skipped entirely, but the response reflects "no daily limit".
+  // 2. Resolve authoritative quota: custom_turns overrides ai_turns_per_day
+  //    with no planMax/hostCap ceiling. Limited mode uses plan-capped value.
   const aiSettings = await loadAiSettings(c.env.OAUTH_KV, user.sub);
   const planMax = getPlanMaxQuota(c.env as any, user.sub);
   const hostCap = getHostQuota(c.env as any);
-  const effectiveQuota = aiSettings.unlimited
-    ? 999_999
+  const effectiveQuota = aiSettings.custom_turns != null
+    ? aiSettings.custom_turns
     : getEffectiveQuota(aiSettings.ai_turns_per_day, planMax, hostCap);
 
   // 3. Rebuild the USER message from bounded parts: Soul context, page context,
@@ -112,34 +111,28 @@ export async function handleAssistantChat(
 
   // 4. Atomically consume quota BEFORE AI execution. 429 if exhausted.
   //    This is the sole quota gate — clients cannot bypass by crafting headers.
-  //    Phase 3: unlimited users skip BakaTracker's daily quota (provider/platform
-  //    rate/abuse limits still apply server-side).
+  //    effectiveQuota is the exact daily limit (custom_turns or plan-capped).
   const dateUtc = todayUtcISO();
-  if (aiSettings.unlimited) {
-    // Unlimited: skip BakaTracker quota consumption. Provider limits still apply.
-    // Log for observability but do not consume from D1.
-  } else {
-    const consumed = await tryConsumeQuota(c.env.BAKA_DB, user.sub, effectiveQuota, dateUtc);
-    if (!consumed.allowed) {
-      const remaining = 0;
-      return c.json(
-        {
-          ok: false,
-          error: "quota_exceeded",
-          message: `Daily AI limit reached (${effectiveQuota} turns/day). Resets at ${consumed.status.resetAt}. Reduce your limit or wait until tomorrow.`,
-          quota: {
-            used: consumed.status.used,
-            remaining,
-            effectiveQuota,
-            planMax,
-            hostCap,
-            date: consumed.status.date,
-            resetAt: consumed.status.resetAt,
-          },
+  const consumed = await tryConsumeQuota(c.env.BAKA_DB, user.sub, effectiveQuota, dateUtc);
+  if (!consumed.allowed) {
+    const remaining = 0;
+    return c.json(
+      {
+        ok: false,
+        error: "quota_exceeded",
+        message: `Daily AI limit reached (${effectiveQuota} turns/day). Resets at ${consumed.status.resetAt}.`,
+        quota: {
+          used: consumed.status.used,
+          remaining,
+          effectiveQuota,
+          planMax,
+          hostCap,
+          date: consumed.status.date,
+          resetAt: consumed.status.resetAt,
         },
-        429,
-      );
-    }
+      },
+      429,
+    );
   }
 
   // 5. Structured generation. Read-only; no ledger access in this path.
@@ -211,8 +204,8 @@ export async function handleGetQuota(
   const aiSettings = await loadAiSettings(c.env.OAUTH_KV, user.sub);
   const planMax = getPlanMaxQuota(c.env as any, user.sub);
   const hostCap = getHostQuota(c.env as any);
-  const effectiveQuota = aiSettings.unlimited
-    ? 999_999
+  const effectiveQuota = aiSettings.custom_turns != null
+    ? aiSettings.custom_turns
     : getEffectiveQuota(aiSettings.ai_turns_per_day, planMax, hostCap);
   const status = await getQuotaStatus(c.env.BAKA_DB, user.sub, effectiveQuota);
   return c.json({
@@ -240,15 +233,15 @@ export async function handleGetAiSettings(
   const aiSettings = await loadAiSettings(c.env.OAUTH_KV, user.sub);
   const planMax = getPlanMaxQuota(c.env as any, user.sub);
   const hostCap = getHostQuota(c.env as any);
-  const effectiveQuota = aiSettings.unlimited
-    ? 999_999
+  const effectiveQuota = aiSettings.custom_turns != null
+    ? aiSettings.custom_turns
     : getEffectiveQuota(aiSettings.ai_turns_per_day, planMax, hostCap);
   const status = await getQuotaStatus(c.env.BAKA_DB, user.sub, effectiveQuota);
   return c.json({
     ok: true,
     settings: {
       ai_turns_per_day: aiSettings.ai_turns_per_day,
-      unlimited: aiSettings.unlimited,
+      custom_turns: aiSettings.custom_turns,
       effectiveQuota,
       planMax,
       hostCap,
@@ -263,7 +256,7 @@ export async function handleGetAiSettings(
 }
 
 /**
- * PUT /api/v1/assistant/settings — user-controlled quota (capped by plan/host).
+ * PUT /api/v1/assistant/settings — Limited/Custom quota (Limited capped by plan/host; Custom stored as-is).
  * Body: { ai_turns_per_day: number 1..500 } — validated, clamped to ceiling,
  * stored in KV. Server returns authoritative effectiveQuota.
  */
@@ -272,32 +265,43 @@ export async function handlePutAiSettings(
 ): Promise<Response> {
   const user = c.get("user");
   const body = await c.req.json().catch(() => null);
-  const raw = (body ?? {}) as { ai_turns_per_day?: unknown; unlimited?: unknown; plan?: unknown; quota?: unknown };
+  const raw = (body ?? {}) as { ai_turns_per_day?: unknown; custom_turns?: unknown; plan?: unknown; quota?: unknown };
   // Ignore any spoofed `plan` / `quota` / `remaining` fields — server is authoritative.
+
+  // Parse custom_turns: null = Limited mode, positive integer = Custom mode
+  let customTurns: number | null = null;
+  if (raw.custom_turns != null && raw.custom_turns !== false) {
+    const ct = Number(raw.custom_turns);
+    if (Number.isFinite(ct) && ct >= 1 && ct <= 100000 && Number.isInteger(ct)) {
+      customTurns = ct;
+    }
+  }
+
+  // ai_turns_per_day: used in Limited mode, validated and clamped to plan/host ceiling
   const n = typeof raw.ai_turns_per_day === "number" ? raw.ai_turns_per_day : Number(raw.ai_turns_per_day);
   if (!Number.isFinite(n)) {
     return c.json({ ok: false, error: "invalid_input", message: "ai_turns_per_day (1-500) is required." }, 400);
   }
-  // Phase 3: unlimited is a boolean toggle — server stores it, never trusts client for bypass.
-  const unlimited = raw.unlimited === true;
   const planMax = getPlanMaxQuota(c.env as any, user.sub);
   const hostCap = getHostQuota(c.env as any);
   const ceiling = hostCap !== undefined ? Math.min(planMax, hostCap) : planMax;
-  // Clamp to ceiling — user can go down but not above plan/host.
   const clampedSelected = Math.max(1, Math.min(Math.floor(n), ceiling));
-  if (clampedSelected !== Math.floor(n)) {
-    // If they tried to exceed ceiling, clamp and inform, but don't error — Settings UX shows ceiling.
-  }
-  const saved = await saveAiSettings(c.env.OAUTH_KV, user.sub, { ai_turns_per_day: clampedSelected, unlimited });
-  const effectiveQuota = saved.unlimited
-    ? 999_999
+
+  const saved = await saveAiSettings(c.env.OAUTH_KV, user.sub, {
+    ai_turns_per_day: clampedSelected,
+    custom_turns: customTurns,
+  });
+
+  // effectiveQuota: custom_turns overrides with no ceiling; Limited uses plan-capped value
+  const effectiveQuota = saved.custom_turns != null
+    ? saved.custom_turns
     : getEffectiveQuota(saved.ai_turns_per_day, planMax, hostCap);
   const status = await getQuotaStatus(c.env.BAKA_DB, user.sub, effectiveQuota);
   return c.json({
     ok: true,
     settings: {
       ai_turns_per_day: saved.ai_turns_per_day,
-      unlimited: saved.unlimited,
+      custom_turns: saved.custom_turns,
       effectiveQuota,
       planMax,
       hostCap,
