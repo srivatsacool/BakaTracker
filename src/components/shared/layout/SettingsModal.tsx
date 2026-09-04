@@ -82,6 +82,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [aiError, setAiError] = useState<string | null>(null);
   const [aiSaved, setAiSaved] = useState(false);
 
+  const isCustomMode = aiSettings?.custom_turns != null;
+  const [customInput, setCustomInput] = useState<string>('');
+  /* UI-only: user clicked Custom but hasn't saved yet. Entering Custom mode
+     must not require a server round-trip — the input is revealed first,
+     the server value changes only on Save. */
+  const [customSelecting, setCustomSelecting] = useState(false);
+  const showCustom = isCustomMode || customSelecting;
+
   useEffect(() => {
     if (isGuest || !apiClient) return;
     let cancelled = false;
@@ -89,13 +97,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       if (cancelled || !res) return;
       setAiSettings({ ai_turns_per_day: res.ai_turns_per_day, custom_turns: res.custom_turns ?? null, effectiveQuota: res.effectiveQuota, planMax: res.planMax, hostCap: res.hostCap });
       setCustomInput(res.custom_turns != null ? String(res.custom_turns) : '');
+      setCustomSelecting(false);
       setAiQuota({ remaining: res.quota.remaining ?? 0, used: res.quota.used ?? 0, resetAt: (res.quota as any).resetAt });
     }).catch(() => { if (!cancelled) setAiError('Failed to load AI settings'); });
     return () => { cancelled = true; };
   }, [isGuest, apiClient]);
-
-  const isCustomMode = aiSettings?.custom_turns != null;
-  const [customInput, setCustomInput] = useState<string>('');
 
   const handleLimitedChange = async (nextVal: number) => {
     if (!apiClient || !aiSettings) return;
@@ -125,6 +131,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       const res = await saveServerAiSettings(apiClient, aiSettings.ai_turns_per_day, val);
       if (!res) throw new Error('no response');
       setAiSettings({ ai_turns_per_day: res.ai_turns_per_day, custom_turns: res.custom_turns, effectiveQuota: res.effectiveQuota, planMax: res.planMax, hostCap: res.hostCap });
+      setCustomSelecting(false);
       setAiQuota({ remaining: res.quota.remaining ?? 0, used: (res.quota as any).used ?? 0, resetAt: (res.quota as any).resetAt });
       setAiSaved(true);
       window.setTimeout(() => setAiSaved(false), 2500);
@@ -375,10 +382,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <>
                 <div className="flex items-center gap-3 p-2 rounded" style={{ background: "rgba(139,92,246,0.06)", border: "1px solid rgba(139,92,246,0.15)" }}>
                   <span className="text-[10px] font-mono" style={{ color: "var(--bt-text-muted)" }}>Mode:</span>
-                  <button type="button" disabled={aiBusy} onClick={() => handleLimitedChange(aiSettings.ai_turns_per_day)} className="text-[10px] font-mono px-2 py-0.5 rounded transition-colors" style={{ background: !isCustomMode ? "rgba(139,92,246,0.3)" : "transparent", border: `1px solid ${!isCustomMode ? "rgba(139,92,246,0.5)" : "rgba(255,255,255,0.1)"}`, color: !isCustomMode ? "var(--bt-text)" : "var(--bt-text-muted)" }}>Limited ({aiSettings.ai_turns_per_day}/day)</button>
-                  <button type="button" disabled={aiBusy} onClick={() => setCustomInput(isCustomMode ? String(aiSettings.custom_turns ?? "") : "")} className="text-[10px] font-mono px-2 py-0.5 rounded transition-colors" style={{ background: isCustomMode ? "rgba(139,92,246,0.3)" : "transparent", border: `1px solid ${isCustomMode ? "rgba(139,92,246,0.5)" : "rgba(255,255,255,0.1)"}`, color: isCustomMode ? "var(--bt-text)" : "var(--bt-text-muted)" }}>Custom</button>
+                  <button type="button" disabled={aiBusy} onClick={() => { setCustomSelecting(false); handleLimitedChange(aiSettings.ai_turns_per_day); }} className="text-[10px] font-mono px-2 py-0.5 rounded transition-colors" style={{ background: !showCustom ? "rgba(139,92,246,0.3)" : "transparent", border: `1px solid ${!showCustom ? "rgba(139,92,246,0.5)" : "rgba(255,255,255,0.1)"}`, color: !showCustom ? "var(--bt-text)" : "var(--bt-text-muted)" }}>Limited ({aiSettings.ai_turns_per_day}/day)</button>
+                  <button type="button" disabled={aiBusy} onClick={() => { setCustomSelecting(true); setCustomInput(isCustomMode ? String(aiSettings.custom_turns ?? "") : ""); setAiError(null); }} className="text-[10px] font-mono px-2 py-0.5 rounded transition-colors" style={{ background: showCustom ? "rgba(139,92,246,0.3)" : "transparent", border: `1px solid ${showCustom ? "rgba(139,92,246,0.5)" : "rgba(255,255,255,0.1)"}`, color: showCustom ? "var(--bt-text)" : "var(--bt-text-muted)" }}>Custom</button>
                 </div>
-                {isCustomMode ? (
+                {showCustom ? (
                   <div className="flex flex-col gap-1.5">
                     <p className="m-0 text-[10px] leading-relaxed font-mono" style={{ color: "var(--bt-text-muted)" }}>Enter any positive integer. No plan ceiling applies.</p>
                     <div className="flex items-center gap-2">
