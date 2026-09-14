@@ -20,6 +20,7 @@ import {
 } from 'bakasur-ui'
 
 import { BakasurBotAdapter } from '../components/bakasur/BakasurBotAdapter'
+import { FlamehornCharacter, type FlamehornMood } from '../components/bakasur/FlamehornCharacter'
 import { BakasurSceneAdapter } from '../components/bakasur/BakasurSceneAdapter'
 import { CinematicDialoguePlate } from '../components/bakasur/CinematicDialoguePlate'
 import { DebugOverlay } from '../components/bakasur-preview/DebugOverlay'
@@ -70,10 +71,20 @@ export const BakasurPreview: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams()
 
   // 1. Mode State
-  const initialMode = (searchParams.get('mode') as PreviewMode) || 'character'
+  const initialMode = (searchParams.get('mode') as PreviewMode) || 'flamehorn'
   const [mode, setMode] = useState<PreviewMode>(
-    ['character', 'cinematic', 'dialogue'].includes(initialMode) ? initialMode : 'character'
+    ['flamehorn', 'character', 'cinematic', 'dialogue'].includes(initialMode) ? initialMode : 'flamehorn'
   )
+
+  // Flamehorn Studio Controls State
+  const [flamehornMood, setFlamehornMood] = useState<FlamehornMood>('idle')
+  const [flamehornColor, setFlamehornColor] = useState<string>('#8B5CF6')
+  const [flamehornScale, setFlamehornScale] = useState<number>(320)
+  const [tactileTexture, setTactileTexture] = useState<number>(48)
+  const [coreDepth, setCoreDepth] = useState<number>(100)
+  const [specularSheen, setSpecularSheen] = useState<number>(61)
+  const [eyeGlow, setEyeGlow] = useState<number>(85)
+  const [socketDepth, setSocketDepth] = useState<number>(85)
 
   // 2. Character Controls State
   const initialAnimation = (searchParams.get('animation') as BakasurIntent) || 'idle'
@@ -281,6 +292,17 @@ export const BakasurPreview: React.FC = () => {
           <div className="flex items-center bg-black/40 backdrop-blur-md p-1 rounded-full border border-violet-500/20 shadow-2xl pointer-events-auto">
             <button
               type="button"
+              onClick={() => setMode('flamehorn')}
+              className={`px-4 py-1.5 text-xs font-medium rounded-full transition-all ${
+                mode === 'flamehorn'
+                  ? 'bg-violet-950 text-violet-100 border border-violet-600/60 shadow-lg shadow-violet-950/80 font-bold'
+                  : 'text-purple-400 hover:text-purple-200'
+              }`}
+            >
+              Flamehorn ✨
+            </button>
+            <button
+              type="button"
               onClick={() => setMode('character')}
               className={`px-4 py-1.5 text-xs font-medium rounded-full transition-all ${
                 mode === 'character'
@@ -380,6 +402,232 @@ export const BakasurPreview: React.FC = () => {
             height={currentViewport.height}
             mode={mode}
           />
+
+          {/* ────────────────────────────────────────────── MODE 0: CANONICAL FLAMEHORN SHOWCASE */}
+          {mode === 'flamehorn' && (
+            <div className="w-full h-full flex items-center justify-center p-4 overflow-y-auto relative z-10">
+              <div
+                className="w-full max-w-[800px] flex flex-col items-center gap-6 rounded-[20px] p-6 border my-auto"
+                style={{
+                  background: 'rgba(26, 22, 37, 0.45)',
+                  borderColor: 'rgba(139, 92, 246, 0.2)',
+                  backdropFilter: 'blur(24px)',
+                  boxShadow: '0 20px 50px rgba(0, 0, 0, 0.6), 0 0 40px rgba(124, 58, 237, 0.1)'
+                }}
+              >
+                {/* Header Section */}
+                <div className="text-center">
+                  <span
+                    className="inline-block text-[0.7rem] font-semibold tracking-[0.08em] uppercase px-3 py-1 rounded-full mb-2 border"
+                    style={{
+                      color: '#c4b5fd',
+                      background: 'rgba(139, 92, 246, 0.15)',
+                      borderColor: 'rgba(139, 92, 246, 0.3)'
+                    }}
+                  >
+                    Canonical BakaTracker Geometry
+                  </span>
+                  <h1
+                    className="text-2xl md:text-3xl font-bold tracking-tight mb-1"
+                    style={{
+                      background: 'linear-gradient(135deg, #ffffff 0%, #c4b5fd 100%)',
+                      WebkitBackgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent'
+                    }}
+                  >
+                    Bakasur — Flamehorn
+                  </h1>
+                  <p className="text-[#9490a6] text-xs md:text-sm max-w-[500px] mx-auto">
+                    Direction A: Mild organic pebble with dual curved horns and central sculptural candle-flame crest. Move cursor over the box to interact with gaze.
+                  </p>
+                </div>
+
+                {/* Viewport */}
+                <div
+                  className="relative w-full max-w-[380px] h-[320px] flex items-center justify-center overflow-hidden border rounded-2xl cursor-crosshair"
+                  style={{
+                    background: 'radial-gradient(circle at 50% 50%, rgba(30, 24, 46, 0.8) 0%, rgba(6, 7, 20, 0.95) 75%)',
+                    borderColor: 'rgba(139, 92, 246, 0.25)',
+                    boxShadow: 'inset 0 0 60px rgba(0, 0, 0, 0.8)'
+                  }}
+                >
+                  <div
+                    className="absolute w-[280px] h-[280px] rounded-full border border-dashed pointer-events-none"
+                    style={{
+                      borderColor: 'rgba(139, 92, 246, 0.18)',
+                      animation: 'spin 60s linear infinite'
+                    }}
+                  />
+                  <FlamehornCharacter
+                    state={flamehornMood}
+                    size={flamehornScale}
+                    moodColor={flamehornColor}
+                    tactileTexture={tactileTexture}
+                    coreDepth={coreDepth}
+                    specularSheen={specularSheen}
+                    eyeGlow={eyeGlow}
+                    socketDepth={socketDepth}
+                    followPointer={followPointer && !effectiveReducedMotion}
+                    interactive={true}
+                  />
+                </div>
+
+                {/* Quick Controls Bar */}
+                <div className="flex flex-col gap-3.5 w-full">
+                  {/* Emotional State */}
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-xs font-semibold text-[#a78bfa] uppercase tracking-wider">
+                      Emotional State
+                    </span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {(['idle', 'thinking', 'celebrate', 'alert', 'sleep', 'happy'] as FlamehornMood[]).map((m) => (
+                        <button
+                          key={m}
+                          type="button"
+                          onClick={() => setFlamehornMood(m)}
+                          className={`px-3 py-1 text-xs rounded-lg border transition-all cursor-pointer capitalize ${
+                            flamehornMood === m
+                              ? 'bg-[#7c3aed] text-white border-[#a78bfa] shadow-[0_0_12px_rgba(124,58,237,0.5)]'
+                              : 'bg-white/5 border-white/10 text-gray-300 hover:bg-purple-900/30'
+                          }`}
+                        >
+                          {m === 'celebrate' ? 'Celebrate (Wink)' : m}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Mood Keylight */}
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-xs font-semibold text-[#a78bfa] uppercase tracking-wider">
+                      Mood Keylight
+                    </span>
+                    <div className="flex items-center gap-2">
+                      {['#8B5CF6', '#a855f7', '#ec4899', '#06b6d4', '#10b981', '#f59e0b', '#ffffff'].map((c) => (
+                        <button
+                          key={c}
+                          type="button"
+                          onClick={() => setFlamehornColor(c)}
+                          className={`w-4 h-4 rounded-full cursor-pointer transition-transform border-2 ${
+                            flamehornColor.toLowerCase() === c.toLowerCase()
+                              ? 'border-white scale-125'
+                              : 'border-transparent hover:scale-115'
+                          }`}
+                          style={{ backgroundColor: c }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Render Scale */}
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-xs font-semibold text-[#a78bfa] uppercase tracking-wider">
+                      Render Scale
+                    </span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {[
+                        { size: 48, label: '48px (Dock)' },
+                        { size: 96, label: '96px (Orb)' },
+                        { size: 192, label: '192px (Rail)' },
+                        { size: 320, label: '320px (Hero)' }
+                      ].map((sz) => (
+                        <button
+                          key={sz.size}
+                          type="button"
+                          onClick={() => setFlamehornScale(sz.size)}
+                          className={`px-3 py-1 text-xs rounded-lg border transition-all cursor-pointer ${
+                            flamehornScale === sz.size
+                              ? 'bg-[#7c3aed] text-white border-[#a78bfa] shadow-[0_0_12px_rgba(124,58,237,0.5)]'
+                              : 'bg-white/5 border-white/10 text-gray-300 hover:bg-purple-900/30'
+                          }`}
+                        >
+                          {sz.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Sliders Grid */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 pt-2 border-t border-white/5 text-xs">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-gray-400 font-mono text-[11px]">Tactile Texture</span>
+                      <div className="flex items-center gap-2 flex-1 max-w-[140px]">
+                        <input
+                          type="range"
+                          min="0"
+                          max="100"
+                          value={tactileTexture}
+                          onChange={(e) => setTactileTexture(Number(e.target.value))}
+                          className="w-full h-1 bg-purple-950 rounded appearance-none cursor-pointer accent-[#8b5cf6]"
+                        />
+                        <span className="font-mono text-[10px] text-purple-300 w-7 text-right">{tactileTexture}%</span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-gray-400 font-mono text-[11px]">3D Core Depth</span>
+                      <div className="flex items-center gap-2 flex-1 max-w-[140px]">
+                        <input
+                          type="range"
+                          min="0"
+                          max="100"
+                          value={coreDepth}
+                          onChange={(e) => setCoreDepth(Number(e.target.value))}
+                          className="w-full h-1 bg-purple-950 rounded appearance-none cursor-pointer accent-[#8b5cf6]"
+                        />
+                        <span className="font-mono text-[10px] text-purple-300 w-7 text-right">{coreDepth}%</span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-gray-400 font-mono text-[11px]">Specular Sheen</span>
+                      <div className="flex items-center gap-2 flex-1 max-w-[140px]">
+                        <input
+                          type="range"
+                          min="0"
+                          max="100"
+                          value={specularSheen}
+                          onChange={(e) => setSpecularSheen(Number(e.target.value))}
+                          className="w-full h-1 bg-purple-950 rounded appearance-none cursor-pointer accent-[#8b5cf6]"
+                        />
+                        <span className="font-mono text-[10px] text-purple-300 w-7 text-right">{specularSheen}%</span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-gray-400 font-mono text-[11px]">Eye Glow Radiance</span>
+                      <div className="flex items-center gap-2 flex-1 max-w-[140px]">
+                        <input
+                          type="range"
+                          min="0"
+                          max="100"
+                          value={eyeGlow}
+                          onChange={(e) => setEyeGlow(Number(e.target.value))}
+                          className="w-full h-1 bg-purple-950 rounded appearance-none cursor-pointer accent-[#8b5cf6]"
+                        />
+                        <span className="font-mono text-[10px] text-purple-300 w-7 text-right">{eyeGlow}%</span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-2 md:col-span-2">
+                      <span className="text-gray-400 font-mono text-[11px]">Socket Depth (Occlusion)</span>
+                      <div className="flex items-center gap-2 flex-1 max-w-[200px]">
+                        <input
+                          type="range"
+                          min="0"
+                          max="100"
+                          value={socketDepth}
+                          onChange={(e) => setSocketDepth(Number(e.target.value))}
+                          className="w-full h-1 bg-purple-950 rounded appearance-none cursor-pointer accent-[#8b5cf6]"
+                        />
+                        <span className="font-mono text-[10px] text-purple-300 w-7 text-right">{socketDepth}%</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* ────────────────────────────────────────────── MODE 1: CHARACTER SHOWCASE */}
           {mode === 'character' && (

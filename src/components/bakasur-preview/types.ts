@@ -2,7 +2,7 @@
  * BAKATRACKER — Bakasur Live Preview Types (Phase 12.5)
  */
 
-export type PreviewMode = 'character' | 'cinematic' | 'dialogue'
+export type PreviewMode = 'flamehorn' | 'character' | 'cinematic' | 'dialogue'
 
 export type ViewportPresetId = 'desktop' | 'laptop' | 'tablet' | 'portrait' | 'mobile' | 'mobile-small' | 'fit'
 

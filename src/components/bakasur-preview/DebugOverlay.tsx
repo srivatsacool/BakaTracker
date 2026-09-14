@@ -4,13 +4,13 @@
  */
 
 import React from 'react'
-import type { DebugOverlays } from './types'
+import type { DebugOverlays, PreviewMode } from './types'
 
 export interface DebugOverlayProps {
   overlays: DebugOverlays
   width: number | string
   height: number | string
-  mode: 'character' | 'cinematic' | 'dialogue'
+  mode: PreviewMode
 }
 
 export const DebugOverlay: React.FC<DebugOverlayProps> = ({ overlays, width, height, mode }) => {

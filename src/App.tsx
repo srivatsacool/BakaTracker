@@ -26,6 +26,8 @@ const BaksurPrototypePage = lazy(() => import('./pages/BaksurPrototypePage').the
 const BaksurReactionFixturePage = lazy(() => import('./pages/BaksurReactionFixturePage').then(m => ({ default: m.BaksurReactionFixturePage })));
 // Phase 12.5 dev-only Bakasur Live Preview & Visual QA
 const BakasurPreview = lazy(() => import('./pages/BakasurPreview').then(m => ({ default: m.BakasurPreview })));
+// Canonical Flamehorn Character Studio
+const FlamehornStudioPage = lazy(() => import('./pages/FlamehornStudioPage').then(m => ({ default: m.FlamehornStudioPage })));
 
 function App() {
   const init = useStore(state => state.init);
@@ -54,6 +56,8 @@ function App() {
           <Route path="/philosophy" element={<Philosophy />} />
           {/* Phase 12.5 dev-only Bakasur Live Preview & Visual QA */}
           <Route path="/bakasur-preview" element={<BakasurPreview />} />
+          {/* Canonical Flamehorn Character Studio */}
+          <Route path="/flamehorn" element={<FlamehornStudioPage />} />
           {/* V3.4.1 dev-only Baksur prototype fixture (design gate; remove before V3.4.4) */}
           <Route path="/baksur-prototype" element={<BaksurPrototypePage />} />
           {/* V3.4.3 dev-only reaction mapping board (remove before V3.4.4) */}
