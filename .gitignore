@@ -98,3 +98,7 @@ extra/
 
 # BakaTracker E2E — dedicated Firefox automation profile (local only, never committed)
 .e2e/
+
+# Local visual QA and quarantine dumps
+visual-qa/
+_quarantine/

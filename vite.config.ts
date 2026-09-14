@@ -1,6 +1,7 @@
 /// <reference types="vitest/config" />
 import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
+import vue from '@vitejs/plugin-vue'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 import path from 'path'
@@ -9,7 +10,7 @@ import { cloudflare } from "@cloudflare/vite-plugin";
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), tailwindcss(), VitePWA({
+  plugins: [react(), vue(), tailwindcss(), VitePWA({
     registerType: 'autoUpdate',
     strategies: 'injectManifest',
     srcDir: 'src',
@@ -39,7 +40,8 @@ export default defineConfig({
   }), cloudflare()],
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src')
+      '@': path.resolve(__dirname, './src'),
+      'bakasur-ui': path.resolve(__dirname, '../bakasur-ui/src/index.ts')
     }
   },
   test: {

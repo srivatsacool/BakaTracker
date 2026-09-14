@@ -20,6 +20,7 @@ import {
 import { fetchAiSettings as fetchServerAiSettings, saveAiSettings as saveServerAiSettings } from '../../../services/assistantChat';
 import type { User } from '../../../features/auth/types';
 import { PixelIcon, PixelBadge, SystemLabel, TerminalText } from '../../ui';
+import { usePwaInstall } from './useAppEnvironment';
 
 interface SettingsModalProps {
   user: User | null | undefined;
@@ -66,6 +67,21 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [pushBusy, setPushBusy] = useState(false);
   useEffect(() => { isPushSubscribed().then(setIsSubscribed); }, []);
+
+  /* PWA install (device-level — no auth needed, guests included) */
+  const pwa = usePwaInstall();
+  const [installBusy, setInstallBusy] = useState(false);
+  const [installMsg, setInstallMsg] = useState<string | null>(null);
+  const showInstallSection = installMsg !== null || (!pwa.installed && (pwa.deferredPrompt !== null || pwa.isIos));
+
+  const handleInstallClick = async () => {
+    setInstallBusy(true); setInstallMsg(null);
+    try {
+      const outcome = await pwa.promptInstall();
+      if (outcome === 'accepted') setInstallMsg('Installed ✓ — find BakaTracker on your home screen.');
+      else if (outcome === 'dismissed') setInstallMsg('Install dismissed — you can try again anytime.');
+    } finally { setInstallBusy(false); }
+  };
 
   /* Server-side BakaSur notification policy (real: engine.ts + policy.ts) */
   const [notifSettings, setNotifSettings] = useState<NotificationSettings | null>(null);
@@ -494,6 +510,35 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <SystemLabel tone="muted">Notifications require sign-in.</SystemLabel>
           )}
         </div>
+
+        {/* ── INSTALL APP (device-level; no sign-in needed) ── */}
+        {showInstallSection && (
+          <div className="f11-settings-section">
+            <div className="f11-settings-header">
+              <span className="f11-settings-led" aria-hidden="true" />
+              <h4 className="f11-settings-title">Install App</h4>
+            </div>
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center justify-between">
+                <SystemLabel>BakaTracker on this device</SystemLabel>
+                <PixelBadge tone={installMsg ? 'success' : pwa.deferredPrompt ? 'success' : 'default'}>{installMsg ? 'DONE' : pwa.deferredPrompt ? 'READY' : 'GUIDE'}</PixelBadge>
+              </div>
+              <p className="m-0 text-[10px] leading-relaxed font-mono" style={{ color: 'var(--bt-text-muted)' }}>
+                Fullscreen, home-screen access — works offline once installed.
+              </p>
+              {pwa.deferredPrompt ? (
+                <button type="button" disabled={installBusy} onClick={handleInstallClick} className="btn-ghost self-start !py-1.5 !text-xs" aria-label="Install BakaTracker app">
+                  {installBusy ? '...' : 'Install App'}
+                </button>
+              ) : pwa.isIos ? (
+                <p className="m-0 text-[10px] leading-relaxed font-mono" style={{ color: 'var(--bt-text)' }}>
+                  iPhone / iPad: tap Share <span aria-hidden="true">→</span> Add to Home Screen.
+                </p>
+              ) : null}
+              {installMsg && <p className="m-0 text-[10px] font-mono" style={{ color: 'var(--bt-success)' }}>{installMsg}</p>}
+            </div>
+          </div>
+        )}
 
         {/* ── DATA ── */}
         <div className="f11-settings-section">

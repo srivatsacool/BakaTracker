@@ -24,6 +24,8 @@ const PageWorkspace = lazy(() => import('./pages/PageWorkspace').then(m => ({ de
 const BaksurPrototypePage = lazy(() => import('./pages/BaksurPrototypePage').then(m => ({ default: m.BaksurPrototypePage })));
 // V3.4.3 dev-only fixture: Baksur reaction mapping board. Hidden route, not in nav.
 const BaksurReactionFixturePage = lazy(() => import('./pages/BaksurReactionFixturePage').then(m => ({ default: m.BaksurReactionFixturePage })));
+// Phase 12.5 dev-only Bakasur Live Preview & Visual QA
+const BakasurPreview = lazy(() => import('./pages/BakasurPreview').then(m => ({ default: m.BakasurPreview })));
 
 function App() {
   const init = useStore(state => state.init);
@@ -50,6 +52,8 @@ function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/philosophy" element={<Philosophy />} />
+          {/* Phase 12.5 dev-only Bakasur Live Preview & Visual QA */}
+          <Route path="/bakasur-preview" element={<BakasurPreview />} />
           {/* V3.4.1 dev-only Baksur prototype fixture (design gate; remove before V3.4.4) */}
           <Route path="/baksur-prototype" element={<BaksurPrototypePage />} />
           {/* V3.4.3 dev-only reaction mapping board (remove before V3.4.4) */}

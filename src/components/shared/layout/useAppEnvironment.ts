@@ -51,3 +51,57 @@ export function useAppEnvironment() {
 
   return { isOffline, deferredPrompt, installPWA };
 }
+
+interface NavigatorWithStandalone extends Navigator {
+  standalone?: boolean;
+}
+
+/**
+ * usePwaInstall — focused PWA install state for surfaces like Settings.
+ * Separate from useAppEnvironment so panels don't inherit the shell's
+ * online/offline listeners (which re-trigger sync reconnect).
+ *
+ * States: already-installed (hide) → store prompt on beforeinstallprompt
+ * (Android/desktop Chrome) → iOS Safari fallback (no prompt event exists;
+ * show Share → Add to Home Screen guidance) → otherwise hidden.
+ */
+export function usePwaInstall() {
+  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [installed, setInstalled] = useState<boolean>(() => {
+    if (typeof window.matchMedia === 'function' && window.matchMedia('(display-mode: standalone)').matches) return true;
+    return (window.navigator as NavigatorWithStandalone).standalone === true;
+  });
+
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e as BeforeInstallPromptEvent);
+    };
+    const handleAppInstalled = () => {
+      setInstalled(true);
+      setDeferredPrompt(null);
+    };
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    window.addEventListener('appinstalled', handleAppInstalled);
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('appinstalled', handleAppInstalled);
+    };
+  }, []);
+
+  const isIos = (() => {
+    const nav = window.navigator as NavigatorWithStandalone;
+    if (nav.standalone === true) return false;
+    return /iphone|ipad|ipod/i.test(nav.userAgent);
+  })();
+
+  const promptInstall = async (): Promise<'accepted' | 'dismissed' | null> => {
+    if (!deferredPrompt) return null;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') setDeferredPrompt(null);
+    return outcome;
+  };
+
+  return { deferredPrompt, installed, isIos, promptInstall };
+}

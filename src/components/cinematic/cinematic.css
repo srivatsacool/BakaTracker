@@ -1,0 +1,871 @@
+/* ============================================================
+   BakaTracker cinematic marketing site (route "/").
+   Dark cinema world. Paper appears ONLY inside speech bubbles.
+   Uses app tokens with fallbacks; never touches index.css.
+   Motion: GSAP drives progress; CSS owns entrances + idle sway.
+   All animation off under prefers-reduced-motion.
+   ============================================================ */
+
+.cine-page {
+  --cine-violet: var(--bt-primary, #8b5cf6);
+  --cine-violet-soft: rgba(139, 92, 246, 0.14);
+  --cine-ink: #0b0a12;
+  --cine-paper: var(--obs-paper, #ece7db);
+  --cine-paper-dim: rgba(236, 231, 219, 0.72);
+  --cine-faint: rgba(236, 231, 219, 0.52);
+  --cine-line: rgba(139, 92, 246, 0.28);
+  --cine-panel: rgba(12, 10, 22, 0.66);
+  position: relative;
+  background: #070610;
+  color: var(--cine-paper);
+  overflow-x: clip;
+}
+
+/* ---------- HERO: pinned 100vh stage, long scroll behind ---------- */
+
+.cine-hero-wrap {
+  position: relative;
+  height: 420svh; /* scroll distance that scrubs the sequence */
+}
+
+.cine-stage {
+  position: sticky;
+  top: 0;
+  height: 100svh;
+  width: 100vw;
+  overflow: hidden;
+}
+
+.cine-sequence {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Readability: keep the app overlay language, deepen the text zone. */
+.cine-shade {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, rgba(5, 4, 12, 0.82) 0%, rgba(5, 4, 12, 0.55) 34%, rgba(5, 4, 12, 0.12) 62%, rgba(5, 4, 12, 0.3) 100%),
+    linear-gradient(0deg, rgba(5, 4, 12, 0.78) 0%, rgba(5, 4, 12, 0) 26%),
+    linear-gradient(180deg, rgba(5, 4, 12, 0.6) 0%, rgba(5, 4, 12, 0) 20%);
+}
+
+.cine-hero-inner {
+  position: relative;
+  z-index: 2;
+  height: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 clamp(20px, 4vw, 56px);
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+}
+
+.cine-hero-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: clamp(14px, 2.4vh, 28px);
+}
+
+/* Headline block — lower-left, never covering the right-side character. */
+.cine-hero-main {
+  display: grid;
+  grid-template-columns: minmax(0, 560px) minmax(0, 1fr);
+  align-items: center;
+  gap: clamp(16px, 4vw, 64px);
+  min-height: 0;
+  position: relative;
+  z-index: 5;
+}
+
+.cine-copy-track {
+  position: relative;
+  z-index: 10;
+  max-width: 560px;
+}
+
+.cine-kicker {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-mono, 'IBM Plex Mono', monospace);
+  font-size: 12px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--cine-violet);
+  margin: 0 0 18px;
+}
+
+.cine-kicker-led {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--cine-violet);
+  box-shadow: 0 0 12px var(--cine-violet);
+  animation: cine-led-pulse 2.6s ease-in-out infinite;
+}
+
+.cine-title {
+  margin: 0 0 18px;
+  font-family: var(--font-sans, 'IBM Plex Sans', system-ui, sans-serif);
+  font-weight: 600;
+  font-size: clamp(38px, 5.6vw, 76px);
+  line-height: 1.02;
+  letter-spacing: -0.02em;
+  color: var(--cine-paper);
+  text-wrap: balance;
+}
+
+.cine-title em {
+  font-style: normal;
+  color: var(--cine-violet);
+}
+
+.cine-sub {
+  margin: 0 0 30px;
+  max-width: 46ch;
+  font-size: clamp(15px, 1.4vw, 18px);
+  line-height: 1.65;
+  color: var(--cine-paper-dim);
+}
+
+/* ---------- CTAs: distinct, minimal ---------- */
+
+.cine-ctas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+.cine-cta {
+  font-family: var(--font-mono, 'IBM Plex Mono', monospace);
+  font-size: 13px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  border-radius: 10px;
+  padding: 14px 22px;
+  cursor: pointer;
+  transition: transform 160ms ease, background 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+
+.cine-cta:focus-visible {
+  outline: 2px solid var(--cine-paper);
+  outline-offset: 3px;
+}
+
+.cine-cta-primary {
+  background: var(--cine-violet);
+  border: 1px solid var(--cine-violet);
+  color: #0b0618;
+  font-weight: 600;
+}
+
+.cine-cta-primary:hover {
+  transform: translateY(-2px);
+  background: #a78bfa;
+  border-color: #a78bfa;
+}
+
+.cine-cta-secondary {
+  background: transparent;
+  border: 1px solid var(--cine-line);
+  color: var(--cine-paper);
+}
+
+.cine-cta-secondary:hover {
+  transform: translateY(-2px);
+  border-color: var(--cine-violet);
+}
+
+.cine-cta-tertiary {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--cine-faint);
+  text-decoration: underline;
+  text-decoration-color: var(--cine-line);
+  text-underline-offset: 5px;
+}
+
+.cine-cta-tertiary:hover {
+  color: var(--cine-paper);
+  text-decoration-color: var(--cine-violet);
+}
+
+/* ---------- Character + bubbles (right of headline) ---------- */
+
+.cine-figure {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 0;
+}
+
+/* =========================================
+   BAKASUR POSITION — FINAL TUNED VALUES
+   --baka-x    = horizontal CENTER position (of Bakasur, not top-left)
+   --baka-y    = vertical CENTER position (of Bakasur, not top-left)
+   --baka-size = character diameter (wrapper anchor; GSAP peak scale on
+                 .cine-figure-inner stays multiplicative on top)
+   Desktop (≥1200px): x=49.4% y=61.6% size=448px (tuned on localhost).
+   Tablet + mobile overrides live in the breakpoint blocks below.
+   ========================================= */
+:root {
+  --baka-x: 74%;
+  --baka-y: 54%;
+  --baka-size: 450px;
+  --baka-base-scale: 1;
+}
+
+/* Artwork base size. GSAP exclusively owns .cine-figure-inner, so the base
+   scale lives on the artwork svg itself: final = base x cinematic scale. */
+.cine-figure .cine-bakasur {
+  transform: scale(var(--baka-base-scale, 1));
+  transform-origin: center center;
+}
+
+/* Desktop ≥1200px: release the Bakasur figure from the headline grid and
+   anchor it to the tuned CENTER coordinates on the right side. */
+@media (min-width: 1200px) {
+  .cine-figure {
+    position: absolute;
+    left: var(--baka-x);
+    top: var(--baka-y);
+    width: var(--baka-size);
+    height: var(--baka-size);
+    transform: translate(-50%, -50%);
+    z-index: 4;
+  }
+}
+
+/* Tablet 768–1199px: same absolute cinematic relationship, size interpolated */
+@media (min-width: 768px) and (max-width: 1199px) {
+  :root {
+    --baka-x: 72%;
+    --baka-size: clamp(320px, 36vw, 420px);
+  }
+  .cine-figure {
+    position: absolute;
+    left: var(--baka-x);
+    top: var(--baka-y);
+    width: var(--baka-size);
+    height: var(--baka-size);
+    transform: translate(-50%, -50%);
+    z-index: 4;
+  }
+}
+
+.cine-bakasur {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100%;
+  filter: drop-shadow(0 0 44px rgba(139, 92, 246, 0.35));
+}
+
+.cine-bakasur svg {
+  width: 100%;
+  height: 100%;
+}
+
+.cine-bubble-slot {
+  position: absolute;
+  top: -50px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(280px, 90%);
+  min-height: 80px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 15;
+}
+
+/* Hand-drawn bubble: uneven radius, ink border, paper fill. */
+.cine-bubble {
+  position: relative;
+  background: var(--cine-paper);
+  color: #17131f;
+  border: 2px solid #17131f;
+  border-radius: 46% 54% 51% 49% / 62% 58% 42% 46%;
+  padding: 16px 20px 18px;
+  max-width: 100%;
+  box-shadow: 3px 4px 0 rgba(139, 92, 246, 0.55);
+  animation: cine-bubble-in 420ms cubic-bezier(0.2, 1.4, 0.4, 1) both,
+    cine-bubble-sway 5.2s ease-in-out 500ms infinite;
+  transform-origin: 30% 90%;
+}
+
+.cine-bubble-text {
+  margin: 0;
+  font-family: var(--font-sans, 'IBM Plex Sans', system-ui, sans-serif);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.cine-bubble-tail {
+  position: absolute;
+  bottom: -12px;
+  width: 22px;
+  height: 22px;
+  background: var(--cine-paper);
+  border-right: 2px solid #17131f;
+  border-bottom: 2px solid #17131f;
+  transform: rotate(45deg) skew(8deg, 8deg);
+}
+
+.cine-bubble.is-tail-left .cine-bubble-tail { left: 26%; }
+.cine-bubble.is-tail-right .cine-bubble-tail { right: 26%; }
+
+/* ---------- Loader / scroll cue / phase dots ---------- */
+
+.cine-loader {
+  position: absolute;
+  inset: auto 0 88px;
+  display: flex;
+  justify-content: center;
+  z-index: 3;
+  font-family: var(--font-mono, 'IBM Plex Mono', monospace);
+  font-size: 12px;
+  letter-spacing: 0.2em;
+  color: var(--cine-faint);
+}
+
+.cine-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: clamp(16px, 3vh, 30px);
+}
+
+.cine-scroll-cue {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-mono, 'IBM Plex Mono', monospace);
+  font-size: 11px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--cine-faint);
+}
+
+.cine-scroll-cue .cine-wheel {
+  width: 22px;
+  height: 34px;
+  border: 1.5px solid var(--cine-faint);
+  border-radius: 12px;
+  position: relative;
+}
+
+.cine-scroll-cue .cine-wheel::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 6px;
+  width: 3px;
+  height: 8px;
+  margin-left: -1.5px;
+  border-radius: 2px;
+  background: var(--cine-violet);
+  animation: cine-wheel-drop 1.8s ease-in-out infinite;
+}
+
+.cine-phases {
+  display: flex;
+  gap: 8px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.cine-phases li {
+  width: 26px;
+  height: 3px;
+  border-radius: 2px;
+  background: rgba(236, 231, 219, 0.18);
+  transition: background 300ms ease;
+}
+
+.cine-phases li.is-on { background: var(--cine-violet); }
+
+/* ---------- Sections below the cinema ---------- */
+
+.cine-section {
+  position: relative;
+  z-index: 2;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: clamp(72px, 12vh, 150px) clamp(20px, 4vw, 56px);
+}
+
+.cine-section-head {
+  max-width: 720px;
+  margin-bottom: clamp(36px, 6vh, 72px);
+}
+
+.cine-section-index {
+  font-family: var(--font-mono, 'IBM Plex Mono', monospace);
+  font-size: 12px;
+  letter-spacing: 0.24em;
+  color: var(--cine-violet);
+  margin: 0 0 14px;
+}
+
+.cine-section-title {
+  margin: 0 0 16px;
+  font-size: clamp(30px, 3.6vw, 50px);
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  line-height: 1.08;
+  text-wrap: balance;
+}
+
+.cine-section-lede {
+  margin: 0;
+  font-size: clamp(15px, 1.4vw, 18px);
+  line-height: 1.65;
+  color: var(--cine-paper-dim);
+  max-width: 60ch;
+}
+
+/* Philosophy beats. */
+.cine-beats {
+  display: grid;
+  gap: clamp(28px, 5vh, 56px);
+  max-width: 860px;
+}
+
+.cine-beat {
+  display: grid;
+  grid-template-columns: 72px 1fr;
+  gap: clamp(14px, 2.5vw, 28px);
+  align-items: start;
+  padding-top: clamp(20px, 3vh, 32px);
+  border-top: 1px solid rgba(236, 231, 219, 0.12);
+}
+
+.cine-beat-numeral {
+  font-family: var(--font-mono, 'IBM Plex Mono', monospace);
+  font-size: 13px;
+  letter-spacing: 0.18em;
+  color: var(--cine-violet);
+  padding-top: 6px;
+}
+
+.cine-beat h3 {
+  margin: 0 0 10px;
+  font-size: clamp(20px, 2vw, 27px);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.cine-beat p {
+  margin: 0;
+  font-size: clamp(15px, 1.35vw, 17px);
+  line-height: 1.7;
+  color: var(--cine-paper-dim);
+  max-width: 58ch;
+}
+
+.cine-beat-creature {
+  border-top-color: var(--cine-line);
+  background: linear-gradient(180deg, rgba(139, 92, 246, 0.07), rgba(139, 92, 246, 0));
+  margin: 0 calc(clamp(20px, 4vw, 56px) * -1);
+  padding-left: calc(clamp(20px, 4vw, 56px));
+  padding-right: calc(clamp(20px, 4vw, 56px));
+  padding-bottom: 8px;
+}
+
+.cine-narrator-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 18px;
+}
+
+.cine-narrator-row .cine-bubble {
+  max-width: 420px;
+  animation: cine-bubble-in 420ms cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+
+/* Product story timeline. */
+.cine-story {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-width: 860px;
+  display: grid;
+  gap: 0;
+}
+
+.cine-story-step {
+  position: relative;
+  display: grid;
+  grid-template-columns: 72px 1fr;
+  gap: clamp(14px, 2.5vw, 28px);
+  padding: clamp(20px, 3.4vh, 34px) 0;
+}
+
+.cine-story-step::before {
+  content: '';
+  position: absolute;
+  left: 35px;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: rgba(139, 92, 246, 0.25);
+}
+
+.cine-story-step:first-child::before { top: 34px; }
+.cine-story-step:last-child::before { bottom: auto; height: 34px; }
+
+.cine-story-node {
+  position: relative;
+  z-index: 1;
+  width: 72px;
+  display: flex;
+  justify-content: center;
+}
+
+.cine-story-node span {
+  width: 14px;
+  height: 14px;
+  margin-top: 6px;
+  border-radius: 50%;
+  border: 2px solid var(--cine-violet);
+  background: #0b0a12;
+}
+
+.cine-story-step.is-final .cine-story-node span {
+  background: var(--cine-violet);
+  box-shadow: 0 0 14px var(--cine-violet);
+}
+
+.cine-story-step h3 {
+  margin: 0 0 8px;
+  font-family: var(--font-mono, 'IBM Plex Mono', monospace);
+  font-size: 13px;
+  letter-spacing: 0.22em;
+  color: var(--cine-paper);
+}
+
+.cine-story-step p {
+  margin: 0 0 12px;
+  font-size: clamp(15px, 1.35vw, 17px);
+  line-height: 1.65;
+  color: var(--cine-paper-dim);
+  max-width: 56ch;
+}
+
+.cine-story-artifact {
+  margin: 0;
+  font-family: var(--font-mono, 'IBM Plex Mono', monospace);
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--cine-violet);
+  border-left: 2px solid var(--cine-line);
+  padding-left: 14px;
+  max-width: 56ch;
+}
+
+/* Walkthrough evidence. */
+.cine-shots {
+  display: grid;
+  gap: clamp(40px, 7vh, 84px);
+  max-width: 1020px;
+}
+
+.cine-shot {
+  margin: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 4fr);
+  gap: clamp(18px, 3vw, 44px);
+  align-items: center;
+}
+
+.cine-shot:nth-child(even) .cine-shot-frame { order: 2; }
+
+.cine-shot-frame {
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  border-radius: 14px;
+  overflow: hidden;
+  background: #0d0b16;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(0, 0, 0, 0.6);
+}
+
+.cine-shot-frame img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.cine-shot figcaption h3 {
+  margin: 0 0 10px;
+  font-size: clamp(20px, 2vw, 26px);
+  font-weight: 600;
+}
+
+.cine-shot figcaption p {
+  margin: 0;
+  font-size: clamp(14px, 1.3vw, 16px);
+  line-height: 1.65;
+  color: var(--cine-paper-dim);
+}
+
+.cine-shot-tag {
+  display: inline-block;
+  font-family: var(--font-mono, 'IBM Plex Mono', monospace);
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  color: var(--cine-violet);
+  margin-bottom: 12px;
+}
+
+/* Bakasur spotlight: character-led moment, not a feature grid.
+   Large narrating creature + three short role beats. */
+.cine-spot {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+  gap: clamp(24px, 4vw, 64px);
+  align-items: center;
+  max-width: 1020px;
+}
+
+.cine-spot-stage {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  padding: clamp(24px, 4vh, 48px) clamp(16px, 3vw, 40px);
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  border-radius: 14px;
+  background: #0d0b16;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.45);
+}
+
+.cine-spot-bakasur {
+  width: clamp(200px, 22vw, 300px);
+  height: auto;
+  filter: drop-shadow(0 0 42px rgba(139, 92, 246, 0.28));
+}
+
+.cine-spot-stage .cine-bubble {
+  max-width: 340px;
+}
+
+.cine-spot-roles {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: clamp(20px, 3.4vh, 34px);
+}
+
+.cine-spot-role {
+  border-top: 1px solid rgba(236, 231, 219, 0.12);
+  padding-top: 18px;
+}
+
+.cine-spot-role h3 {
+  margin: 8px 0 8px;
+  font-size: clamp(20px, 2vw, 27px);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.cine-spot-role p {
+  margin: 0;
+  max-width: 52ch;
+  color: var(--cine-paper-dim);
+  font-size: clamp(15px, 1.3vw, 17px);
+  line-height: 1.7;
+}
+
+/* Final CTA. */
+.cine-final {
+  text-align: center;
+  padding-top: clamp(80px, 14vh, 170px);
+  padding-bottom: clamp(60px, 10vh, 120px);
+}
+
+.cine-final .cine-bakasur {
+  width: clamp(140px, 16vw, 210px);
+  margin: 0 auto 26px;
+}
+
+.cine-final-title {
+  margin: 0 0 14px;
+  font-size: clamp(34px, 4.6vw, 64px);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.cine-final-sub {
+  margin: 0 auto 34px;
+  max-width: 52ch;
+  color: var(--cine-paper-dim);
+  font-size: clamp(15px, 1.4vw, 18px);
+  line-height: 1.65;
+}
+
+.cine-final-ctas {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 26px;
+}
+
+.cine-final-signin {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: var(--cine-faint);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.cine-final-signin:hover { color: var(--cine-paper); }
+
+.cine-ground {
+  margin-top: clamp(48px, 8vh, 90px);
+  padding-top: 22px;
+  border-top: 1px solid rgba(236, 231, 219, 0.12);
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-family: var(--font-mono, 'IBM Plex Mono', monospace);
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  color: var(--cine-faint);
+}
+
+.cine-ground a { color: var(--cine-faint); }
+.cine-ground a:hover { color: var(--cine-paper); }
+
+/* Scroll reveals (JS adds .is-in; no-JS/at-reduced-motion shows all). */
+.cine-reveal {
+  opacity: 0;
+  transform: translateY(26px);
+  transition: opacity 600ms ease, transform 600ms ease;
+}
+
+.cine-reveal.is-in {
+  opacity: 1;
+  transform: none;
+}
+
+/* Continuous hero→philosophy: no hard break, shade dissolves upward. */
+.cine-continue {
+  position: relative;
+  z-index: 2;
+  background: linear-gradient(180deg, rgba(7, 6, 16, 0) 0%, #070610 120px);
+  margin-top: -120px;
+  padding-top: 120px;
+}
+
+/* ---------- Keyframes ---------- */
+
+@keyframes cine-led-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+@keyframes cine-bubble-in {
+  from { opacity: 0; transform: scale(0.82) rotate(-3deg) translateY(10px); }
+  to { opacity: 1; transform: scale(1) rotate(0deg) translateY(0); }
+}
+
+@keyframes cine-bubble-sway {
+  0%, 100% { margin-top: 0; }
+  50% { margin-top: -5px; }
+}
+
+@keyframes cine-wheel-drop {
+  0% { opacity: 0; top: 5px; }
+  35% { opacity: 1; }
+  100% { opacity: 0; top: 18px; }
+}
+
+/* ---------- Responsive: adapt, don't just scale ---------- */
+
+/* Mobile <768px: single-column composition. The figure stays in-flow and
+   centered in its own portal row above the copy — never overlapping
+   headline/CTAs. (Tablet ≥768px uses absolute cinematic positioning.) */
+@media (max-width: 767px) {
+  .cine-hero-main {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    align-content: center;
+  }
+
+  .cine-figure {
+    order: -1;
+    margin-bottom: 6px;
+  }
+
+  .cine-bakasur {
+    width: clamp(150px, 40vw, 240px);
+  }
+
+  .cine-bubble-slot {
+    position: static;
+    transform: none;
+    width: 100%;
+    min-height: 0;
+    margin-top: 10px;
+  }
+
+  .cine-figure-inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .cine-title { font-size: clamp(32px, 8.4vw, 48px); }
+  .cine-sub { margin-bottom: 22px; }
+  .cine-cta { padding: 13px 18px; font-size: 12px; }
+
+  .cine-shot { grid-template-columns: 1fr; }
+  .cine-shot:nth-child(even) .cine-shot-frame { order: 0; }
+  .cine-spot { grid-template-columns: 1fr; }
+
+  .cine-beat, .cine-story-step { grid-template-columns: 52px 1fr; }
+  .cine-story-step::before { left: 25px; }
+  .cine-story-node { width: 52px; }
+  .cine-beat-numeral { font-size: 11px; }
+}
+
+@media (max-width: 640px) {
+  .cine-hero-wrap { height: 380svh; }
+  .cine-hero-top { padding-top: 12px; }
+  .cine-foot { flex-direction: column; gap: 14px; align-items: flex-start; }
+  .cine-ctas { gap: 10px; }
+  .cine-cta-tertiary { width: 100%; text-align: left; padding-left: 0; }
+}
+
+/* ---------- Reduced motion: static cinema, full content ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .cine-hero-wrap { height: auto; }
+  .cine-stage { position: relative; height: auto; min-height: 100svh; }
+  .cine-kicker-led,
+  .cine-scroll-cue .cine-wheel::after,
+  .cine-bubble { animation: none; }
+  .cine-reveal { opacity: 1; transform: none; transition: none; }
+  .cine-continue { margin-top: 0; padding-top: 0; background: none; }
+}

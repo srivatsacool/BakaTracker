@@ -8,6 +8,7 @@ import type { Habit, Task } from '../types';
 import { calculateDailyScore, getTodayDateString, isHabitCompleted } from '../lib/utils';
 import { calculateHabitStreak } from '../services/habits/calculateHabitStreak';
 import { EmptyState, GlassPane } from '../components/ui';
+import { BakasurScrollScene } from '../components/bakasur/BakasurScrollScene';
 import {
   ArrowRight,
   BookOpen,
@@ -516,6 +517,9 @@ export const Landing: React.FC = () => {
             </GlassPane>
           </div>
         </section>
+
+        {/* ============ BAKASUR SCROLL SCENE — 16-Bit Arcade Scrubbing ============ */}
+        <BakasurScrollScene />
 
         {/* ============ WHY / HOW it connects — the daily loop ============ */}
         <section className="px-5 py-14 max-w-6xl mx-auto" id="how-it-works">
