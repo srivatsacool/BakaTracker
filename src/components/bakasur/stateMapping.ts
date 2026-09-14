@@ -29,7 +29,7 @@ export function mapProductStateToLook(
 
   switch (state) {
     case 'IDLE':
-      return { intent: 'idle', preset: 'bakasur-idle', expression: customExpr }
+      return { intent: 'idle', preset: 'bakasur-idle', expression: customExpr ?? 'neutral' }
     case 'HAPPY':
       return { intent: 'happy', preset: 'bakasur-happy', expression: customExpr ?? 'happy' }
     case 'THINKING':
@@ -41,7 +41,7 @@ export function mapProductStateToLook(
     case 'CELEBRATE':
       return { intent: 'burst', preset: 'bakasur-burst', expression: customExpr ?? 'excited' }
     default:
-      return { intent: 'idle', preset: 'bakasur-idle', expression: null }
+      return { intent: 'idle', preset: 'bakasur-idle', expression: 'neutral' }
   }
 }
 

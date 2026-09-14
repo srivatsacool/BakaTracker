@@ -41,7 +41,7 @@ const STEPS: { title: string; body: string; artifact: string }[] = [
 export const ProductStory: React.FC<{ reducedMotion: boolean }> = ({ reducedMotion }) => {
   const ref = useCineReveal<HTMLElement>(reducedMotion);
   return (
-    <section ref={ref} id="story" className="cine-section" aria-labelledby="cine-story-title" tabIndex={-1}>
+    <section ref={ref} id="story" className="cine-section cine-section-centered" aria-labelledby="cine-story-title" tabIndex={-1}>
       <div className="cine-section-head" data-cine-reveal>
         <p className="cine-section-index">02 · How it works</p>
         <h2 className="cine-section-title" id="cine-story-title">

@@ -1,19 +1,19 @@
 /*
- * BAKATRACKER — Cinematic Dialogue Plate Component (Phase 11).
+ * BAKATRACKER — Cinematic Dialogue Plate Component (Phase 11 & Redesign).
  *
- * Replaces the obsolete paper/comic speech bubble with Phase 9/10 cinematic
- * dialogue presentation: translucent dark void background, subtle violet glow,
- * clean typography, and unobtrusive placement.
+ * Replaces the obsolete paper/comic speech bubble with an integrated spatial HUD plate:
+ * translucent dark obsidian background, subtle violet illumination,
+ * crisp typography, and disciplined placement.
  */
 
-import React from 'react'
+import React from 'react';
 
 export interface CinematicDialoguePlateProps {
-  text: string
-  speaker?: string
-  source?: string
-  className?: string
-  style?: React.CSSProperties
+  text: string;
+  speaker?: string;
+  source?: string;
+  className?: string;
+  style?: React.CSSProperties;
 }
 
 export const CinematicDialoguePlate: React.FC<CinematicDialoguePlateProps> = ({
@@ -21,27 +21,23 @@ export const CinematicDialoguePlate: React.FC<CinematicDialoguePlateProps> = ({
   speaker = 'Bakasur',
   source,
   className = '',
-  style
+  style,
 }) => {
   return (
     <div
-      role="note"
-      aria-label={`${speaker} says: ${text}`}
-      className={`cine-plate-root relative rounded-xl px-4 py-3 border border-solid text-sm leading-relaxed ${className}`}
-      style={{
-        background: 'rgba(11, 8, 20, 0.88)',
-        borderColor: 'rgba(157, 123, 255, 0.22)',
-        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.45), inset 0 0 12px rgba(157, 123, 255, 0.08)',
-        backdropFilter: 'blur(8px)',
-        color: '#ece6fb',
-        ...style
-      }}
+      role="status"
+      aria-label={`${speaker}: ${text}`}
+      className={`cine-plate-root ${className}`}
+      style={style}
     >
-      <div className="flex items-center justify-between gap-2 mb-1 text-[11px] font-medium tracking-wide" style={{ color: '#b3a8d6' }}>
-        <span>{speaker}</span>
-        {source && <span className="opacity-70 text-[10px]">{source}</span>}
+      <div className="cine-plate-header">
+        <div className="flex items-center gap-2">
+          <span className="cine-plate-dot" aria-hidden="true" />
+          <span className="cine-plate-speaker">{speaker}</span>
+        </div>
+        {source && <span className="cine-plate-source">{source}</span>}
       </div>
-      <p className="m-0 font-normal">{text}</p>
+      <p className="cine-plate-text">{text}</p>
     </div>
-  )
-}
+  );
+};

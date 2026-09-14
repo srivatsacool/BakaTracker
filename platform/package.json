@@ -7,8 +7,8 @@
   "scripts": {
     "deploy": "wrangler deploy --config wrangler.prod.jsonc",
     "predev": "npm run db:migrate",
-    "dev": "wrangler dev",
-    "start": "wrangler dev",
+    "dev": "wrangler dev --config wrangler.jsonc",
+    "start": "wrangler dev --config wrangler.jsonc",
     "test": "vitest run && npm run test:verify",
     "test:watch": "vitest",
     "test:verify": "node --test scripts/db-verify.test.mjs",

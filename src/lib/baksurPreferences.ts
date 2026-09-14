@@ -83,8 +83,8 @@ export function heroSizeFor(scale: BakaSurScale, viewportWidth: number): number 
  */
 export function railSizeFor(scale: BakaSurScale, presence: BakaSurPresence): number {
   if (presence === 'hidden') return 0
-  const base = scale === 'small' ? 48 : scale === 'standard' ? 72 : 92
-  return presence === 'subtle' ? Math.round(base * 0.66) : base
+  const base = scale === 'small' ? 52 : scale === 'standard' ? 64 : 76
+  return presence === 'subtle' ? Math.round(base * 0.8) : base
 }
 
 /* ---------------- persistence ---------------- */

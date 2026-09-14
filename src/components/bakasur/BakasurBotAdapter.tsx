@@ -12,6 +12,7 @@ import { BakasurBot } from 'bakasur-ui'
 
 export interface BakasurBotAdapterProps {
   state?: string
+  preset?: string
   expression?: string | null
   colour?: string
   treatment?: Record<string, unknown>
@@ -25,7 +26,8 @@ export interface BakasurBotAdapterProps {
 
 export const BakasurBotAdapter: React.FC<BakasurBotAdapterProps> = ({
   state = 'idle',
-  expression = null,
+  preset,
+  expression,
   colour = 'midnight-violet',
   treatment,
   size = 160,
@@ -49,15 +51,18 @@ export const BakasurBotAdapter: React.FC<BakasurBotAdapterProps> = ({
         appRef.current = null
       }
 
-      const props = {
+      const props: Record<string, unknown> = {
         state,
-        expression,
+        preset,
         colour,
         treatment,
         size,
         frozenAt,
         follow,
         label
+      }
+      if (expression !== undefined && expression !== null) {
+        props.expression = expression
       }
 
       const app = createApp({
@@ -82,13 +87,21 @@ export const BakasurBotAdapter: React.FC<BakasurBotAdapterProps> = ({
         appRef.current = null
       }
     }
-  }, [state, expression, colour, treatment, size, frozenAt, follow, label])
+  }, [state, preset, expression, colour, treatment, size, frozenAt, follow, label])
+
+  const isResponsive = className?.includes('baksur-hero-svg') || style?.width === '100%'
 
   if (hasError) {
     return (
       <div
         className={`bakasur-bot-fallback ${className}`}
-        style={{ width: `${size}px`, height: `${size}px`, borderRadius: '50%', background: '#0e0a17', ...style }}
+        style={{
+          width: isResponsive ? '100%' : `${size}px`,
+          height: isResponsive ? '100%' : `${size}px`,
+          borderRadius: '50%',
+          background: '#0e0a17',
+          ...style
+        }}
         aria-label={label}
       />
     )
@@ -98,7 +111,16 @@ export const BakasurBotAdapter: React.FC<BakasurBotAdapterProps> = ({
     <div
       ref={containerRef}
       className={`bakasur-bot-container ${className}`}
-      style={{ display: 'inline-block', width: `${size}px`, height: `${size}px`, ...style }}
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: isResponsive ? '100%' : `${size}px`,
+        height: isResponsive ? '100%' : `${size}px`,
+        maxWidth: '100%',
+        maxHeight: '100%',
+        ...style
+      }}
     />
   )
 }

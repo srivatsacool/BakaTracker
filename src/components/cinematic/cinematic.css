@@ -1,487 +1,866 @@
 /* ============================================================
-   BakaTracker cinematic marketing site (route "/").
-   Dark cinema world. Paper appears ONLY inside speech bubbles.
-   Uses app tokens with fallbacks; never touches index.css.
-   Motion: GSAP drives progress; CSS owns entrances + idle sway.
-   All animation off under prefers-reduced-motion.
+   BakaTracker Cinematic Marketing Site (route "/").
+   Obsidian Glass Sanctuary & Celestial Observatory Design System.
+   Master Tokens + Calibrated 2-Column Spatial Composition.
+   Strict Bakasur Character Lock respected.
    ============================================================ */
 
-.cine-page {
-  --cine-violet: var(--bt-primary, #8b5cf6);
+:root {
+  /* MASTER Sanctuary Palette */
+  --sanctuary-void: #05030a;
+  --sanctuary-obsidian: #090712;
+  --sanctuary-glass: rgba(13, 9, 24, 0.78);
+  --sanctuary-glass-hover: rgba(22, 16, 38, 0.88);
+  --sanctuary-border: rgba(168, 85, 247, 0.24);
+  --sanctuary-border-hover: rgba(192, 132, 252, 0.48);
+  --sanctuary-violet: #8b5cf6;
+  --sanctuary-violet-electric: #a855f7;
+  --sanctuary-violet-bloom: rgba(168, 85, 247, 0.35);
+  --sanctuary-gold: #ffd60a;
+  --sanctuary-gold-bloom: rgba(255, 214, 10, 0.3);
+  --sanctuary-text-primary: #f5f3ff;
+  --sanctuary-text-secondary: #c4b5fd;
+  --sanctuary-text-muted: rgba(228, 220, 250, 0.68);
+  --sanctuary-ink: #0b0817;
+
+  /* Legacy aliases for component backward-compatibility */
+  --cine-violet: var(--sanctuary-violet);
   --cine-violet-soft: rgba(139, 92, 246, 0.14);
-  --cine-ink: #0b0a12;
-  --cine-paper: var(--obs-paper, #ece7db);
-  --cine-paper-dim: rgba(236, 231, 219, 0.72);
-  --cine-faint: rgba(236, 231, 219, 0.52);
-  --cine-line: rgba(139, 92, 246, 0.28);
-  --cine-panel: rgba(12, 10, 22, 0.66);
+  --cine-ink: var(--sanctuary-ink);
+  --cine-paper: var(--sanctuary-text-primary);
+  --cine-paper-dim: var(--sanctuary-text-muted);
+  --cine-faint: rgba(228, 220, 250, 0.45);
+  --cine-line: var(--sanctuary-border);
+  --cine-panel: var(--sanctuary-glass);
+}
+
+.cine-page {
   position: relative;
-  background: #070610;
-  color: var(--cine-paper);
+  background: var(--sanctuary-void);
+  color: var(--sanctuary-text-primary);
   overflow-x: clip;
 }
 
-/* ---------- HERO: pinned 100vh stage, long scroll behind ---------- */
+/* ---------- HERO: Sovereign Sanctuary Stage (Natural Height, No Scroll-Jacking) ---------- */
 
 .cine-hero-wrap {
   position: relative;
-  height: 420svh; /* scroll distance that scrubs the sequence */
+  min-height: 100svh;
+  height: auto;
+  overflow-x: clip;
 }
 
 .cine-stage {
-  position: sticky;
-  top: 0;
-  height: 100svh;
-  width: 100vw;
-  overflow: hidden;
-}
-
-.cine-sequence {
-  position: absolute;
-  inset: 0;
+  position: relative;
+  min-height: 100svh;
   width: 100%;
-  height: 100%;
-  display: block;
+  overflow-x: clip;
+  background: #06040a;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
 }
 
-/* Readability: keep the app overlay language, deepen the text zone. */
-.cine-shade {
+/* Soft atmospheric ambient glow behind Bakasur (velvety cosmic bloom)
+   Uses wide viewport-spanning bounds and asymptotic exponential falloff
+   to completely eliminate any visible circular contour or banding edge. */
+.cine-ambient-glow {
   position: absolute;
-  inset: 0;
+  inset: -25% -20% -30% -20%;
+  background: radial-gradient(
+    ellipse 62% 52% at 76% 50%,
+    rgba(168, 85, 247, 0.20) 0%,
+    rgba(152, 68, 242, 0.14) 20%,
+    rgba(132, 48, 226, 0.09) 38%,
+    rgba(108, 32, 202, 0.05) 54%,
+    rgba(82, 20, 172, 0.024) 68%,
+    rgba(56, 12, 136, 0.010) 80%,
+    rgba(32, 8, 88, 0.003) 92%,
+    rgba(6, 4, 10, 0) 100%
+  );
+  filter: blur(80px);
   pointer-events: none;
-  background:
-    linear-gradient(90deg, rgba(5, 4, 12, 0.82) 0%, rgba(5, 4, 12, 0.55) 34%, rgba(5, 4, 12, 0.12) 62%, rgba(5, 4, 12, 0.3) 100%),
-    linear-gradient(0deg, rgba(5, 4, 12, 0.78) 0%, rgba(5, 4, 12, 0) 26%),
-    linear-gradient(180deg, rgba(5, 4, 12, 0.6) 0%, rgba(5, 4, 12, 0) 20%);
+  z-index: 1;
+}
+
+/* Seamless bottom feather veil: eliminates any demarcation between Hero & Section 2 */
+.cine-hero-veil {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 200px;
+  background: linear-gradient(to bottom, transparent 0%, rgba(6, 4, 10, 0.35) 45%, rgba(6, 4, 10, 0.8) 75%, #06040a 100%);
+  pointer-events: none;
+  z-index: 2;
 }
 
 .cine-hero-inner {
   position: relative;
-  z-index: 2;
-  height: 100%;
-  max-width: 1280px;
+  z-index: 25;
+  min-height: 100svh;
+  width: 100%;
+  max-width: 1360px;
   margin: 0 auto;
   padding: 0 clamp(20px, 4vw, 56px);
-  display: grid;
-  grid-template-rows: auto 1fr auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  pointer-events: none;
 }
 
+.cine-hero-top,
+.cine-copy-track,
+.cine-foot {
+  pointer-events: auto;
+}
+
+/* Header: Clean, Spacious, Uncluttered */
 .cine-hero-top {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-top: clamp(14px, 2.4vh, 28px);
+  padding-top: clamp(16px, 2.8vh, 32px);
+  gap: 16px;
 }
 
-/* Headline block — lower-left, never covering the right-side character. */
-.cine-hero-main {
-  display: grid;
-  grid-template-columns: minmax(0, 560px) minmax(0, 1fr);
+.cine-hero-top .home-brand {
+  flex-shrink: 0;
+}
+
+.cine-nav-actions {
+  display: flex;
   align-items: center;
-  gap: clamp(16px, 4vw, 64px);
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.cine-hero-top .landing-signin {
+  white-space: nowrap;
+  font-size: 11px;
+  padding: 7px 14px;
+  letter-spacing: 0.14em;
+}
+
+.cine-nav-demo-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  background: var(--sanctuary-violet);
+  color: #090712;
+  font-family: var(--font-mono, 'IBM Plex Mono', monospace);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  white-space: nowrap;
+  cursor: pointer;
+  border: none;
+  transition: all 180ms ease;
+}
+
+.cine-nav-demo-btn:hover {
+  background: #ffffff;
+  box-shadow: 0 0 16px var(--sanctuary-violet-bloom);
+  transform: translateY(-1px);
+}
+
+/* ---------- Hero Left-Dominated Layout ---------- */
+
+.cine-hero-main {
+  display: flex;
+  align-items: center;
   min-height: 0;
   position: relative;
-  z-index: 5;
+  z-index: 20;
 }
 
 .cine-copy-track {
   position: relative;
-  z-index: 10;
-  max-width: 560px;
+  z-index: 25;
+  max-width: 650px;
+  pointer-events: auto;
 }
 
-.cine-kicker {
-  display: flex;
+.cine-eyebrow {
+  display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   font-family: var(--font-mono, 'IBM Plex Mono', monospace);
-  font-size: 12px;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  color: var(--cine-violet);
-  margin: 0 0 18px;
-}
-
-.cine-kicker-led {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--cine-violet);
-  box-shadow: 0 0 12px var(--cine-violet);
-  animation: cine-led-pulse 2.6s ease-in-out infinite;
-}
-
-.cine-title {
-  margin: 0 0 18px;
-  font-family: var(--font-sans, 'IBM Plex Sans', system-ui, sans-serif);
+  font-size: 11px;
   font-weight: 600;
-  font-size: clamp(38px, 5.6vw, 76px);
-  line-height: 1.02;
-  letter-spacing: -0.02em;
-  color: var(--cine-paper);
-  text-wrap: balance;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #c084fc;
+  margin: 0 0 20px;
 }
 
-.cine-title em {
-  font-style: normal;
-  color: var(--cine-violet);
+.cine-eyebrow-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #a855f7;
+  box-shadow: 0 0 8px rgba(168, 85, 247, 0.8);
+  display: inline-block;
+  animation: cine-led-pulse 2.4s ease-in-out infinite;
+}
+
+/* 2-Line High-Impact Balanced Headline */
+.cine-title {
+  margin: 0 0 22px;
+  font-family: 'Archivo', var(--font-sans, system-ui), sans-serif;
+  font-weight: 800;
+  font-size: clamp(34px, 4vw, 62px);
+  line-height: 1.1;
+  letter-spacing: -0.028em;
+  display: flex;
+  flex-direction: column;
+}
+
+.cine-title-line {
+  white-space: nowrap;
+}
+
+.cine-title-white {
+  color: #ffffff;
+}
+
+.cine-title-gradient {
+  background: linear-gradient(135deg, #f5edff 0%, #c084fc 45%, #e879f9 90%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 0 24px rgba(168, 85, 247, 0.25));
 }
 
 .cine-sub {
-  margin: 0 0 30px;
-  max-width: 46ch;
-  font-size: clamp(15px, 1.4vw, 18px);
-  line-height: 1.65;
-  color: var(--cine-paper-dim);
+  margin: 0 0 34px;
+  max-width: 530px;
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: clamp(15px, 1.25vw, 17px);
+  line-height: 1.68;
+  color: rgba(226, 232, 240, 0.74);
+  font-weight: 400;
 }
 
-/* ---------- CTAs: distinct, minimal ---------- */
-
+/* High-Contrast Accessible CTAs */
 .cine-ctas {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 14px;
   align-items: center;
+  margin-bottom: 28px;
 }
 
 .cine-cta {
   font-family: var(--font-mono, 'IBM Plex Mono', monospace);
-  font-size: 13px;
+  font-size: 12.5px;
+  font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   border-radius: 10px;
-  padding: 14px 22px;
+  padding: 13px 24px;
   cursor: pointer;
-  transition: transform 160ms ease, background 160ms ease, border-color 160ms ease, color 160ms ease;
-}
-
-.cine-cta:focus-visible {
-  outline: 2px solid var(--cine-paper);
-  outline-offset: 3px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 200ms ease, background 200ms ease, border-color 200ms ease, box-shadow 200ms ease;
 }
 
 .cine-cta-primary {
-  background: var(--cine-violet);
-  border: 1px solid var(--cine-violet);
-  color: #0b0618;
-  font-weight: 600;
+  background: #ffffff;
+  border: 1px solid #ffffff;
+  color: #090614;
+  font-weight: 800;
+  box-shadow: 0 4px 20px rgba(168, 85, 247, 0.35);
 }
 
 .cine-cta-primary:hover {
   transform: translateY(-2px);
-  background: #a78bfa;
-  border-color: #a78bfa;
+  background: #f5f3ff;
+  border-color: #f5f3ff;
+  box-shadow: 0 8px 30px rgba(168, 85, 247, 0.55);
 }
 
 .cine-cta-secondary {
-  background: transparent;
-  border: 1px solid var(--cine-line);
-  color: var(--cine-paper);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(168, 85, 247, 0.3);
+  color: #e2e8f0;
+  backdrop-filter: blur(12px);
 }
 
 .cine-cta-secondary:hover {
   transform: translateY(-2px);
-  border-color: var(--cine-violet);
+  border-color: rgba(192, 132, 252, 0.6);
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 18px rgba(168, 85, 247, 0.25);
 }
 
-.cine-cta-tertiary {
-  background: transparent;
-  border: 1px solid transparent;
-  color: var(--cine-faint);
-  text-decoration: underline;
-  text-decoration-color: var(--cine-line);
-  text-underline-offset: 5px;
-}
-
-.cine-cta-tertiary:hover {
-  color: var(--cine-paper);
-  text-decoration-color: var(--cine-violet);
-}
-
-/* ---------- Character + bubbles (right of headline) ---------- */
-
-.cine-figure {
-  position: relative;
+/* Minimalist Uncluttered Trust Line */
+.cine-trust-line {
   display: flex;
-  justify-content: center;
+  flex-wrap: wrap;
   align-items: center;
-  min-height: 0;
-}
-
-/* =========================================
-   BAKASUR POSITION — FINAL TUNED VALUES
-   --baka-x    = horizontal CENTER position (of Bakasur, not top-left)
-   --baka-y    = vertical CENTER position (of Bakasur, not top-left)
-   --baka-size = character diameter (wrapper anchor; GSAP peak scale on
-                 .cine-figure-inner stays multiplicative on top)
-   Desktop (≥1200px): x=49.4% y=61.6% size=448px (tuned on localhost).
-   Tablet + mobile overrides live in the breakpoint blocks below.
-   ========================================= */
-:root {
-  --baka-x: 74%;
-  --baka-y: 54%;
-  --baka-size: 450px;
-  --baka-base-scale: 1;
-}
-
-/* Artwork base size. GSAP exclusively owns .cine-figure-inner, so the base
-   scale lives on the artwork svg itself: final = base x cinematic scale. */
-.cine-figure .cine-bakasur {
-  transform: scale(var(--baka-base-scale, 1));
-  transform-origin: center center;
-}
-
-/* Desktop ≥1200px: release the Bakasur figure from the headline grid and
-   anchor it to the tuned CENTER coordinates on the right side. */
-@media (min-width: 1200px) {
-  .cine-figure {
-    position: absolute;
-    left: var(--baka-x);
-    top: var(--baka-y);
-    width: var(--baka-size);
-    height: var(--baka-size);
-    transform: translate(-50%, -50%);
-    z-index: 4;
-  }
-}
-
-/* Tablet 768–1199px: same absolute cinematic relationship, size interpolated */
-@media (min-width: 768px) and (max-width: 1199px) {
-  :root {
-    --baka-x: 72%;
-    --baka-size: clamp(320px, 36vw, 420px);
-  }
-  .cine-figure {
-    position: absolute;
-    left: var(--baka-x);
-    top: var(--baka-y);
-    width: var(--baka-size);
-    height: var(--baka-size);
-    transform: translate(-50%, -50%);
-    z-index: 4;
-  }
-}
-
-.cine-bakasur {
-  width: 100% !important;
-  height: 100% !important;
-  max-width: 100%;
-  filter: drop-shadow(0 0 44px rgba(139, 92, 246, 0.35));
-}
-
-.cine-bakasur svg {
-  width: 100%;
-  height: 100%;
-}
-
-.cine-bubble-slot {
-  position: absolute;
-  top: -50px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: min(280px, 90%);
-  min-height: 80px;
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  pointer-events: none;
-  z-index: 15;
-}
-
-/* Hand-drawn bubble: uneven radius, ink border, paper fill. */
-.cine-bubble {
-  position: relative;
-  background: var(--cine-paper);
-  color: #17131f;
-  border: 2px solid #17131f;
-  border-radius: 46% 54% 51% 49% / 62% 58% 42% 46%;
-  padding: 16px 20px 18px;
-  max-width: 100%;
-  box-shadow: 3px 4px 0 rgba(139, 92, 246, 0.55);
-  animation: cine-bubble-in 420ms cubic-bezier(0.2, 1.4, 0.4, 1) both,
-    cine-bubble-sway 5.2s ease-in-out 500ms infinite;
-  transform-origin: 30% 90%;
-}
-
-.cine-bubble-text {
+  gap: 12px;
   margin: 0;
-  font-family: var(--font-sans, 'IBM Plex Sans', system-ui, sans-serif);
-  font-size: 15px;
-  font-weight: 600;
-  line-height: 1.4;
-}
-
-.cine-bubble-tail {
-  position: absolute;
-  bottom: -12px;
-  width: 22px;
-  height: 22px;
-  background: var(--cine-paper);
-  border-right: 2px solid #17131f;
-  border-bottom: 2px solid #17131f;
-  transform: rotate(45deg) skew(8deg, 8deg);
-}
-
-.cine-bubble.is-tail-left .cine-bubble-tail { left: 26%; }
-.cine-bubble.is-tail-right .cine-bubble-tail { right: 26%; }
-
-/* ---------- Loader / scroll cue / phase dots ---------- */
-
-.cine-loader {
-  position: absolute;
-  inset: auto 0 88px;
-  display: flex;
-  justify-content: center;
-  z-index: 3;
   font-family: var(--font-mono, 'IBM Plex Mono', monospace);
   font-size: 12px;
-  letter-spacing: 0.2em;
-  color: var(--cine-faint);
+  letter-spacing: 0.04em;
+  color: rgba(216, 180, 254, 0.65);
+  font-weight: 500;
 }
+
+.cine-trust-line span {
+  white-space: nowrap;
+}
+
+.cine-trust-dot {
+  color: rgba(168, 85, 247, 0.35);
+  font-weight: 700;
+}
+
+/* ---------- Massive Living Bakasur Stage (Absolute Sovereign Positioning) ---------- */
+.cine-giant-bakasur-stage {
+  position: absolute;
+  top: 50%;
+  right: clamp(24px, 4vw, 84px);
+  transform: translateY(-50%);
+  z-index: 12;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cine-giant-bakasur-stage.reduced-motion {
+  transform: translateY(-50%);
+  transition: none;
+}
+
+.cine-giant-character-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: cine-bakasur-breathe 6.5s ease-in-out infinite;
+  filter:
+    drop-shadow(0 0 24px rgba(168, 85, 247, 0.44))
+    drop-shadow(0 0 64px rgba(147, 51, 234, 0.22));
+}
+
+@keyframes cine-bakasur-breathe {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-12px);
+  }
+}
+
+.cine-giant-pedestal-light {
+  position: absolute;
+  width: 160%;
+  height: 160%;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 50% 50%,
+    rgba(192, 132, 252, 0.28) 0%,
+    rgba(175, 105, 250, 0.21) 18%,
+    rgba(155, 75, 245, 0.14) 35%,
+    rgba(130, 48, 230, 0.08) 52%,
+    rgba(100, 28, 195, 0.035) 68%,
+    rgba(70, 15, 160, 0.012) 84%,
+    rgba(6, 4, 10, 0) 100%
+  );
+  filter: blur(76px);
+  mix-blend-mode: screen;
+  pointer-events: none;
+  z-index: -1;
+  animation: cine-pedestal-breathe 6.5s ease-in-out infinite;
+}
+
+@keyframes cine-pedestal-breathe {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.85;
+  }
+  50% {
+    transform: scale(1.06);
+    opacity: 1;
+  }
+}
+
+.cine-giant-bakasur {
+  display: block;
+}
+
+/* ---------- Spatial Bakasur Dialogue HUD Plate ---------- */
+.cine-dialogue-anchor {
+  position: absolute;
+  top: 10%;
+  right: 48%;
+  z-index: 30;
+  pointer-events: none;
+}
+
+.bakasur-dialogue-plate {
+  min-width: 250px;
+  max-width: 350px;
+  padding: 15px 18px;
+  border-radius: 14px;
+  background: rgba(13, 9, 24, 0.88);
+  border: 1px solid rgba(168, 85, 247, 0.35);
+  box-shadow: 0 16px 44px rgba(0, 0, 0, 0.68), 0 0 24px rgba(168, 85, 247, 0.2);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  color: var(--sanctuary-text-primary);
+  transition: opacity 450ms cubic-bezier(0.16, 1, 0.3, 1) 120ms, transform 450ms cubic-bezier(0.16, 1, 0.3, 1) 120ms;
+  position: relative;
+}
+
+.bakasur-dialogue-plate.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.bakasur-dialogue-plate.is-hidden {
+  opacity: 0;
+  transform: translateY(14px);
+  pointer-events: none;
+}
+
+.bakasur-dialogue-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 7px;
+}
+
+.bakasur-dialogue-beacon {
+  width: 6.5px;
+  height: 6.5px;
+  border-radius: 50%;
+  background: var(--sanctuary-violet-electric);
+  box-shadow: 0 0 10px var(--sanctuary-violet-electric);
+  animation: cine-led-pulse 2s ease-in-out infinite;
+}
+
+.bakasur-dialogue-speaker {
+  font-family: var(--font-mono, 'IBM Plex Mono', monospace);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--sanctuary-text-secondary);
+}
+
+.bakasur-dialogue-body {
+  margin: 0;
+  font-family: var(--font-sans, 'IBM Plex Sans', system-ui, sans-serif);
+  font-size: 14.5px;
+  line-height: 1.48;
+  color: #f5f3ff;
+  font-weight: 500;
+}
+
+/* Tablet & Mobile Breakpoints */
+@media (max-width: 1024px) {
+  .cine-giant-bakasur-stage {
+    right: clamp(12px, 2.5vw, 40px);
+    transform: translateY(-50%);
+    opacity: 0.95;
+    pointer-events: none;
+  }
+
+  .cine-dialogue-anchor {
+    top: 8%;
+    right: 44%;
+    left: auto;
+  }
+}
+
+@media (max-width: 640px) {
+  .cine-hero-top {
+    padding-top: 14px;
+    gap: 8px;
+  }
+
+  .cine-hero-top .home-brand small {
+    display: none;
+  }
+
+  .cine-hero-top .landing-signin {
+    padding: 5px 8px;
+    font-size: 10px;
+    letter-spacing: 0.06em;
+  }
+
+  .cine-nav-demo-btn {
+    padding: 5px 10px;
+    font-size: 10px;
+  }
+
+  .cine-hero-main {
+    align-items: flex-start;
+    padding-top: 14px;
+  }
+
+  .cine-copy-track {
+    max-width: 100%;
+  }
+
+  .cine-title-line {
+    white-space: normal;
+  }
+
+  .cine-giant-bakasur-stage {
+    top: auto;
+    bottom: clamp(16px, 3vh, 32px);
+    right: clamp(10px, 3vw, 24px);
+    transform: none;
+    opacity: 0.85;
+    pointer-events: none;
+    z-index: 5;
+  }
+
+  .cine-dialogue-anchor {
+    display: none;
+  }
+}
+
+/* ---------- Footer Controls & Smooth Discovery Anchor ---------- */
 
 .cine-foot {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding-bottom: clamp(16px, 3vh, 30px);
+  justify-content: flex-start;
+  padding-bottom: clamp(18px, 3vh, 32px);
 }
 
 .cine-scroll-cue {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 10px;
   font-family: var(--font-mono, 'IBM Plex Mono', monospace);
   font-size: 11px;
-  letter-spacing: 0.24em;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: var(--cine-faint);
+  color: rgba(216, 180, 254, 0.45);
 }
 
-.cine-scroll-cue .cine-wheel {
-  width: 22px;
-  height: 34px;
-  border: 1.5px solid var(--cine-faint);
-  border-radius: 12px;
+.cine-wheel {
+  width: 14px;
+  height: 22px;
+  border-radius: 9999px;
+  border: 1px solid rgba(168, 85, 247, 0.35);
   position: relative;
+  display: inline-block;
 }
 
-.cine-scroll-cue .cine-wheel::after {
+.cine-wheel::before {
   content: '';
   position: absolute;
+  top: 4px;
   left: 50%;
-  top: 6px;
-  width: 3px;
-  height: 8px;
-  margin-left: -1.5px;
-  border-radius: 2px;
-  background: var(--cine-violet);
-  animation: cine-wheel-drop 1.8s ease-in-out infinite;
+  transform: translateX(-50%);
+  width: 2px;
+  height: 4px;
+  border-radius: 1px;
+  background: #c084fc;
+  animation: cine-wheel-roll 1.8s ease-in-out infinite;
 }
 
-.cine-phases {
+@keyframes cine-wheel-roll {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 0);
+  }
+  30% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, 8px);
+  }
+}
+
+/* Loader */
+.cine-loader {
+  position: absolute;
+  inset: auto 0 88px;
   display: flex;
-  gap: 8px;
-  list-style: none;
-  margin: 0;
-  padding: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  z-index: 10;
+  font-family: var(--font-mono, 'IBM Plex Mono', monospace);
+  font-size: 11.5px;
+  letter-spacing: 0.22em;
+  color: var(--sanctuary-text-secondary);
 }
 
-.cine-phases li {
-  width: 26px;
-  height: 3px;
-  border-radius: 2px;
-  background: rgba(236, 231, 219, 0.18);
-  transition: background 300ms ease;
+.cine-loader-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(168, 85, 247, 0.3);
+  border-top-color: var(--sanctuary-violet-electric);
+  border-radius: 50%;
+  animation: cine-spin 800ms linear infinite;
 }
 
-.cine-phases li.is-on { background: var(--cine-violet); }
+@keyframes cine-spin {
+  to { transform: rotate(360deg); }
+}
 
-/* ---------- Sections below the cinema ---------- */
+/* ---------- Downstream Sections (Obsidian Glass Architecture) ---------- */
 
 .cine-section {
   position: relative;
   z-index: 2;
-  max-width: 1280px;
+  max-width: 1320px;
   margin: 0 auto;
-  padding: clamp(72px, 12vh, 150px) clamp(20px, 4vw, 56px);
+  padding: clamp(72px, 12vh, 140px) clamp(20px, 4vw, 56px);
+}
+
+/* Atmospheric ambient lightings across landing page sections */
+#philosophy::before {
+  content: '';
+  position: absolute;
+  top: 6%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 84vw;
+  height: 600px;
+  max-width: 1040px;
+  border-radius: 50%;
+  background: radial-gradient(
+    ellipse at 50% 40%,
+    rgba(168, 85, 247, 0.13) 0%,
+    rgba(150, 65, 240, 0.09) 24%,
+    rgba(130, 45, 225, 0.05) 48%,
+    rgba(100, 25, 195, 0.022) 70%,
+    rgba(70, 15, 160, 0.007) 86%,
+    rgba(6, 4, 10, 0) 100%
+  );
+  filter: blur(85px);
+  pointer-events: none;
+  z-index: -1;
+}
+
+#story::before {
+  content: '';
+  position: absolute;
+  top: 12%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 88vw;
+  height: 680px;
+  max-width: 1100px;
+  border-radius: 50%;
+  background: radial-gradient(
+    ellipse at 50% 50%,
+    rgba(147, 51, 234, 0.11) 0%,
+    rgba(125, 55, 230, 0.075) 24%,
+    rgba(99, 102, 241, 0.045) 48%,
+    rgba(59, 130, 246, 0.018) 72%,
+    rgba(6, 4, 10, 0) 100%
+  );
+  filter: blur(95px);
+  pointer-events: none;
+  z-index: -1;
+}
+
+#walkthrough::before {
+  content: '';
+  position: absolute;
+  top: 20%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 90vw;
+  height: 740px;
+  max-width: 1200px;
+  border-radius: 50%;
+  background: radial-gradient(
+    ellipse at 50% 50%,
+    rgba(168, 85, 247, 0.12) 0%,
+    rgba(145, 60, 240, 0.08) 25%,
+    rgba(120, 35, 220, 0.045) 50%,
+    rgba(90, 20, 185, 0.016) 74%,
+    rgba(6, 4, 10, 0) 100%
+  );
+  filter: blur(100px);
+  pointer-events: none;
+  z-index: -1;
+}
+
+#bakasur::before {
+  content: '';
+  position: absolute;
+  top: 25%;
+  left: 38%;
+  transform: translateX(-50%);
+  width: 68vw;
+  height: 600px;
+  max-width: 900px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 50% 50%,
+    rgba(168, 85, 247, 0.18) 0%,
+    rgba(150, 65, 240, 0.12) 22%,
+    rgba(130, 45, 225, 0.065) 46%,
+    rgba(100, 25, 195, 0.025) 70%,
+    rgba(70, 15, 160, 0.007) 86%,
+    rgba(6, 4, 10, 0) 100%
+  );
+  filter: blur(85px);
+  pointer-events: none;
+  z-index: -1;
+}
+
+.cine-final::before {
+  content: '';
+  position: absolute;
+  top: 38%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 82vw;
+  height: 580px;
+  max-width: 1000px;
+  border-radius: 50%;
+  background: radial-gradient(
+    ellipse at 50% 50%,
+    rgba(192, 132, 252, 0.17) 0%,
+    rgba(168, 85, 247, 0.11) 22%,
+    rgba(140, 50, 235, 0.055) 46%,
+    rgba(105, 25, 200, 0.02) 70%,
+    rgba(70, 15, 160, 0.005) 86%,
+    rgba(6, 4, 10, 0) 100%
+  );
+  filter: blur(90px);
+  pointer-events: none;
+  z-index: -1;
 }
 
 .cine-section-head {
-  max-width: 720px;
-  margin-bottom: clamp(36px, 6vh, 72px);
+  max-width: 760px;
+  margin-bottom: clamp(36px, 6vh, 68px);
 }
 
 .cine-section-index {
   font-family: var(--font-mono, 'IBM Plex Mono', monospace);
-  font-size: 12px;
-  letter-spacing: 0.24em;
-  color: var(--cine-violet);
+  font-size: 11.5px;
+  letter-spacing: 0.26em;
+  color: var(--sanctuary-violet-electric);
   margin: 0 0 14px;
+  text-transform: uppercase;
 }
 
 .cine-section-title {
   margin: 0 0 16px;
-  font-size: clamp(30px, 3.6vw, 50px);
-  font-weight: 600;
-  letter-spacing: -0.015em;
+  font-size: clamp(32px, 3.8vw, 52px);
+  font-weight: 700;
+  letter-spacing: -0.02em;
   line-height: 1.08;
+  color: var(--sanctuary-text-primary);
   text-wrap: balance;
 }
 
 .cine-section-lede {
   margin: 0;
   font-size: clamp(15px, 1.4vw, 18px);
-  line-height: 1.65;
-  color: var(--cine-paper-dim);
-  max-width: 60ch;
+  line-height: 1.68;
+  color: var(--sanctuary-text-muted);
+  max-width: 62ch;
 }
 
-/* Philosophy beats. */
+/* Philosophy Beats Grid */
 .cine-beats {
   display: grid;
-  gap: clamp(28px, 5vh, 56px);
+  gap: clamp(20px, 3vh, 32px);
+  max-width: 980px;
+}
+
+/* Section 2 Centered Alignment */
+.cine-section-centered .cine-section-head,
+#philosophy .cine-section-head {
+  margin-left: auto;
+  margin-right: auto;
+  text-align: center;
+}
+
+.cine-section-centered .cine-section-index,
+#philosophy .cine-section-index {
+  text-align: center;
+}
+
+.cine-section-centered .cine-section-title,
+#philosophy .cine-section-title {
+  text-align: center;
+}
+
+.cine-section-centered .cine-section-lede,
+#philosophy .cine-section-lede {
+  margin-left: auto;
+  margin-right: auto;
+  text-align: center;
+}
+
+.cine-section-centered .cine-beats,
+#philosophy .cine-beats,
+.cine-section-centered .cine-story,
+#story .cine-story {
+  margin-left: auto;
+  margin-right: auto;
   max-width: 860px;
 }
 
 .cine-beat {
   display: grid;
-  grid-template-columns: 72px 1fr;
+  grid-template-columns: 68px 1fr;
   gap: clamp(14px, 2.5vw, 28px);
   align-items: start;
-  padding-top: clamp(20px, 3vh, 32px);
-  border-top: 1px solid rgba(236, 231, 219, 0.12);
+  padding: clamp(20px, 3vh, 28px);
+  border-radius: 14px;
+  background: rgba(13, 9, 24, 0.55);
+  border: 1px solid rgba(168, 85, 247, 0.16);
+  backdrop-filter: blur(12px);
+  transition: all 220ms ease;
+}
+
+.cine-beat:hover {
+  background: rgba(19, 13, 34, 0.75);
+  border-color: rgba(192, 132, 252, 0.38);
+  transform: translateY(-2px);
 }
 
 .cine-beat-numeral {
   font-family: var(--font-mono, 'IBM Plex Mono', monospace);
   font-size: 13px;
+  font-weight: 700;
   letter-spacing: 0.18em;
-  color: var(--cine-violet);
-  padding-top: 6px;
+  color: var(--sanctuary-violet-electric);
+  padding-top: 4px;
 }
 
 .cine-beat h3 {
-  margin: 0 0 10px;
-  font-size: clamp(20px, 2vw, 27px);
+  margin: 0 0 8px;
+  font-size: clamp(19px, 1.8vw, 24px);
   font-weight: 600;
-  letter-spacing: -0.01em;
+  color: var(--sanctuary-text-primary);
 }
 
 .cine-beat p {
   margin: 0;
-  font-size: clamp(15px, 1.35vw, 17px);
+  font-size: clamp(14.5px, 1.3vw, 16.5px);
   line-height: 1.7;
-  color: var(--cine-paper-dim);
-  max-width: 58ch;
+  color: var(--sanctuary-text-muted);
+  max-width: 60ch;
 }
 
 .cine-beat-creature {
-  border-top-color: var(--cine-line);
-  background: linear-gradient(180deg, rgba(139, 92, 246, 0.07), rgba(139, 92, 246, 0));
-  margin: 0 calc(clamp(20px, 4vw, 56px) * -1);
-  padding-left: calc(clamp(20px, 4vw, 56px));
-  padding-right: calc(clamp(20px, 4vw, 56px));
-  padding-bottom: 8px;
+  border-color: rgba(168, 85, 247, 0.32);
+  background: linear-gradient(180deg, rgba(168, 85, 247, 0.12), rgba(13, 9, 24, 0.65));
 }
 
 .cine-narrator-row {
@@ -491,46 +870,34 @@
   margin-top: 18px;
 }
 
-.cine-narrator-row .cine-bubble {
-  max-width: 420px;
-  animation: cine-bubble-in 420ms cubic-bezier(0.2, 1.4, 0.4, 1) both;
-}
-
-/* Product story timeline. */
+/* Product Story Timeline */
 .cine-story {
   list-style: none;
   margin: 0;
   padding: 0;
-  max-width: 860px;
+  max-width: 900px;
   display: grid;
-  gap: 0;
+  gap: 12px;
 }
 
 .cine-story-step {
   position: relative;
   display: grid;
-  grid-template-columns: 72px 1fr;
+  grid-template-columns: 68px 1fr;
   gap: clamp(14px, 2.5vw, 28px);
-  padding: clamp(20px, 3.4vh, 34px) 0;
+  padding: clamp(18px, 2.8vh, 26px);
+  border-radius: 12px;
+  background: rgba(13, 9, 24, 0.5);
+  border: 1px solid rgba(168, 85, 247, 0.14);
+  transition: all 200ms ease;
 }
 
-.cine-story-step::before {
-  content: '';
-  position: absolute;
-  left: 35px;
-  top: 0;
-  bottom: 0;
-  width: 1px;
-  background: rgba(139, 92, 246, 0.25);
+.cine-story-step:hover {
+  background: rgba(20, 14, 36, 0.72);
+  border-color: rgba(192, 132, 252, 0.35);
 }
-
-.cine-story-step:first-child::before { top: 34px; }
-.cine-story-step:last-child::before { bottom: auto; height: 34px; }
 
 .cine-story-node {
-  position: relative;
-  z-index: 1;
-  width: 72px;
   display: flex;
   justify-content: center;
 }
@@ -538,67 +905,73 @@
 .cine-story-node span {
   width: 14px;
   height: 14px;
-  margin-top: 6px;
+  margin-top: 4px;
   border-radius: 50%;
-  border: 2px solid var(--cine-violet);
-  background: #0b0a12;
+  border: 2px solid var(--sanctuary-violet-electric);
+  background: var(--sanctuary-void);
 }
 
 .cine-story-step.is-final .cine-story-node span {
-  background: var(--cine-violet);
-  box-shadow: 0 0 14px var(--cine-violet);
+  background: var(--sanctuary-gold);
+  border-color: var(--sanctuary-gold);
+  box-shadow: 0 0 12px var(--sanctuary-gold-bloom);
 }
 
 .cine-story-step h3 {
-  margin: 0 0 8px;
+  margin: 0 0 6px;
   font-family: var(--font-mono, 'IBM Plex Mono', monospace);
-  font-size: 13px;
-  letter-spacing: 0.22em;
-  color: var(--cine-paper);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  color: var(--sanctuary-text-primary);
 }
 
 .cine-story-step p {
-  margin: 0 0 12px;
-  font-size: clamp(15px, 1.35vw, 17px);
+  margin: 0 0 10px;
+  font-size: clamp(14.5px, 1.3vw, 16.5px);
   line-height: 1.65;
-  color: var(--cine-paper-dim);
-  max-width: 56ch;
+  color: var(--sanctuary-text-muted);
 }
 
 .cine-story-artifact {
   margin: 0;
   font-family: var(--font-mono, 'IBM Plex Mono', monospace);
-  font-size: 13px;
-  line-height: 1.7;
-  color: var(--cine-violet);
-  border-left: 2px solid var(--cine-line);
-  padding-left: 14px;
-  max-width: 56ch;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--sanctuary-text-secondary);
+  border-left: 2px solid var(--sanctuary-violet-electric);
+  padding-left: 12px;
 }
 
-/* Walkthrough evidence. */
+/* Walkthrough Evidence */
 .cine-shots {
   display: grid;
-  gap: clamp(40px, 7vh, 84px);
-  max-width: 1020px;
+  gap: clamp(40px, 7vh, 72px);
+  max-width: 1100px;
 }
 
 .cine-shot {
   margin: 0;
   display: grid;
   grid-template-columns: minmax(0, 5fr) minmax(0, 4fr);
-  gap: clamp(18px, 3vw, 44px);
+  gap: clamp(20px, 3.5vw, 48px);
   align-items: center;
 }
 
 .cine-shot:nth-child(even) .cine-shot-frame { order: 2; }
 
 .cine-shot-frame {
-  border: 1px solid rgba(139, 92, 246, 0.3);
+  border: 1px solid rgba(168, 85, 247, 0.3);
   border-radius: 14px;
   overflow: hidden;
   background: #0d0b16;
-  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6), 0 0 24px rgba(168, 85, 247, 0.1);
+  transition: transform 260ms ease, box-shadow 260ms ease;
+}
+
+.cine-shot-frame:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 32px 80px rgba(0, 0, 0, 0.75), 0 0 36px rgba(168, 85, 247, 0.22);
 }
 
 .cine-shot-frame img {
@@ -609,34 +982,35 @@
 
 .cine-shot figcaption h3 {
   margin: 0 0 10px;
-  font-size: clamp(20px, 2vw, 26px);
+  font-size: clamp(20px, 2vw, 28px);
   font-weight: 600;
+  color: var(--sanctuary-text-primary);
 }
 
 .cine-shot figcaption p {
   margin: 0;
-  font-size: clamp(14px, 1.3vw, 16px);
-  line-height: 1.65;
-  color: var(--cine-paper-dim);
+  font-size: clamp(14.5px, 1.3vw, 16.5px);
+  line-height: 1.68;
+  color: var(--sanctuary-text-muted);
 }
 
 .cine-shot-tag {
   display: inline-block;
   font-family: var(--font-mono, 'IBM Plex Mono', monospace);
   font-size: 11px;
+  font-weight: 700;
   letter-spacing: 0.2em;
-  color: var(--cine-violet);
+  color: var(--sanctuary-violet-electric);
   margin-bottom: 12px;
 }
 
-/* Bakasur spotlight: character-led moment, not a feature grid.
-   Large narrating creature + three short role beats. */
+/* Bakasur Spotlight Stage */
 .cine-spot {
   display: grid;
   grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
   gap: clamp(24px, 4vw, 64px);
   align-items: center;
-  max-width: 1020px;
+  max-width: 1100px;
 }
 
 .cine-spot-stage {
@@ -644,22 +1018,19 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 18px;
-  padding: clamp(24px, 4vh, 48px) clamp(16px, 3vw, 40px);
-  border: 1px solid rgba(139, 92, 246, 0.3);
-  border-radius: 14px;
-  background: #0d0b16;
-  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.45);
+  gap: 20px;
+  padding: clamp(28px, 5vh, 52px) clamp(20px, 3vw, 44px);
+  border: 1px solid rgba(168, 85, 247, 0.32);
+  border-radius: 18px;
+  background: rgba(13, 9, 24, 0.82);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6), inset 0 0 24px rgba(168, 85, 247, 0.12);
+  backdrop-filter: blur(16px);
 }
 
 .cine-spot-bakasur {
-  width: clamp(200px, 22vw, 300px);
+  width: clamp(200px, 24vw, 320px);
   height: auto;
-  filter: drop-shadow(0 0 42px rgba(139, 92, 246, 0.28));
-}
-
-.cine-spot-stage .cine-bubble {
-  max-width: 340px;
+  filter: drop-shadow(0 0 44px rgba(139, 92, 246, 0.35));
 }
 
 .cine-spot-roles {
@@ -667,54 +1038,56 @@
   margin: 0;
   padding: 0;
   display: grid;
-  gap: clamp(20px, 3.4vh, 34px);
+  gap: clamp(18px, 3vh, 28px);
 }
 
 .cine-spot-role {
-  border-top: 1px solid rgba(236, 231, 219, 0.12);
+  border-top: 1px solid rgba(168, 85, 247, 0.18);
   padding-top: 18px;
 }
 
 .cine-spot-role h3 {
   margin: 8px 0 8px;
-  font-size: clamp(20px, 2vw, 27px);
+  font-size: clamp(20px, 2vw, 26px);
   font-weight: 600;
   letter-spacing: -0.01em;
+  color: var(--sanctuary-text-primary);
 }
 
 .cine-spot-role p {
   margin: 0;
   max-width: 52ch;
-  color: var(--cine-paper-dim);
-  font-size: clamp(15px, 1.3vw, 17px);
+  color: var(--sanctuary-text-muted);
+  font-size: clamp(14.5px, 1.3vw, 16.5px);
   line-height: 1.7;
 }
 
-/* Final CTA. */
+/* Final CTA Section */
 .cine-final {
   text-align: center;
-  padding-top: clamp(80px, 14vh, 170px);
+  padding-top: clamp(80px, 14vh, 160px);
   padding-bottom: clamp(60px, 10vh, 120px);
 }
 
 .cine-final .cine-bakasur {
-  width: clamp(140px, 16vw, 210px);
-  margin: 0 auto 26px;
+  width: clamp(140px, 16vw, 200px);
+  margin: 0 auto 24px;
 }
 
 .cine-final-title {
-  margin: 0 0 14px;
-  font-size: clamp(34px, 4.6vw, 64px);
-  font-weight: 600;
+  margin: 0 0 16px;
+  font-size: clamp(34px, 4.4vw, 62px);
+  font-weight: 700;
   letter-spacing: -0.02em;
+  color: var(--sanctuary-text-primary);
 }
 
 .cine-final-sub {
   margin: 0 auto 34px;
-  max-width: 52ch;
-  color: var(--cine-paper-dim);
+  max-width: 54ch;
+  color: var(--sanctuary-text-muted);
   font-size: clamp(15px, 1.4vw, 18px);
-  line-height: 1.65;
+  line-height: 1.68;
 }
 
 .cine-final-ctas {
@@ -723,44 +1096,60 @@
   align-items: center;
   gap: 14px;
   flex-wrap: wrap;
-  margin-bottom: 26px;
+  margin-bottom: 24px;
 }
 
 .cine-final-signin {
   background: none;
   border: none;
   padding: 0;
-  font: inherit;
-  color: var(--cine-faint);
+  font-family: var(--font-mono, 'IBM Plex Mono', monospace);
+  font-size: 13px;
+  letter-spacing: 0.1em;
+  color: var(--sanctuary-text-secondary);
   text-decoration: underline;
   text-underline-offset: 4px;
   cursor: pointer;
-  font-size: 14px;
+  transition: color 160ms ease;
 }
 
-.cine-final-signin:hover { color: var(--cine-paper); }
+.cine-final-signin:hover {
+  color: var(--sanctuary-text-primary);
+}
 
 .cine-ground {
-  margin-top: clamp(48px, 8vh, 90px);
+  margin-top: clamp(48px, 8vh, 84px);
   padding-top: 22px;
-  border-top: 1px solid rgba(236, 231, 219, 0.12);
+  border-top: 1px solid rgba(168, 85, 247, 0.16);
   display: flex;
   justify-content: center;
-  gap: 12px;
+  gap: 14px;
   flex-wrap: wrap;
   font-family: var(--font-mono, 'IBM Plex Mono', monospace);
-  font-size: 12px;
+  font-size: 11.5px;
   letter-spacing: 0.14em;
-  color: var(--cine-faint);
+  color: var(--sanctuary-text-muted);
 }
 
-.cine-ground a { color: var(--cine-faint); }
-.cine-ground a:hover { color: var(--cine-paper); }
+.cine-ground a {
+  color: var(--sanctuary-text-secondary);
+  text-decoration: none;
+  transition: color 160ms ease;
+}
 
-/* Scroll reveals (JS adds .is-in; no-JS/at-reduced-motion shows all). */
+.cine-ground a:hover {
+  color: var(--sanctuary-text-primary);
+}
+
+/* Continuations */
+.cine-continue {
+  position: relative;
+  z-index: 2;
+}
+
 .cine-reveal {
   opacity: 0;
-  transform: translateY(26px);
+  transform: translateY(24px);
   transition: opacity 600ms ease, transform 600ms ease;
 }
 
@@ -769,30 +1158,10 @@
   transform: none;
 }
 
-/* Continuous hero→philosophy: no hard break, shade dissolves upward. */
-.cine-continue {
-  position: relative;
-  z-index: 2;
-  background: linear-gradient(180deg, rgba(7, 6, 16, 0) 0%, #070610 120px);
-  margin-top: -120px;
-  padding-top: 120px;
-}
-
-/* ---------- Keyframes ---------- */
-
+/* Animations */
 @keyframes cine-led-pulse {
   0%, 100% { opacity: 1; }
-  50% { opacity: 0.35; }
-}
-
-@keyframes cine-bubble-in {
-  from { opacity: 0; transform: scale(0.82) rotate(-3deg) translateY(10px); }
-  to { opacity: 1; transform: scale(1) rotate(0deg) translateY(0); }
-}
-
-@keyframes cine-bubble-sway {
-  0%, 100% { margin-top: 0; }
-  50% { margin-top: -5px; }
+  50% { opacity: 0.4; }
 }
 
 @keyframes cine-wheel-drop {
@@ -801,71 +1170,126 @@
   100% { opacity: 0; top: 18px; }
 }
 
-/* ---------- Responsive: adapt, don't just scale ---------- */
+/* ---------- Responsive Breakpoints ---------- */
 
-/* Mobile <768px: single-column composition. The figure stays in-flow and
-   centered in its own portal row above the copy — never overlapping
-   headline/CTAs. (Tablet ≥768px uses absolute cinematic positioning.) */
-@media (max-width: 767px) {
+@media (max-width: 1023px) {
   .cine-hero-main {
     grid-template-columns: 1fr;
-    gap: 8px;
-    align-content: center;
+    gap: 32px;
+  }
+
+  .cine-copy-track {
+    max-width: 100%;
+  }
+
+  .cine-interactive-card-slot {
+    position: relative;
+    right: auto;
+    bottom: auto;
+    margin-top: 16px;
+    width: 100%;
+    max-width: 380px;
+  }
+}
+
+@media (max-width: 767px) {
+  .cine-hero-top {
+    padding-top: 12px;
+  }
+
+  .cine-hero-main {
+    grid-template-columns: 1fr;
+    gap: 12px;
   }
 
   .cine-figure {
     order: -1;
-    margin-bottom: 6px;
-  }
-
-  .cine-bakasur {
-    width: clamp(150px, 40vw, 240px);
+    margin-bottom: 4px;
   }
 
   .cine-bubble-slot {
-    position: static;
-    transform: none;
+    margin-bottom: 4px;
     width: 100%;
-    min-height: 0;
-    margin-top: 10px;
   }
 
-  .cine-figure-inner {
-    display: flex;
+  .cine-plate-root {
+    padding: 8px 12px;
+  }
+
+  .cine-plate-text {
+    font-size: 13px;
+  }
+
+  .cine-character-pedestal {
+    max-height: 180px;
+  }
+
+  .cine-bakasur {
+    max-width: 170px !important;
+  }
+
+  .cine-pedestal-light {
+    bottom: 10px;
+    width: 140px;
+    height: 20px;
+  }
+
+  .cine-title {
+    font-size: clamp(28px, 7.5vw, 38px);
+    margin-bottom: 12px;
+  }
+
+  .cine-sub {
+    font-size: 13.5px;
+    line-height: 1.55;
+    margin-bottom: 18px;
+  }
+
+  .cine-ctas {
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+
+  .cine-cta {
+    width: 100%;
+    padding: 12px 18px;
+    font-size: 12px;
+  }
+
+  .cine-telemetry-row {
+    gap: 10px;
+    font-size: 10px;
+  }
+
+  .cine-shot {
+    grid-template-columns: 1fr;
+  }
+
+  .cine-shot:nth-child(even) .cine-shot-frame {
+    order: 0;
+  }
+
+  .cine-spot {
+    grid-template-columns: 1fr;
+  }
+
+  .cine-beat, .cine-story-step {
+    grid-template-columns: 48px 1fr;
+  }
+
+  .cine-foot {
     flex-direction: column;
-    align-items: center;
+    gap: 10px;
+    align-items: flex-start;
   }
-
-  .cine-title { font-size: clamp(32px, 8.4vw, 48px); }
-  .cine-sub { margin-bottom: 22px; }
-  .cine-cta { padding: 13px 18px; font-size: 12px; }
-
-  .cine-shot { grid-template-columns: 1fr; }
-  .cine-shot:nth-child(even) .cine-shot-frame { order: 0; }
-  .cine-spot { grid-template-columns: 1fr; }
-
-  .cine-beat, .cine-story-step { grid-template-columns: 52px 1fr; }
-  .cine-story-step::before { left: 25px; }
-  .cine-story-node { width: 52px; }
-  .cine-beat-numeral { font-size: 11px; }
 }
 
-@media (max-width: 640px) {
-  .cine-hero-wrap { height: 380svh; }
-  .cine-hero-top { padding-top: 12px; }
-  .cine-foot { flex-direction: column; gap: 14px; align-items: flex-start; }
-  .cine-ctas { gap: 10px; }
-  .cine-cta-tertiary { width: 100%; text-align: left; padding-left: 0; }
-}
-
-/* ---------- Reduced motion: static cinema, full content ---------- */
-
+/* Reduced Motion Override */
 @media (prefers-reduced-motion: reduce) {
   .cine-hero-wrap { height: auto; }
   .cine-stage { position: relative; height: auto; min-height: 100svh; }
   .cine-kicker-led,
-  .cine-scroll-cue .cine-wheel::after,
-  .cine-bubble { animation: none; }
+  .cine-status-pulse,
+  .cine-scroll-cue .cine-wheel::after { animation: none; }
   .cine-reveal { opacity: 1; transform: none; transition: none; }
-  .cine-continue { margin-top: 0; padding-top: 0; background: none; }
 }

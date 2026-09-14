@@ -33,7 +33,7 @@ const BEATS: { title: string; body: string }[] = [
 export const NarrativeSection: React.FC<{ reducedMotion: boolean }> = ({ reducedMotion }) => {
   const ref = useCineReveal<HTMLElement>(reducedMotion);
   return (
-    <section ref={ref} id="philosophy" className="cine-section" aria-labelledby="cine-philosophy-title" tabIndex={-1}>
+    <section ref={ref} id="philosophy" className="cine-section cine-section-centered" aria-labelledby="cine-philosophy-title" tabIndex={-1}>
       <div className="cine-section-head" data-cine-reveal>
         <p className="cine-section-index">01 · Why Bakasur</p>
         <h2 className="cine-section-title" id="cine-philosophy-title">
