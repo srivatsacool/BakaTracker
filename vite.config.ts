@@ -41,7 +41,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
-      'bakasur-ui': path.resolve(__dirname, '../bakasur-ui/src/index.ts')
+      'bakasur-ui': path.resolve(__dirname, './packages/bakasur-ui/src/index.ts')
     }
   },
   test: {

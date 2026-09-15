@@ -34,7 +34,7 @@
     "@react-three/fiber": "^9.7.0",
     "@tailwindcss/vite": "^4.3.1",
     "@types/three": "^0.186.0",
-    "bakasur-ui": "file:../bakasur-ui",
+    "bakasur-ui": "file:./packages/bakasur-ui",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "gsap": "^3.15.0",

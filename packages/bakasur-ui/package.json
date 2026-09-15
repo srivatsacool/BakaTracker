@@ -1,0 +1,50 @@
+{
+  "name": "bakasur-ui",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "main": "./src/index.ts",
+  "module": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "description": "Bakasur character/animation UI system — fork of Bloub (SVG morphing avatar engine, MIT © 2026 Jérémy Perret). Phase 1: upstream foundation restored verbatim; Bakasur visual identity lands in later phases.",
+  "license": "MIT",
+  "author": "Jérémy Perret",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/srivatsacool/bakasur-ui.git"
+  },
+  "keywords": [
+    "svg",
+    "animation",
+    "avatar",
+    "vue",
+    "morphing",
+    "bakasur"
+  ],
+  "packageManager": "pnpm@11.17.0",
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "mediabunny": "^1.54.0",
+    "vue": "^3.5.41"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/node": "^26.0.0",
+    "@vitejs/plugin-vue": "^6.0.8",
+    "happy-dom": "^20.11.2",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^5.9.3",
+    "vite": "^8.2.1",
+    "vitest": "^4.1.10",
+    "vue-tsc": "^3.3.9"
+  }
+}
