@@ -104,7 +104,7 @@ export const BakasurSceneAdapter: React.FC<BakasurSceneAdapterProps> = ({
         appRef.current = null
       }
     }
-  }, [sceneId, sceneData, time, autoplay, loop, width, height, frozenAt, reduced, dialogue, interact, personality, follow, label])
+  }, [sceneId, sceneData, time, autoplay, loop, width, height, frozenAt, reduced, dialogue, interact, personality, follow, label, onChoice, onComplete])
 
   if (hasError) {
     return (

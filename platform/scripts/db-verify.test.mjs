@@ -164,7 +164,7 @@ test("CLI idempotency: second migrations apply is a no-op", () => {
     assert.equal(q.code, 0);
     const rows = JSON.parse(q.stdout.slice(q.stdout.indexOf("[")));
     const names = rows[0].results.map((r) => r.name);
-    assert.deepEqual(names, ["0001_init.sql", "0002_files.sql", "0003_notes_pages.sql"]);
+    assert.deepEqual(names, ["0001_init.sql", "0002_files.sql", "0003_notes_pages.sql", "0004_ai_quota.sql"]);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

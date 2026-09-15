@@ -64,10 +64,26 @@ export default defineConfig([
     },
   },
   {
-    // Test files: empty catch blocks are intentional (sessionStorage/try-catch guards).
+    // Test files: empty catch blocks, mocks with any, and unused callback params are intentional.
     files: ['src/__tests__/**'],
     rules: {
       'no-empty': 'off',
+      '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/no-unused-vars': 'off',
+    },
+  },
+  {
+    // Bakasur internal studio preview page: loose intent and dialogue casting.
+    files: ['src/pages/BakasurPreview.tsx'],
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'off',
+    },
+  },
+  {
+    // Vue adapters: mount error tracking within effect body.
+    files: ['src/components/bakasur/Bakasur*Adapter.tsx'],
+    rules: {
+      'react-hooks/set-state-in-effect': 'off',
     },
   },
 ])

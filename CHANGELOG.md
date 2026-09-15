@@ -4,48 +4,50 @@ All notable changes to BakaTracker will be documented in this file.
 
 ---
 
-## [2.3.0] — 2026-08-17 — Landing Polish, Security Fix, AI Model + MCP
+## [2.3.0] — 2026-09-15 — BakaTracker v2.3.0 — Production Release
 
-### Added
-* **Landing text unified at 0.7 alpha** — hero paragraph, body text, captions,
-  labels, feature descriptions, and inactive icons all at
-  `rgba(233,230,242,0.7)` (paper white at 70% alpha) for a single consistent
-  register across the full landing page.
-* **Footer bolder** — Fragment Mono 700, full instrument white, violet GitHub
-  chip with 700 weight.
-* **Sign-in chip (live-accepted)** — statement instrument chip: Fragment Mono
-  0.98rem/700, violet-tinted glass, hairline border, blinking cursor LED.
-* **MCP integration** — BakaTracker tools accessible via Model Context
-  Protocol (38 tools) with OAuth, enabling AI clients (Claude, Cursor, Hermes).
+### Major Features
+* **Gamified Life RPG System** — Complete personal life operating system unifying habits (checkbox, counter, numeric, mood, energy), tasks (Kanban master board), Eisenhower matrix prioritization, today focus board, daily journaling with mood ratings, and visual notes with full state persistence.
+* **RPG Character Progression** — Dynamic attribute progression across 5 stats (Discipline, Health, Knowledge, Creativity, Career) with celebratory level-ups and consistency heatmaps.
+* **Cinematic Home & Lighting** — Responsive character fitting, ambient lighting passes, and clean landing flow without stock UI or mockup artifacts.
 
-### Changed
-* **AI model switched to `@cf/meta/llama-3.2-1b-instruct`** — fast inference
-  on Workers AI, replacing the previous Llama 3.3 70B model.
-* **Zustand optimization** — 14 whole-store subscriptions converted to
-  `useStore(useShallow(s => ({...})))` selectors; Layout, BakaSurRail,
-  ContextBar, SyncStatus, all pages, and modals re-render only when their
-  own slices change.
-* **Input hardening** — `maxLength` added to habit name, notes inputs, BakaSur
-  chat, search fields; `max={1000}` on XP inputs (Habits, Eisenhower, FirstRun).
-* **Kanban truncation** — task titles use `truncate min-w-0` to prevent
-  long-text overflow in narrow columns.
-* **DESIGN.md + README.md** updated to reflect v2.3 state.
+### Architecture
+* **Cloudflare Workers Native** — Serverless edge API (`platform/`) written in Hono, handling REST (`/api/v1/*`), OAuth, MCP, and cron triggers in a unified runtime.
+* **Unified Tool Registry** — 38 canonical tools in `platform/src/tools/` powering REST, MCP, and internal automation from a single business logic implementation.
+* **Storage Hierarchy** — Cloudflare D1 (SQLite-compatible) for structured entities, tags, search index, and op-log ledger; Cloudflare R2 for binary attachments; Cloudflare KV for session tokens and push subscriptions.
+* **Local-First Sync** — Instant local mutations backed by browser `localStorage` + causal op-log queue with debounced and exponential-backoff sync (`/sync/push`, `/sync/pull`).
 
-### Fixed
-* **CORS allowlist leak** — the worker's outer CORS wrapper on `/api/v1/*`
-  previously reflected the first allowed origin on disallowed requests,
-  leaking the allowlist to probing origins. Now reflects the caller's origin
-  only when allowlisted; disallowed origins get no `Access-Control-Allow-Origin`
-  header. 219/219 platform tests pass.
-* **Tasks delete-timer unmount leak** — the 5s undo-grace timer fired
-  `deleteTask` after the component unmounted (user navigated away during the
-  window). Timer now cleared on unmount.
-* **Hero paragraph aria** — accepted live variant baked into `.landing-hero-copy`
-  in index.css with 0.7 alpha, line-height 1.85, 0.015em tracking.
+### Security Improvements
+* **Google OAuth 2.0 with PKCE** — Implemented via `@cloudflare/workers-oauth-provider`; Worker acts as OAuth authorization server issuing owner-scoped access tokens (`sub`).
+* **Strict CORS Allowlist** — Disallowed origins receive no `Access-Control-Allow-Origin` header (zero allowlist reflection leakage).
+* **Owner-Scoped Data Scoping** — Every query and R2 object key is strictly scoped to the authenticated user's `sub`. Zero multi-tenant cross-contamination.
+* **Defense-in-Depth Dev Bypass** — `REST_DEV_BYPASS` is double-gated by strict loopback origin checks (`isLocalDevOrigin`) and omitted from all production configs.
+* **Secret Hygiene** — Automated build contract tests guarantee no OAuth secrets, API keys, or private keys are exposed to the client bundle.
 
-### Security
-* CORS fix (see Fixed above) — production verified: allowed origin → header
-  echoed; evil origin → no ACAO.
+### Performance Improvements
+* **Zustand Optimization** — Converted 14 whole-store subscriptions to granular `useShallow` selectors across rails, context bars, modals, and pages to eliminate cascading renders.
+* **Asset & Component Pruning** — Stripped unused components (`Silk.tsx`, `CinematicSequence.tsx`, `InteractiveHeroCard.tsx`, `HabitTrackerHUD.tsx`, `QuestBoardHUD.tsx`, `WeekStrip.tsx`).
+* **Code Splitting & PWA Caching** — Heavy canvas and charting views split into dynamic chunks with service worker precaching.
+
+### MCP Support
+* **Model Context Protocol (MCP)** — Exposes 38 BakaTracker tools via `@modelcontextprotocol/sdk` and `MyMCP` Durable Object at `/mcp`, enabling AI agents (Claude, Cursor, Hermes) to manage tasks, habits, and notes through authenticated tool calls.
+
+### AI Support
+* **BakaSur AI Assistant** — Route-aware contextual assistant backed by Workers AI (`@cf/meta/llama-3.2-1b-instruct` and `@cf/baai/bge-base-en-v1.5`) with daily quota management and graceful 503 fallback when offline or unconfigured.
+
+### PWA Support
+* **Full Offline PWA** — Service worker precaching, web app manifest, offline indicator, and local guest mode enabling full functionality without internet connectivity.
+
+### Known Limitations
+* **Single-User Architecture** — Each deployment is designed for single-user self-hosting; multi-user tenant collaboration is not supported.
+* **Workers AI Free Quota** — Daily AI assistant interactions depend on Cloudflare Workers AI limits or configured daily limits in Settings.
+
+### Self-Hosting & Deployment
+* Automated one-command setup via `npm run setup` and deployment via `npm run deploy`.
+* Self-hostable on Cloudflare's free tier (Workers + D1 + KV + R2 + Pages).
+
+### Migration Information
+* Fully migrates from v1 (Google Sheets proxy) to v2 Cloudflare-native storage. Migrations `0001` through `0004` run automatically via `wrangler d1 migrations apply`.
 
 ---
 

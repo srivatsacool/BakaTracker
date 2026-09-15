@@ -9,10 +9,11 @@ export const PerformanceMonitor: React.FC<{ className?: string }> = ({ className
   const [fps, setFps] = useState(60)
   const [frameTime, setFrameTime] = useState(16.6)
   const frameCount = useRef(0)
-  const lastTime = useRef(performance.now())
+  const lastTime = useRef(0)
   const rafId = useRef<number | null>(null)
 
   useEffect(() => {
+    lastTime.current = performance.now()
     const tick = (now: number) => {
       frameCount.current++
       const elapsed = now - lastTime.current

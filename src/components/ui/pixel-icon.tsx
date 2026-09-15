@@ -394,5 +394,3 @@ export const PixelIcon: React.FC<PixelIconProps> = ({
 };
 
 PixelIcon.displayName = 'PixelIcon';
-
-export { PIXEL_ICONS };
