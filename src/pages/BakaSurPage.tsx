@@ -224,7 +224,7 @@ export const BakaSurPage: React.FC = () => {
         {messages.map(message => (
           <article key={message.id} className={`flex gap-3 ${message.role === 'user' ? 'flex-row-reverse' : ''}`}>
             <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: message.role === 'assistant' ? 'rgba(233,230,242,0.06)' : 'rgba(63,123,255,0.1)' }} aria-hidden="true">
-              {message.role === 'assistant' ? <BaksurCharacter direction="flamehorn" state="IDLE" size={28} bodyColor={BAKASUR_COLOR_HEXES.violet.body} moodColor={BAKASUR_COLOR_HEXES.violet.mood} decorative /> : <PixelIcon name="terminal" size={16} color="var(--bt-info)" />}
+              {message.role === 'assistant' ? <BaksurCharacter direction="flamehorn" state="IDLE" size={28} bodyColor={BAKASUR_COLOR_HEXES.violet.body} moodColor={BAKASUR_COLOR_HEXES.violet.mood} frozenAt={0} decorative /> : <PixelIcon name="terminal" size={16} color="var(--bt-info)" />}
             </div>
             <div className={`flex flex-col gap-1 max-w-[85%] ${message.role === 'user' ? 'items-end' : ''}`}>
               <span className="font-mono text-[9px] font-bold uppercase tracking-wider" style={{ color: 'var(--bt-text-muted)' }}>{message.role === 'assistant' ? 'BAKASUR' : 'YOU'}</span>

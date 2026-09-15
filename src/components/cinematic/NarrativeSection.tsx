@@ -65,8 +65,8 @@ export const NarrativeSection: React.FC<{ reducedMotion: boolean }> = ({ reduced
                 direction="flamehorn"
                 state="HAPPY"
                 size={72}
-                followPointer={!reducedMotion}
-                frozenAt={reducedMotion ? 0 : undefined}
+                followPointer={false}
+                frozenAt={0}
                 decorative
               />
               <SpeechBubble text="I read everything. I judge nothing. Mostly." tail="left" />

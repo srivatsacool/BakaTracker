@@ -126,8 +126,56 @@ const inner = ref(
 let raf = 0
 let last = 0
 let clock = 0
+let isVisible = true
+let observer: IntersectionObserver | null = null
+let isListeningPointer = false
+let cachedBox: DOMRect | null = null
+let lastBoxTime = 0
+
+function updateBox(el: HTMLElement | null): DOMRect | null {
+  const now = typeof performance !== 'undefined' ? performance.now() : Date.now()
+  if (!cachedBox || now - lastBoxTime > 500) {
+    if (el) {
+      cachedBox = el.getBoundingClientRect()
+      lastBoxTime = now
+    }
+  }
+  return cachedBox
+}
+
+function invalidateBox() {
+  cachedBox = null
+  lastBoxTime = 0
+}
+
+function startLoop() {
+  if (isStatic || raf !== 0 || !isVisible) return
+  last = 0
+  raf = requestAnimationFrame(tick)
+  if (props.follow && !isListeningPointer) {
+    window.addEventListener('pointermove', onPointerMove, { passive: true })
+    document.addEventListener('pointerleave', onPointerLeave)
+    isListeningPointer = true
+  }
+}
+
+function stopLoop() {
+  if (raf !== 0) {
+    cancelAnimationFrame(raf)
+    raf = 0
+  }
+  if (isListeningPointer) {
+    window.removeEventListener('pointermove', onPointerMove)
+    document.removeEventListener('pointerleave', onPointerLeave)
+    isListeningPointer = false
+  }
+}
 
 function tick(ms: number) {
+  if (!isVisible || isStatic) {
+    raf = 0
+    return
+  }
   raf = requestAnimationFrame(tick)
   const dt = last ? Math.min((ms - last) / 1000, 0.064) : 0
   last = ms
@@ -136,9 +184,9 @@ function tick(ms: number) {
 }
 
 function onPointerMove(event: PointerEvent) {
-  if (!props.follow || event.pointerType === 'touch') return
+  if (!props.follow || event.pointerType === 'touch' || !isVisible) return
   const el = document.getElementById(`bakasur-${uid}`)
-  const box = el?.getBoundingClientRect()
+  const box = updateBox(el)
   if (!box || box.width === 0 || box.height === 0) return
   const nx = (event.clientX - (box.left + box.width / 2)) / Math.max(120, window.innerWidth * 0.35)
   const ny = (event.clientY - (box.top + box.height / 2)) / Math.max(120, window.innerHeight * 0.35)
@@ -169,15 +217,41 @@ watch(resolved, () => {
 
 onMounted(() => {
   if (isStatic) return
-  window.addEventListener('pointermove', onPointerMove)
-  document.addEventListener('pointerleave', onPointerLeave)
-  raf = requestAnimationFrame(tick)
+
+  const el = document.getElementById(`bakasur-${uid}`)
+  if (typeof IntersectionObserver !== 'undefined' && el) {
+    observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0]
+        if (entry) {
+          isVisible = entry.isIntersecting
+          if (isVisible) {
+            invalidateBox()
+            startLoop()
+          } else {
+            stopLoop()
+          }
+        }
+      },
+      { rootMargin: '100px' }
+    )
+    observer.observe(el)
+  } else {
+    startLoop()
+  }
+
+  window.addEventListener('resize', invalidateBox, { passive: true })
+  window.addEventListener('scroll', invalidateBox, { passive: true })
 })
 
 onBeforeUnmount(() => {
-  cancelAnimationFrame(raf)
-  window.removeEventListener('pointermove', onPointerMove)
-  document.removeEventListener('pointerleave', onPointerLeave)
+  stopLoop()
+  if (observer) {
+    observer.disconnect()
+    observer = null
+  }
+  window.removeEventListener('resize', invalidateBox)
+  window.removeEventListener('scroll', invalidateBox)
 })
 </script>
 

@@ -28,6 +28,19 @@ function scrollToId(id: string, reducedMotion: boolean) {
  * - Right: Massive Bakasur presence loomed on the edge, peeking into the scene on interaction.
  * - Dialogue: Only appears when interacting with Bakasur (clean and uncluttered at rest).
  */
+const getInitialHeroSize = () => {
+  if (typeof window === 'undefined') return 680;
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  if (vw < 640) {
+    return Math.round(Math.min(vw * 0.50, 210));
+  } else if (vw < 1024) {
+    return Math.round(Math.min(vh * 0.62, 460));
+  } else {
+    return Math.round(Math.min(vh * 0.78, 680));
+  }
+};
+
 export const CinematicHero: React.FC<Props> = ({
   reducedMotion,
   onEnterProduct,
@@ -35,7 +48,7 @@ export const CinematicHero: React.FC<Props> = ({
   signInDisabled,
   signInLabel,
 }) => {
-  const [characterSize, setCharacterSize] = React.useState(680);
+  const [characterSize, setCharacterSize] = React.useState(getInitialHeroSize);
 
   // Responsive character sizing: calibrated for absolute spatial composition
   React.useEffect(() => {
@@ -50,8 +63,7 @@ export const CinematicHero: React.FC<Props> = ({
         setCharacterSize(Math.round(Math.min(vh * 0.78, 680)));
       }
     };
-    updateSize();
-    window.addEventListener('resize', updateSize);
+    window.addEventListener('resize', updateSize, { passive: true });
     return () => window.removeEventListener('resize', updateSize);
   }, []);
 

@@ -21,7 +21,7 @@ export const FinalCta: React.FC<Props> = ({ reducedMotion, onEnterProduct, onLog
           state="CELEBRATE"
           size={180}
           className="cine-bakasur"
-          followPointer={!reducedMotion}
+          followPointer={false}
           frozenAt={reducedMotion ? 0 : undefined}
           decorative
         />

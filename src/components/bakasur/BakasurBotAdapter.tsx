@@ -7,7 +7,7 @@
  */
 
 import React, { useEffect, useRef, useState } from 'react'
-import { createApp, h, type App as VueApp } from 'vue'
+import { createApp, h, reactive, type App as VueApp } from 'vue'
 import { BakasurBot } from 'bakasur-ui'
 
 export interface BakasurBotAdapterProps {
@@ -39,34 +39,37 @@ export const BakasurBotAdapter: React.FC<BakasurBotAdapterProps> = ({
 }) => {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const appRef = useRef<VueApp | null>(null)
+  const reactivePropsRef = useRef<Record<string, unknown> | null>(null)
   const [hasError, setHasError] = useState(false)
 
-  // Sync props to Vue component
+  // Sync props to Vue component reactively
   useEffect(() => {
     if (!containerRef.current) return
 
+    const currentProps: Record<string, unknown> = {
+      state,
+      preset,
+      colour,
+      treatment,
+      size,
+      frozenAt,
+      follow,
+      label,
+      expression: expression !== undefined && expression !== null ? expression : undefined
+    }
+
     try {
-      if (appRef.current) {
-        appRef.current.unmount()
-        appRef.current = null
+      if (appRef.current && reactivePropsRef.current) {
+        // Fast-path: update reactive props without recreating Vue app
+        Object.assign(reactivePropsRef.current, currentProps)
+        return
       }
 
-      const props: Record<string, unknown> = {
-        state,
-        preset,
-        colour,
-        treatment,
-        size,
-        frozenAt,
-        follow,
-        label
-      }
-      if (expression !== undefined && expression !== null) {
-        props.expression = expression
-      }
+      const reactiveProps = reactive({ ...currentProps })
+      reactivePropsRef.current = reactiveProps
 
       const app = createApp({
-        render: () => h(BakasurBot, props)
+        render: () => h(BakasurBot, reactiveProps)
       })
 
       app.mount(containerRef.current)
@@ -76,7 +79,9 @@ export const BakasurBotAdapter: React.FC<BakasurBotAdapterProps> = ({
       console.warn('BakasurBotAdapter mount fallback:', err)
       setHasError(true)
     }
+  }, [state, preset, expression, colour, treatment, size, frozenAt, follow, label])
 
+  useEffect(() => {
     return () => {
       if (appRef.current) {
         try {
@@ -85,9 +90,10 @@ export const BakasurBotAdapter: React.FC<BakasurBotAdapterProps> = ({
           /* ignore */
         }
         appRef.current = null
+        reactivePropsRef.current = null
       }
     }
-  }, [state, preset, expression, colour, treatment, size, frozenAt, follow, label])
+  }, [])
 
   const isResponsive = className?.includes('baksur-hero-svg') || style?.width === '100%'
 
