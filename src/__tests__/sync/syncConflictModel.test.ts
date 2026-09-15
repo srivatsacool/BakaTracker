@@ -124,9 +124,9 @@ describe('Sync model — documented behavior', () => {
     const push = SyncPush.parse({ ops });
     // 3 tasks + 2 habits + 1 journal = 6 ops
     expect(push.ops).toHaveLength(6);
-    expect(push.ops.filter(o => o.entity === 'task')).toHaveLength(3);
-    expect(push.ops.filter(o => o.entity === 'habit')).toHaveLength(2);
-    expect(push.ops.filter(o => o.entity === 'journal')).toHaveLength(1);
+    expect(push.ops.filter((o: { entity: string }) => o.entity === 'task')).toHaveLength(3);
+    expect(push.ops.filter((o: { entity: string }) => o.entity === 'habit')).toHaveLength(2);
+    expect(push.ops.filter((o: { entity: string }) => o.entity === 'journal')).toHaveLength(1);
   });
 
   it('delete op carries only entity_id, no payload', () => {
