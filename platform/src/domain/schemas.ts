@@ -43,12 +43,19 @@ export const HabitInput = z.object({
   name: z.string().min(1).max(120),
   target: z.number().int().positive().default(1),
   period: HabitPeriod.default("day"),
+  type: z.string().optional().default("checkbox"),
+  icon: z.string().optional().default("💪"),
+  xp: z.number().int().optional().default(5),
+  stat: z.string().optional().default("health"),
+  preset: z.string().nullable().optional(),
+  archived: z.union([z.boolean(), z.number()]).optional().default(false),
 });
 
 export const LogHabitInput = z.object({
   habit_id: z.string(),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   count: z.number().int().positive().default(1),
+  value: z.string().optional(),
 });
 
 export const Habit = HabitInput.extend({
@@ -57,7 +64,7 @@ export const Habit = HabitInput.extend({
   created_at: z.string(),
   updated_at: z.string(),
   streak: z.number().int().default(0),
-  log: z.array(z.object({ date: z.string(), count: z.number() })).default([]),
+  log: z.array(z.object({ date: z.string(), count: z.number().optional().default(1), value: z.string().optional() })).default([]),
 });
 export type Habit = z.infer<typeof Habit>;
 export type HabitInput = z.infer<typeof HabitInput>;

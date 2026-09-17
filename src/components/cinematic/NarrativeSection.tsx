@@ -1,6 +1,4 @@
 import React from 'react';
-import { BaksurCharacter } from '../shell/BaksurCharacter';
-import { SpeechBubble } from './SpeechBubble';
 import { useCineReveal } from './reveal';
 
 const BEATS: { title: string; body: string }[] = [
@@ -28,7 +26,7 @@ const BEATS: { title: string; body: string }[] = [
 
 /**
  * NarrativeSection — PROBLEM → IDEA → SYSTEM → CREATURE → PRODUCT.
- * Editorial beats, big whitespace, Bakasur narrating the creature beat.
+ * Editorial beats, big whitespace.
  */
 export const NarrativeSection: React.FC<{ reducedMotion: boolean }> = ({ reducedMotion }) => {
   const ref = useCineReveal<HTMLElement>(reducedMotion);
@@ -46,7 +44,7 @@ export const NarrativeSection: React.FC<{ reducedMotion: boolean }> = ({ reduced
         </p>
       </div>
       <div className="cine-beats">
-        {BEATS.slice(0, 3).map((b, i) => (
+        {BEATS.map((b, i) => (
           <article key={b.title} className="cine-beat" data-cine-reveal>
             <span className="cine-beat-numeral" aria-hidden="true">0{i + 1}</span>
             <div>
@@ -55,31 +53,6 @@ export const NarrativeSection: React.FC<{ reducedMotion: boolean }> = ({ reduced
             </div>
           </article>
         ))}
-        <article className="cine-beat cine-beat-creature" data-cine-reveal>
-          <span className="cine-beat-numeral" aria-hidden="true">04</span>
-          <div>
-            <h3>{BEATS[3].title}</h3>
-            <p>{BEATS[3].body}</p>
-            <div className="cine-narrator-row">
-              <BaksurCharacter
-                direction="flamehorn"
-                state="HAPPY"
-                size={72}
-                followPointer={false}
-                frozenAt={0}
-                decorative
-              />
-              <SpeechBubble text="I read everything. I judge nothing. Mostly." tail="left" />
-            </div>
-          </div>
-        </article>
-        <article className="cine-beat" data-cine-reveal>
-          <span className="cine-beat-numeral" aria-hidden="true">05</span>
-          <div>
-            <h3>{BEATS[4].title}</h3>
-            <p>{BEATS[4].body}</p>
-          </div>
-        </article>
       </div>
     </section>
   );

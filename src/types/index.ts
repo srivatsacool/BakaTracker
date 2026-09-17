@@ -15,6 +15,14 @@ export interface Habit {
   xp: number;
   stat: StatType;
   active: boolean;
+  /** Soft-archival flag: when true, hidden from active habits list but historical logs & XP remain intact */
+  archived?: boolean;
+  /** Optional target config for quantitative habits (counter, numeric, duration) */
+  target?: {
+    value: number;
+    unit: string;
+    step?: number;
+  };
   /** V3.5: preset identity when this habit is an instance of a canonical preset. */
   preset?: HabitPresetId;
   created_at: string; // ISO date

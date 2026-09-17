@@ -23,6 +23,8 @@ import { env, applyD1Migrations, reset } from "cloudflare:test";
 import migrationSql from "../migrations/0001_init.sql?raw";
 import migrationFilesSql from "../migrations/0002_files.sql?raw";
 import migrationPagesSql from "../migrations/0003_notes_pages.sql?raw";
+import migrationQuotaSql from "../migrations/0004_ai_quota.sql?raw";
+import migrationHabitsSql from "../migrations/0005_habits_attributes.sql?raw";
 import { splitSqlStatements } from "../scripts/sql-split.mjs";
 import { describe, it, expect, beforeEach } from "vitest";
 
@@ -35,6 +37,8 @@ const MIGRATIONS = [
   { name: "0001_init.sql", queries: splitSqlStatements(migrationSql) },
   { name: "0002_files.sql", queries: splitSqlStatements(migrationFilesSql) },
   { name: "0003_notes_pages.sql", queries: splitSqlStatements(migrationPagesSql) },
+  { name: "0004_ai_quota.sql", queries: splitSqlStatements(migrationQuotaSql) },
+  { name: "0005_habits_attributes.sql", queries: splitSqlStatements(migrationHabitsSql) },
 ];
 
 /** Every test starts from an empty database (wipes all pool storage). */
@@ -67,6 +71,7 @@ async function indexes(): Promise<string[]> {
 }
 
 const EXPECTED_TABLES = [
+  "ai_quota",
   "daily_rollups",
   "files",
   "habits",
@@ -78,6 +83,7 @@ const EXPECTED_TABLES = [
   "tasks",
 ];
 const EXPECTED_INDEXES = [
+  "idx_ai_quota_user_date",
   "idx_files_user_created",
   "idx_habits_user",
   "idx_notebooks_user_position",
@@ -89,14 +95,20 @@ const EXPECTED_INDEXES = [
   "idx_tasks_user_status",
 ];
 
+const ALL_MIGRATION_NAMES = [
+  "0001_init.sql",
+  "0002_files.sql",
+  "0003_notes_pages.sql",
+  "0004_ai_quota.sql",
+  "0005_habits_attributes.sql",
+];
+
 describe("D1 migrations", () => {
   it("applies every migration to an EMPTY database", async () => {
     await applyD1Migrations(env.BAKA_DB, MIGRATIONS);
 
-    // tracking table exists and records all three migrations in order
-    expect(await appliedMigrations()).toEqual([
-      "0001_init.sql", "0002_files.sql", "0003_notes_pages.sql",
-    ]);
+    // tracking table exists and records all migrations in order
+    expect(await appliedMigrations()).toEqual(ALL_MIGRATION_NAMES);
 
     // every expected table + index exists
     expect(await tables()).toEqual(EXPECTED_TABLES);
@@ -130,7 +142,7 @@ describe("D1 migrations", () => {
     // upgrade to latest
     await applyD1Migrations(env.BAKA_DB, MIGRATIONS);
 
-    expect(await appliedMigrations()).toEqual(["0001_init.sql", "0002_files.sql", "0003_notes_pages.sql"]);
+    expect(await appliedMigrations()).toEqual(ALL_MIGRATION_NAMES);
     expect(await tables()).toEqual(EXPECTED_TABLES);
     expect(await indexes()).toEqual(EXPECTED_INDEXES);
     // 001 schema untouched by the upgrade
@@ -202,14 +214,14 @@ describe("D1 migrations", () => {
   });
 
   it("re-application via migration machinery is safe (no-op for already-recorded file)", async () => {
-    // Apply all migrations — 0003 is now tracked in d1_migrations.
+    // Apply all migrations
     await applyD1Migrations(env.BAKA_DB, MIGRATIONS);
-    expect(await appliedMigrations()).toHaveLength(3);
+    expect(await appliedMigrations()).toHaveLength(ALL_MIGRATION_NAMES.length);
 
-    // Re-apply ALL migrations via the tracking mechanism. Since 0003 is already
+    // Re-apply ALL migrations via the tracking mechanism. Since migrations are already
     // recorded, the ALTER statements are NOT re-executed — wrangler skips pending.
     await applyD1Migrations(env.BAKA_DB, MIGRATIONS);
-    expect(await appliedMigrations()).toEqual(["0001_init.sql", "0002_files.sql", "0003_notes_pages.sql"]);
+    expect(await appliedMigrations()).toEqual(ALL_MIGRATION_NAMES);
     expect(await tables()).toEqual(EXPECTED_TABLES);
 
     // Re-seed a note still intact.

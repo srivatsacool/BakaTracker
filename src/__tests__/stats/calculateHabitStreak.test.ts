@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { calculateHabitStreak } from '../../services/habits/calculateHabitStreak';
+import { calculateHabitStreak, calculateBestStreak } from '../../services/habits/calculateHabitStreak';
 import type { Habit, HabitLog } from '../../types';
 
 function getDateStr(offsetDays: number): string {
@@ -78,3 +78,41 @@ describe('calculateHabitStreak', () => {
     expect(calculateHabitStreak(habit, logs)).toBe(2);
   });
 });
+
+describe('calculateBestStreak', () => {
+  it('returns 0 when no logs exist', () => {
+    expect(calculateBestStreak(mkHabit(), [])).toBe(0);
+  });
+
+  it('returns 1 for single log', () => {
+    expect(calculateBestStreak(mkHabit(), [mkLog(0)])).toBe(1);
+  });
+
+  it('calculates longest consecutive run', () => {
+    const habit = mkHabit();
+    // 3 days in a row (days 10, 9, 8), gap on day 7, 2 days in a row (days 5, 4)
+    const logs = [
+      mkLog(10),
+      mkLog(9),
+      mkLog(8),
+      mkLog(5),
+      mkLog(4),
+    ];
+    expect(calculateBestStreak(habit, logs)).toBe(3);
+  });
+
+  it('deduplicates multiple entries on the same date without corrupting streak calculation', () => {
+    const habit = mkHabit();
+    // 3 consecutive days, but day 9 and day 8 have multiple duplicate log entries
+    const logs = [
+      mkLog(10),
+      mkLog(9),
+      mkLog(9, { id: 'l-9-dup-1' }),
+      mkLog(9, { id: 'l-9-dup-2' }),
+      mkLog(8),
+      mkLog(8, { id: 'l-8-dup' }),
+    ];
+    expect(calculateBestStreak(habit, logs)).toBe(3);
+  });
+});
+

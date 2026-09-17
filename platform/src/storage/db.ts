@@ -16,6 +16,12 @@ function unwrapTask(r: any): Task {
 function unwrapHabit(r: any): Habit {
   return {
     ...r,
+    type: r.type ?? "checkbox",
+    icon: r.icon ?? "💪",
+    xp: r.xp ?? 5,
+    stat: r.stat ?? "health",
+    preset: r.preset ?? undefined,
+    archived: Boolean(r.archived),
     log: Array.isArray(r.log) ? r.log : r.log ? JSON.parse(r.log) : [],
     target: r.target ?? 1,
     period: r.period ?? "day",
@@ -83,12 +89,33 @@ export async function taskList(
 export async function habitUpsert(db: D1Database, h: Habit): Promise<void> {
   await db
     .prepare(
-      `INSERT INTO habits (id, user_id, created_at, updated_at, name, target, period, streak, log)
-       VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9)
-       ON CONFLICT(id) DO UPDATE SET updated_at=?4, name=?5, target=?6, period=?7, streak=?8, log=?9`,
+      `INSERT INTO habits (id, user_id, created_at, updated_at, name, target, period, streak, log, type, icon, xp, stat, preset, archived)
+       VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15)
+       ON CONFLICT(id) DO UPDATE SET updated_at=?4, name=?5, target=?6, period=?7, streak=?8, log=?9, type=?10, icon=?11, xp=?12, stat=?13, preset=?14, archived=?15`,
     )
-    .bind(h.id, h.user_id, h.created_at, h.updated_at, h.name, h.target, h.period, h.streak, JSON.stringify(h.log))
+    .bind(
+      h.id,
+      h.user_id,
+      h.created_at,
+      h.updated_at,
+      h.name,
+      h.target ?? 1,
+      h.period ?? "day",
+      h.streak ?? 0,
+      JSON.stringify(h.log ?? []),
+      h.type ?? "checkbox",
+      h.icon ?? "💪",
+      h.xp ?? 5,
+      h.stat ?? "health",
+      h.preset ?? null,
+      h.archived ? 1 : 0
+    )
     .run();
+}
+
+export async function habitDelete(db: D1Database, userId: string, id: string): Promise<boolean> {
+  const r = await db.prepare("DELETE FROM habits WHERE id=?1 AND user_id=?2").bind(id, userId).run();
+  return (r.meta?.changes ?? 0) > 0;
 }
 
 export async function habitGet(db: D1Database, userId: string, id: string): Promise<Habit | null> {

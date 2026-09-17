@@ -54,19 +54,20 @@ const STAT_ICONS: Record<string, string> = {
 };
 
 /**
- * Journey — the character progression screen. Level, XP, stats, streaks,
+ * Progression (formerly Journey) — the character progression screen. Level, XP, stats, streaks,
  * heatmap, weekly XP, insights, and recent events.
  */
-export const Journey: React.FC = () => {
-  const { habits, habitLogs, tasks, journal, stats, events, character, weeklyStats } = useStore(useShallow(s => ({
+export const Progression: React.FC = () => {
+  const { habits, habitLogs, tasks, journal, stats, events, character, weeklyStats, settings } = useStore(useShallow(s => ({
     habits: s.habits, habitLogs: s.habitLogs, tasks: s.tasks, journal: s.journal,
     stats: s.stats, events: s.events, character: s.character, weeklyStats: s.weeklyStats,
+    settings: s.settings,
   })));
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [showExportModal, setShowExportModal] = useState(false);
 
   const characterTitle = character[0]?.title ?? 'Novice Adventurer';
-  const xpPerLevel = 1500;
+  const xpPerLevel = settings?.xp_per_level || 100;
 
   const statMeta: Record<StatType, { icon: string; barColor: string }> = {
     discipline: { icon: 'sword', barColor: 'var(--bt-primary)' },
@@ -396,3 +397,6 @@ export const Journey: React.FC = () => {
     </div>
   );
 };
+
+export const Journey = Progression;
+

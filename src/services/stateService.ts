@@ -46,6 +46,12 @@ interface V2HabitLogEntry { date: string; count: number; value?: string }
 interface V2Habit {
   id: string;
   name: string;
+  type?: Habit['type'];
+  icon?: string;
+  xp?: number;
+  stat?: Habit['stat'];
+  preset?: Habit['preset'] | null;
+  archived?: boolean;
   created_at: string;
   updated_at: string;
   log?: V2HabitLogEntry[];
@@ -117,32 +123,37 @@ const uiToV2Mood = (mood: JournalEntry['mood']): number | null => {
   }
 };
 
-/** Worker domain → UI habits (D1 has no presentation fields; restore defaults). */
+/** Worker domain → UI habits (restore attributes or fallback to UI defaults). */
 function adaptHabits(remote: V2Habit[]): { habits: Habit[]; logs: HabitLog[] } {
   const habits: Habit[] = [];
   const logs: HabitLog[] = [];
 
   for (const h of remote) {
+    const habitXp = typeof h.xp === 'number' ? h.xp : UI_HABIT_DEFAULTS.xp;
+    const isArchived = typeof h.archived === 'boolean' ? h.archived : false;
+
     habits.push({
       id: h.id,
       name: h.name,
-      type: UI_HABIT_DEFAULTS.type,
-      icon: UI_HABIT_DEFAULTS.icon,
-      xp: UI_HABIT_DEFAULTS.xp,
-      stat: UI_HABIT_DEFAULTS.stat,
-      active: UI_HABIT_DEFAULTS.active,
+      type: h.type ?? UI_HABIT_DEFAULTS.type,
+      icon: h.icon ?? UI_HABIT_DEFAULTS.icon,
+      xp: habitXp,
+      stat: h.stat ?? UI_HABIT_DEFAULTS.stat,
+      preset: h.preset ?? undefined,
+      active: !isArchived,
+      archived: isArchived,
       created_at: h.created_at,
       updated_at: h.updated_at,
     });
 
-    // Flatten the embedded log [{date, count}] into the UI habitLogs shape.
+    // Flatten the embedded log [{date, count, value}] into the UI habitLogs shape.
     for (const entry of h.log ?? []) {
       logs.push({
         id: `${h.id}_${entry.date}`,
         date: entry.date,
         habit_id: h.id,
-        value: entry.count ?? 1,
-        xp_earned: (entry.count ?? 1) * UI_HABIT_DEFAULTS.xp,
+        value: entry.value !== undefined ? entry.value : (entry.count ?? 1),
+        xp_earned: (entry.count ?? 1) * habitXp,
         created_at: h.updated_at,
       });
     }
@@ -190,6 +201,12 @@ function habitToV2(habit: Habit, logs: HabitLog[]): Record<string, unknown> {
     target: 1,
     period: 'day',
     streak: 0,
+    type: habit.type,
+    icon: habit.icon,
+    xp: habit.xp,
+    stat: habit.stat,
+    preset: habit.preset ?? null,
+    archived: habit.archived ?? !habit.active,
     log: logs
       .filter((l) => l.habit_id === habit.id)
       .map((l) => {

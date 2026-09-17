@@ -17,6 +17,7 @@ export const NAV_TONES: Record<string, string> = {
   '/tasks': 'var(--arcade-red)',
   '/eisenhower': 'var(--arcade-orange)',
   '/journal': 'var(--arcade-magenta)',
+  '/progression': 'var(--arcade-cobalt)',
   '/journey': 'var(--arcade-cobalt)',
   '/notes': 'var(--arcade-magenta)',
   '/bakasur': 'var(--arcade-cobalt)',
@@ -29,7 +30,8 @@ export const NAV_PIXEL_ICONS: Record<string, string> = {
   '/tasks': 'checkbox',
   '/eisenhower': 'grid',
   '/journal': 'book',
-  '/journey': 'compass',
+  '/progression': 'shield',
+  '/journey': 'shield',
   '/notes': 'notes',
   '/bakasur': 'robot',
 };
@@ -46,7 +48,7 @@ export const NAV_ITEMS: NavItem[] = [
   { path: '/tasks', name: 'Tasks', icon: 'checkbox' },
   { path: '/eisenhower', name: 'Matrix', icon: 'grid' },
   { path: '/journal', name: 'Journal', icon: 'book' },
-  { path: '/journey', name: 'Journey', icon: 'compass' },
+  { path: '/progression', name: 'Progression', icon: 'shield' },
   { path: '/notes', name: 'Notes', icon: 'notes' },
 ];
 

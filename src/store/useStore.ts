@@ -4,6 +4,7 @@ import { stateService } from '../services/stateService';
 import { ApiClient } from '../api/apiClient';
 import { generateUUID } from '../lib/utils';
 import { createHabit } from '../services/habits/createHabit';
+import { updateHabit } from '../services/habits/updateHabit';
 import { deleteHabit } from '../services/habits/deleteHabit';
 import { createTask } from '../services/tasks/createTask';
 import { updateTask } from '../services/tasks/updateTask';
@@ -55,6 +56,9 @@ interface BakaState {
   /** V3.5 presets: add a habit instance from the immutable registry. */
   addPresetHabit: (presetId: string) => Promise<void>;
   addHabit: (habit: Omit<Habit, 'id' | 'active' | 'created_at' | 'updated_at'>) => Promise<void>;
+  updateHabit: (id: string, updates: Partial<Omit<Habit, 'id' | 'created_at'>>) => Promise<void>;
+  archiveHabit: (id: string) => Promise<void>;
+  unarchiveHabit: (id: string) => Promise<void>;
   deleteHabit: (id: string) => Promise<void>;
   
   // Tasks Actions
@@ -932,9 +936,60 @@ export const useStore = create<BakaState>((set, get) => ({
       newHabit.type,
       newHabit.icon,
       newHabit.xp,
-      newHabit.stat
+      newHabit.stat,
+      newHabit.preset,
+      newHabit.target
     );
     const updatedHabits = [...habits, fullHabit];
+    set({ habits: updatedHabits });
+    localStorage.setItem('bt_habits', JSON.stringify(updatedHabits));
+    updateStatsAndSummaries(set, get, updatedHabits, habitLogs, tasks, journal, events);
+    
+    get().pushSync().catch(console.error);
+  },
+
+  updateHabit: async (id: string, updates: Partial<Omit<Habit, 'id' | 'created_at'>>) => {
+    const { habits, habitLogs, tasks, journal, events } = get();
+    const habitIndex = habits.findIndex(h => h.id === id);
+    if (habitIndex === -1) return;
+
+    const oldHabit = habits[habitIndex];
+    const updated = updateHabit(oldHabit, updates);
+    const updatedHabits = [...habits];
+    updatedHabits[habitIndex] = updated;
+
+    set({ habits: updatedHabits });
+    localStorage.setItem('bt_habits', JSON.stringify(updatedHabits));
+    updateStatsAndSummaries(set, get, updatedHabits, habitLogs, tasks, journal, events);
+    
+    get().pushSync().catch(console.error);
+  },
+
+  archiveHabit: async (id: string) => {
+    const { habits, habitLogs, tasks, journal, events } = get();
+    const habitIndex = habits.findIndex(h => h.id === id);
+    if (habitIndex === -1) return;
+
+    const updated = updateHabit(habits[habitIndex], { active: false, archived: true });
+    const updatedHabits = [...habits];
+    updatedHabits[habitIndex] = updated;
+
+    set({ habits: updatedHabits });
+    localStorage.setItem('bt_habits', JSON.stringify(updatedHabits));
+    updateStatsAndSummaries(set, get, updatedHabits, habitLogs, tasks, journal, events);
+    
+    get().pushSync().catch(console.error);
+  },
+
+  unarchiveHabit: async (id: string) => {
+    const { habits, habitLogs, tasks, journal, events } = get();
+    const habitIndex = habits.findIndex(h => h.id === id);
+    if (habitIndex === -1) return;
+
+    const updated = updateHabit(habits[habitIndex], { active: true, archived: false });
+    const updatedHabits = [...habits];
+    updatedHabits[habitIndex] = updated;
+
     set({ habits: updatedHabits });
     localStorage.setItem('bt_habits', JSON.stringify(updatedHabits));
     updateStatsAndSummaries(set, get, updatedHabits, habitLogs, tasks, journal, events);
@@ -953,13 +1008,16 @@ export const useStore = create<BakaState>((set, get) => ({
     if (empty) {
       if (idx > -1) newLogs.splice(idx, 1);
     } else {
+      const xpEarned = habit.type === 'counter' && typeof value === 'number'
+        ? value * habit.xp
+        : habit.xp;
       const entry = idx > -1
-        ? { ...newLogs[idx], value, xp_earned: habit.xp }
-        : { id: generateUUID('log_'), date, habit_id: id, value, xp_earned: habit.xp, created_at: new Date().toISOString() };
+        ? { ...newLogs[idx], value, xp_earned: xpEarned }
+        : { id: generateUUID('log_'), date, habit_id: id, value, xp_earned: xpEarned, created_at: new Date().toISOString() };
       if (idx > -1) newLogs[idx] = entry; else newLogs.push(entry);
       newEvents = [...newEvents, {
         id: generateUUID('evt_'), type: 'habit_completed', source: 'habit',
-        entity: habit.name, entity_id: id, xp: habit.xp, stat: habit.stat,
+        entity: habit.name, entity_id: id, xp: xpEarned, stat: habit.stat,
         metadata: JSON.stringify({ value }), timestamp: new Date(date + 'T12:00:00').toISOString(),
       }];
     }
@@ -975,7 +1033,14 @@ export const useStore = create<BakaState>((set, get) => ({
     if (!preset) return;
     const existing = get().habits.find(h => h.preset === preset.id);
     if (existing) return;
-    await get().addHabit({ name: preset.name, type: preset.type, icon: preset.icon, xp: preset.xp, stat: preset.stat, preset: preset.id });
+    await get().addHabit({
+      name: preset.name,
+      type: preset.type,
+      icon: preset.icon,
+      xp: preset.xp,
+      stat: preset.stat,
+      preset: preset.id,
+    });
   },
 
   deleteHabit: async (id: string) => {
@@ -1180,9 +1245,9 @@ export const useStore = create<BakaState>((set, get) => ({
 
     // Add Habits
     await addHabit({ name: 'Morning Workout', type: 'checkbox', icon: '💪', xp: 10, stat: 'health' });
-    await addHabit({ name: 'Read Pages', type: 'counter', icon: '📖', xp: 2, stat: 'knowledge' });
+    await addHabit({ name: 'Read Pages', type: 'counter', icon: '📖', xp: 2, stat: 'knowledge', target: { value: 20, unit: 'pages' } });
     await addHabit({ name: 'Mood Check', type: 'mood', icon: '😊', xp: 5, stat: 'discipline' });
-    await addHabit({ name: 'Hours of Sleep', type: 'numeric', icon: '🌙', xp: 5, stat: 'health' });
+    await addHabit({ name: 'Hours of Sleep', type: 'numeric', icon: '🌙', xp: 5, stat: 'health', target: { value: 8, unit: 'hours' } });
     await addHabit({ name: 'Meditation', type: 'checkbox', icon: '🧘', xp: 8, stat: 'discipline' });
     await addHabit({ name: 'Learn Something', type: 'checkbox', icon: '🎯', xp: 7, stat: 'knowledge' });
 

@@ -10,16 +10,16 @@ interface Props {
   signInDisabled: boolean;
 }
 
-/** FinalCta — simplicity. One creature, one button, one ground line. */
+/** FinalCta — simplicity. One creature, one button, one ground line. Formatted for 100vh viewport fit. */
 export const FinalCta: React.FC<Props> = ({ reducedMotion, onEnterProduct, onLogin, signInDisabled }) => {
   const ref = useCineReveal<HTMLElement>(reducedMotion);
   return (
     <section ref={ref} id="enter" className="cine-section cine-final" aria-labelledby="cine-final-title" tabIndex={-1}>
-      <div data-cine-reveal>
+      <div data-cine-reveal className="cine-final-inner">
         <BaksurCharacter
           direction="flamehorn"
           state="CELEBRATE"
-          size={180}
+          size={130}
           className="cine-bakasur"
           followPointer={false}
           frozenAt={reducedMotion ? 0 : undefined}
@@ -43,15 +43,15 @@ export const FinalCta: React.FC<Props> = ({ reducedMotion, onEnterProduct, onLog
         >
           or sign in to your own instance
         </button>
-        <div className="cine-ground">
-          <span>Local-first</span>
-          <span aria-hidden="true">·</span>
-          <span>Open source</span>
-          <span aria-hidden="true">·</span>
-          <span>Your instance</span>
-          <span aria-hidden="true">·</span>
-          <a href={GITHUB_REPO_URL} target="_blank" rel="noopener noreferrer">GitHub</a>
-        </div>
+      </div>
+      <div className="cine-ground">
+        <span>Local-first</span>
+        <span aria-hidden="true">·</span>
+        <span>Open source</span>
+        <span aria-hidden="true">·</span>
+        <span>Your instance</span>
+        <span aria-hidden="true">·</span>
+        <a href={GITHUB_REPO_URL} target="_blank" rel="noopener noreferrer">GitHub</a>
       </div>
     </section>
   );

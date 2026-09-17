@@ -1,6 +1,7 @@
 import { env, SELF, applyD1Migrations } from "cloudflare:test";
 import migrationSql from "../migrations/0001_init.sql?raw";
 import migrationFilesSql from "../migrations/0002_files.sql?raw";
+import migrationHabitsSql from "../migrations/0005_habits_attributes.sql?raw";
 import { splitSqlStatements } from "../scripts/sql-split.mjs";
 import { describe, it, expect, beforeAll } from "vitest";
 import { ToolRegistry } from "../src/registry";
@@ -10,14 +11,14 @@ import { repositories } from "../src/storage/repositories";
 const TEST_USER = "test-sub-123";
 
 beforeAll(async () => {
-  // D1 in the test pool starts empty — apply the real schema once. Miniflare's
-  // D1 `exec()` rejects comment-leading multi-statement SQL, so statements are
+  // One schema source: the tests run the real migrations in order, statements
   // split via the shared compatibility adapter (scripts/sql-split.mjs) — a
   // transport detail, NOT a second schema source. Wrangler's native
   // `d1 migrations apply` remains the authoritative mechanism.
   await applyD1Migrations(env.BAKA_DB, [
     { name: "0001_init.sql", queries: splitSqlStatements(migrationSql) },
     { name: "0002_files.sql", queries: splitSqlStatements(migrationFilesSql) },
+    { name: "0005_habits_attributes.sql", queries: splitSqlStatements(migrationHabitsSql) },
   ]);
 
   // Pre-seed the isolation test's private task.

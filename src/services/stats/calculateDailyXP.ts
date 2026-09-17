@@ -1,4 +1,5 @@
 import type { Habit, HabitLog, Task, JournalEntry, StatType } from '../../types';
+import { presetValueCounts } from '../../lib/habitPresets';
 
 /**
  * Calculate XP earned today from canonical data sources.
@@ -34,6 +35,8 @@ export function calculateDailyXP(
       } else if (habit.type === 'numeric' && typeof log.value === 'number' && log.value > 0) {
         xpEarned = habit.xp;
       } else if ((habit.type === 'mood' || habit.type === 'energy') && log.value) {
+        xpEarned = habit.xp;
+      } else if ((habit.type === 'reading' || habit.type === 'workout') && presetValueCounts(habit.type, log.value)) {
         xpEarned = habit.xp;
       }
       if (xpEarned > 0) {

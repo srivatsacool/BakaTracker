@@ -184,3 +184,67 @@ describe('deleteHabit', () => {
     expect(useStore.getState().habitLogs.filter(l => l.habit_id === habit.id)).toHaveLength(0);
   });
 });
+
+describe('updateHabit', () => {
+  it('updates habit fields in store', async () => {
+    const habit = addTestHabit({ name: 'Old Name', xp: 5 });
+    await useStore.getState().updateHabit(habit.id, {
+      name: 'New Name',
+      xp: 25,
+      icon: '⚡',
+      stat: 'health',
+      target: { value: 30, unit: 'mins' },
+    });
+
+    const updated = useStore.getState().habits.find(h => h.id === habit.id);
+    expect(updated?.name).toBe('New Name');
+    expect(updated?.xp).toBe(25);
+    expect(updated?.icon).toBe('⚡');
+    expect(updated?.stat).toBe('health');
+    expect(updated?.target).toEqual({ value: 30, unit: 'mins' });
+  });
+});
+
+describe('archiveHabit and unarchiveHabit', () => {
+  it('archives a habit without deleting its logs or XP events', async () => {
+    const habit = addTestHabit();
+    const today = getToday();
+    await useStore.getState().toggleHabit(habit.id, today);
+
+    // Initial check
+    expect(useStore.getState().habitLogs.filter(l => l.habit_id === habit.id)).toHaveLength(1);
+
+    // Archive habit
+    await useStore.getState().archiveHabit(habit.id);
+    const archived = useStore.getState().habits.find(h => h.id === habit.id);
+    expect(archived?.archived).toBe(true);
+    expect(archived?.active).toBe(false);
+
+    // Logs & events remain intact!
+    expect(useStore.getState().habitLogs.filter(l => l.habit_id === habit.id)).toHaveLength(1);
+
+    // Unarchive habit
+    await useStore.getState().unarchiveHabit(habit.id);
+    const restored = useStore.getState().habits.find(h => h.id === habit.id);
+    expect(restored?.archived).toBe(false);
+    expect(restored?.active).toBe(true);
+  });
+});
+
+describe('setHabitValue universal recorder', () => {
+  it('records value and creates event log for numeric and preset types', async () => {
+    const habit = addTestHabit({ type: 'numeric', xp: 15 });
+    const today = getToday();
+    await useStore.getState().setHabitValue(habit.id, today, 8);
+
+    const log = useStore.getState().habitLogs.find(l => l.habit_id === habit.id && l.date === today);
+    expect(log).toBeDefined();
+    expect(log?.value).toBe(8);
+    expect(log?.xp_earned).toBe(15);
+
+    const evt = useStore.getState().events.find(e => e.entity_id === habit.id && e.timestamp.startsWith(today));
+    expect(evt).toBeDefined();
+    expect(evt?.xp).toBe(15);
+  });
+});
+

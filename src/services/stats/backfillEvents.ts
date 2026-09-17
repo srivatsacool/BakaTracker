@@ -1,6 +1,7 @@
 import type { Habit, HabitLog, Task, JournalEntry, EventLog } from '../../types';
 import { areaToStat } from './calculateXP';
 import { generateUUID } from '../../lib/utils';
+import { presetValueCounts } from '../../lib/habitPresets';
 
 export function backfillEvents(
   habits: Habit[],
@@ -27,6 +28,9 @@ export function backfillEvents(
       xpEarned = habit.xp;
       metadataObj = { value: log.value };
     } else if ((habit.type === 'mood' || habit.type === 'energy') && log.value) {
+      xpEarned = habit.xp;
+      metadataObj = { value: log.value };
+    } else if ((habit.type === 'reading' || habit.type === 'workout') && presetValueCounts(habit.type, log.value)) {
       xpEarned = habit.xp;
       metadataObj = { value: log.value };
     }

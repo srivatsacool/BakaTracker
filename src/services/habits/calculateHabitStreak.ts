@@ -64,10 +64,11 @@ export function calculateHabitStreak(habit: Habit, logs: HabitLog[]): number {
  * streak leaderboard. No store logic.
  */
 export function calculateBestStreak(habit: Habit, logs: HabitLog[]): number {
-  const dates = logs
+  const rawDates = logs
     .filter(l => l.habit_id === habit.id && isHabitCompleted(habit, l))
-    .map(l => l.date)
-    .sort(); // ascending YYYY-MM-DD (lexicographic = chronological)
+    .map(l => l.date);
+
+  const dates = Array.from(new Set(rawDates)).sort(); // ascending unique YYYY-MM-DD
 
   if (dates.length === 0) return 0;
 

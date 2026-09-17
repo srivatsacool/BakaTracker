@@ -26,6 +26,44 @@ export function formatDate(dateStr: string): string {
   });
 }
 
+export interface WeekDayInfo {
+  date: string; // YYYY-MM-DD
+  dayLabel: string; // 'Mon', 'Tue', etc.
+  dayNumber: number; // 1-31
+  isToday: boolean;
+}
+
+/**
+ * Returns the 7 days (Monday through Sunday) of the week for the given reference date.
+ * Correctly handles Sunday (getDay() === 0) without jumping to next week.
+ */
+export function getCurrentWeekDates(referenceDate: Date = new Date()): WeekDayInfo[] {
+  const d = new Date(referenceDate);
+  const day = d.getDay(); // 0 is Sunday, 1 is Monday, ..., 6 is Saturday
+  const diffToMonday = day === 0 ? -6 : 1 - day;
+  
+  const monday = new Date(d);
+  monday.setDate(d.getDate() + diffToMonday);
+
+  const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const todayStr = getTodayDateString();
+
+  const week: WeekDayInfo[] = [];
+  for (let i = 0; i < 7; i++) {
+    const cur = new Date(monday);
+    cur.setDate(monday.getDate() + i);
+    const dateStr = `${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, '0')}-${String(cur.getDate()).padStart(2, '0')}`;
+    week.push({
+      date: dateStr,
+      dayLabel: dayLabels[i],
+      dayNumber: cur.getDate(),
+      isToday: dateStr === todayStr,
+    });
+  }
+
+  return week;
+}
+
 /**
  * Checks if a habit was completed on a given date based on its log value.
  */

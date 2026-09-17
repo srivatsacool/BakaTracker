@@ -60,7 +60,8 @@ function App() {
           {/* V3.4.3 dev-only reaction mapping board (remove before V3.4.4) */}
           <Route path="/baksur-reactions" element={<BaksurReactionFixturePage />} />
           <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
-            <Route path="/journey" element={<Journey />} />
+            <Route path="/progression" element={<Journey />} />
+            <Route path="/journey" element={<Navigate to="/progression" replace />} />
             <Route path="/habits" element={<Habits />} />
             <Route path="/tasks" element={<Tasks />} />
             <Route path="/eisenhower" element={<Eisenhower />} />

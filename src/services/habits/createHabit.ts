@@ -1,4 +1,4 @@
-import type { Habit, HabitType, StatType } from '../../types';
+import type { Habit, HabitType, StatType, HabitPresetId } from '../../types';
 import { generateUUID } from '../../lib/utils';
 
 export function createHabit(
@@ -6,7 +6,9 @@ export function createHabit(
   type: HabitType,
   icon: string,
   xp: number,
-  stat: StatType
+  stat: StatType,
+  preset?: HabitPresetId,
+  target?: { value: number; unit: string; step?: number }
 ): Habit {
   const now = new Date().toISOString();
   return {
@@ -16,7 +18,10 @@ export function createHabit(
     icon,
     xp,
     stat,
+    preset,
+    target,
     active: true,
+    archived: false,
     created_at: now,
     updated_at: now
   };

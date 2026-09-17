@@ -1,6 +1,7 @@
 import { env, applyD1Migrations } from "cloudflare:test";
 import migrationSql from "../migrations/0001_init.sql?raw";
 import migrationFilesSql from "../migrations/0002_files.sql?raw";
+import migrationHabitsSql from "../migrations/0005_habits_attributes.sql?raw";
 import { splitSqlStatements } from "../scripts/sql-split.mjs";
 import { describe, it, expect, beforeAll, vi } from "vitest";
 import { repositories } from "../src/storage/repositories";
@@ -94,6 +95,7 @@ beforeAll(async () => {
   await applyD1Migrations(env.BAKA_DB, [
     { name: "0001_init.sql", queries: splitSqlStatements(migrationSql) },
     { name: "0002_files.sql", queries: splitSqlStatements(migrationFilesSql) },
+    { name: "0005_habits_attributes.sql", queries: splitSqlStatements(migrationHabitsSql) },
   ]);
 });
 

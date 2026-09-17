@@ -35,7 +35,7 @@ const NAV_PRIMARY = [
 
 const NAV_MORE = [
   { path: '/journal', name: 'Journal' },
-  { path: '/journey', name: 'Journey' },
+  { path: '/progression', name: 'Progression' },
   { path: '/notes', name: 'Notes' },
   { path: '/bakasur', name: 'BakaSur Chat' },
 ]

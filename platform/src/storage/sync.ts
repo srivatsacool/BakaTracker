@@ -123,6 +123,7 @@ async function applyOp(
       return true;
     }
     case "habit": {
+      if (op === "delete") return repos.habits.delete(userId, id);
       const h = payload as Habit;
       await repos.habits.upsert({
         ...h,
@@ -131,6 +132,12 @@ async function applyOp(
         created_at: h.created_at ?? now,
         updated_at: h.updated_at ?? now,
         name: h.name ?? "Untitled",
+        type: h.type ?? "checkbox",
+        icon: h.icon ?? "💪",
+        xp: h.xp ?? 5,
+        stat: h.stat ?? "health",
+        preset: h.preset ?? undefined,
+        archived: h.archived ?? false,
         log: h.log ?? [],
       });
       return true;
