@@ -150,18 +150,15 @@ export class BotEngine {
   private lookPrev: Look = NO_LOOK
   private lookAt = -10
   /** duree de rattrapage en cours ; voir `LOOK_MORPH`, sa valeur par defaut */
-  private lookMorph = 0.24
+  private lookMorph = 0.55
 
   /** duree du morph quand on change la forme du corps */
   static readonly SHAPE_MORPH = 0.45
 
   /**
-   * Duree de rattrapage du regard vers la cible. Plus court que `SHAPE_MORPH` :
-   * un regard qui suit doit paraitre attentif, pas visqueux. Comme la cible est
-   * reposee a chaque mouvement de souris, c'est cette duree qui donne au suivi
-   * son inertie — le regard n'atteint jamais tout a fait un curseur qui bouge.
+   * Duree de rattrapage du regard vers la cible.
    */
-  static readonly LOOK_MORPH = 0.24
+  static readonly LOOK_MORPH = 0.55
 
   constructor(
     scale = 100,
@@ -261,6 +258,7 @@ export class BotEngine {
 
   /** Regard effectif a l'instant `now`, rattrapage en cours compris. */
   private lookAtTime(now: number): Look {
+    if (this.lookMorph <= 0.0001) return this.look
     const k = (now - this.lookAt) / this.lookMorph
     if (k >= 1) return this.look
     return lerpLook(this.lookPrev, this.look, easings.easeOutQuint(clamp(k)))

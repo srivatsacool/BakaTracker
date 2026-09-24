@@ -41,12 +41,12 @@ export interface ReactionVisual {
 /** Escalating but always quiet (docs/baksur/PERSONALITY.md): a journal line
  *  earns a glance, a level-up earns the most the character will ever do. */
 export const REACTION_VISUAL: Record<BaksurSignal, ReactionVisual> = {
-  JOURNAL_LOGGED:      { state: 'HAPPY',     expression: 'heureux', ms: 1600 },
-  QUEST_COMPLETED:     { state: 'HAPPY',     expression: 'heureux', ms: 2200 },
-  HABIT_COMPLETED:     { state: 'HAPPY',     expression: 'heureux', ms: 2200 },
-  STREAK_MILESTONE:    { state: 'CELEBRATE', expression: 'heureux', ms: 2600 },
-  LEVEL_UP:            { state: 'CELEBRATE', expression: 'heureux', ms: 3400 },
-  USER_OPENED_BAKSUR:  { state: 'IDLE',      expression: 'attentif', ms: 1500 },
+  JOURNAL_LOGGED:      { state: 'HAPPY',     expression: 'heureux', ms: 2400 },
+  QUEST_COMPLETED:     { state: 'HAPPY',     expression: 'heureux', ms: 3200 },
+  HABIT_COMPLETED:     { state: 'HAPPY',     expression: 'heureux', ms: 3200 },
+  STREAK_MILESTONE:    { state: 'CELEBRATE', expression: 'heureux', ms: 3800 },
+  LEVEL_UP:            { state: 'CELEBRATE', expression: 'heureux', ms: 4800 },
+  USER_OPENED_BAKSUR:  { state: 'IDLE',      expression: 'attentif', ms: 2200 },
 }
 
 /** Streaks worth acknowledging. Crossing each threshold fires once (per habit,

@@ -128,7 +128,16 @@ let last = 0
 let clock = 0
 let lastRender = 0
 const FRAME_INTERVAL_MS = 28 // ~35 FPS target: silky smooth 2D animation while slashing CPU/GPU churn by >60%
-let pendingPointer: { clientX: number; clientY: number } | null = null
+const initLook = resolvedLook()
+let hasPointer = false
+let targetYaw = initLook?.yaw ?? 0
+let targetPitch = initLook?.pitch ?? 0
+let leadYaw = targetYaw
+let leadPitch = targetPitch
+let currentYaw = targetYaw
+let currentPitch = targetPitch
+let currentMix = initLook?.mix ?? 0
+
 let isVisible = true
 let observer: IntersectionObserver | null = null
 let isListeningPointer = false
@@ -175,24 +184,6 @@ function stopLoop() {
   }
 }
 
-function applyPointer(clientX: number, clientY: number) {
-  const el = document.getElementById(`bakasur-${uid}`)
-  const box = updateBox(el)
-  if (!box || box.width === 0 || box.height === 0) return
-  const nx = (clientX - (box.left + box.width / 2)) / Math.max(120, window.innerWidth * 0.35)
-  const ny = (clientY - (box.top + box.height / 2)) / Math.max(120, window.innerHeight * 0.35)
-  engine.setLook(
-    {
-      yaw: Math.max(-1, Math.min(1, nx)) * FOLLOW_YAW_MAX,
-      pitch: -Math.max(-1, Math.min(1, ny)) * FOLLOW_PITCH_MAX,
-      mix: 1,
-      spin: 0,
-      wander: 0
-    },
-    clock
-  )
-}
-
 function tick(ms: number) {
   if (!isVisible || isStatic) {
     raf = 0
@@ -210,9 +201,33 @@ function tick(ms: number) {
   lastRender = ms
   clock += dt
 
-  if (pendingPointer) {
-    applyPointer(pendingPointer.clientX, pendingPointer.clientY)
-    pendingPointer = null
+  if (props.follow) {
+    const targetMix = hasPointer ? 1 : (resolvedLook()?.mix ?? 0)
+
+    // Dual-stage exponential filter:
+    // Stage 1 (lead) introduces organic reaction time (inertia & delay)
+    // Slower lambda = higher reaction time (creature takes a moment to respond)
+    const kLead = 1 - Math.exp(-2.4 * dt)
+    leadYaw += (targetYaw - leadYaw) * kLead
+    leadPitch += (targetPitch - leadPitch) * kLead
+
+    // Stage 2 (follower) provides huge luxurious damping (no sudden stops or jerks)
+    const kFollow = 1 - Math.exp(-2.8 * dt)
+    currentYaw += (leadYaw - currentYaw) * kFollow
+    currentPitch += (leadPitch - currentPitch) * kFollow
+    currentMix += (targetMix - currentMix) * kFollow
+
+    engine.setLook(
+      {
+        yaw: currentYaw,
+        pitch: currentPitch,
+        mix: currentMix,
+        spin: 0,
+        wander: Math.max(0, 1 - currentMix)
+      },
+      clock,
+      0
+    )
   }
 
   redraw(clock)
@@ -220,17 +235,30 @@ function tick(ms: number) {
 
 function onPointerMove(event: PointerEvent) {
   if (!props.follow || event.pointerType === 'touch' || !isVisible) return
-  pendingPointer = { clientX: event.clientX, clientY: event.clientY }
+  hasPointer = true
+  const el = document.getElementById(`bakasur-${uid}`)
+  const box = updateBox(el)
+  if (!box || box.width === 0 || box.height === 0) return
+  const nx = (event.clientX - (box.left + box.width / 2)) / Math.max(120, window.innerWidth * 0.35)
+  const ny = (event.clientY - (box.top + box.height / 2)) / Math.max(120, window.innerHeight * 0.35)
+  targetYaw = Math.max(-1, Math.min(1, nx)) * FOLLOW_YAW_MAX
+  targetPitch = -Math.max(-1, Math.min(1, ny)) * FOLLOW_PITCH_MAX
 }
 
 function onPointerLeave() {
-  // Release back to the RESOLVED gaze bias, not to neutral: alert keeps
-  // staring after the pointer leaves.
-  engine.setLook(resolvedLook(), clock)
+  hasPointer = false
+  const rl = resolvedLook()
+  targetYaw = rl?.yaw ?? 0
+  targetPitch = rl?.pitch ?? 0
 }
 
 watch(resolved, () => {
   applyIntent(clock)
+  if (!hasPointer) {
+    const rl = resolvedLook()
+    targetYaw = rl?.yaw ?? 0
+    targetPitch = rl?.pitch ?? 0
+  }
   // Toujours repeindre : en direct la prochaine image rAF le ferait de toute
   // façon dans 16 ms ; immediat, le changement est deterministe et testable.
   redraw(isStatic ? (props.frozenAt ?? 0) : clock)
