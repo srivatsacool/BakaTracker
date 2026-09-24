@@ -1,4 +1,6 @@
 import React from 'react';
+import { BakasurDialogue } from '../bakasur/BakasurDialogue';
+import { BaksurCharacter } from '../shell/BaksurCharacter';
 import { HomeBrand } from '../../pages/homeParts';
 import { Shield } from 'lucide-react';
 
@@ -16,12 +18,26 @@ function scrollToId(id: string, reducedMotion: boolean) {
   el.scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth', block: 'start' });
 }
 
+const getInitialHeroSize = () => {
+  if (typeof window === 'undefined') return 680;
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  if (vw < 640) {
+    return Math.round(Math.min(vw * 0.50, 210));
+  } else if (vw < 1024) {
+    return Math.round(Math.min(vh * 0.62, 460));
+  } else {
+    return Math.round(Math.min(vh * 0.78, 680));
+  }
+};
+
 /**
  * CinematicHero — Minimalist, Uncluttered Sovereign Hero.
  *
  * Design Architecture:
  * - Pure deep obsidian void canvas.
  * - Clean typography, spacious headline, concise description, premium CTAs, minimal trust line.
+ * - Bakasur attends quietly on the right: stationary and fixed in position, eyes follow cursor.
  */
 export const CinematicHero: React.FC<Props> = ({
   reducedMotion,
@@ -30,6 +46,24 @@ export const CinematicHero: React.FC<Props> = ({
   signInDisabled,
   signInLabel,
 }) => {
+  const [characterSize, setCharacterSize] = React.useState(getInitialHeroSize);
+
+  React.useEffect(() => {
+    const updateSize = () => {
+      const vh = window.innerHeight;
+      const vw = window.innerWidth;
+      if (vw < 640) {
+        setCharacterSize(Math.round(Math.min(vw * 0.50, 210)));
+      } else if (vw < 1024) {
+        setCharacterSize(Math.round(Math.min(vh * 0.62, 460)));
+      } else {
+        setCharacterSize(Math.round(Math.min(vh * 0.78, 680)));
+      }
+    };
+    window.addEventListener('resize', updateSize, { passive: true });
+    return () => window.removeEventListener('resize', updateSize);
+  }, []);
+
   return (
     <section
       className="cine-hero-wrap"
@@ -39,6 +73,35 @@ export const CinematicHero: React.FC<Props> = ({
         {/* Ambient atmospheric backlight */}
         <div className="cine-ambient-glow" aria-hidden="true" />
         <div className="cine-hero-veil" aria-hidden="true" />
+
+        {/* Giant Bakasur Presence — Stationary & Fixed in place, gaze follows cursor */}
+        <div
+          className={`cine-giant-bakasur-stage ${reducedMotion ? 'reduced-motion' : ''}`}
+          aria-label="Bakasur, your sovereign life OS companion"
+        >
+          {/* Spatial Dialogue Plate */}
+          <div className="cine-dialogue-anchor">
+            <BakasurDialogue
+              message="Quiet the noise. I hold everything."
+              visible={true}
+              scene="sanctuary"
+            />
+          </div>
+
+          <div className="cine-giant-character-wrap">
+            <div className="cine-giant-pedestal-light" aria-hidden="true" />
+            <BaksurCharacter
+              direction="flamehorn"
+              state="IDLE"
+              size={characterSize}
+              className="cine-giant-bakasur"
+              followPointer={!reducedMotion}
+              frozenAt={reducedMotion ? 0 : undefined}
+              moodColor="#8b5cf6"
+              ariaLabel="Bakasur, your sovereign life OS companion"
+            />
+          </div>
+        </div>
 
         {/* Hero Content & UI Controls */}
         <div className="cine-hero-inner">

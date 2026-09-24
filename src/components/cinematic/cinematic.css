@@ -170,7 +170,7 @@
 .cine-hero-main {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   min-height: 0;
   position: relative;
   z-index: 20;
@@ -180,13 +180,12 @@
 .cine-copy-track {
   position: relative;
   z-index: 25;
-  max-width: 860px;
-  margin: 0 auto;
-  text-align: center;
+  max-width: 650px;
   pointer-events: auto;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-start;
+  text-align: left;
 }
 
 .cine-eyebrow {
@@ -199,7 +198,7 @@
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: #c084fc;
-  margin: 0 auto 20px;
+  margin: 0 0 20px;
 }
 
 .cine-eyebrow-dot {
@@ -255,7 +254,7 @@
   flex-wrap: wrap;
   gap: 14px;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   margin-bottom: 28px;
 }
 
@@ -308,7 +307,7 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 12px;
   margin: 0;
   font-family: var(--font-mono, 'IBM Plex Mono', monospace);
@@ -350,19 +349,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  animation: cine-bakasur-breathe 6.5s ease-in-out infinite;
-  filter:
-    drop-shadow(0 0 24px rgba(168, 85, 247, 0.44))
-    drop-shadow(0 0 64px rgba(147, 51, 234, 0.22));
-}
-
-@keyframes cine-bakasur-breathe {
-  0%, 100% {
-    transform: translateY(0px);
-  }
-  50% {
-    transform: translateY(-12px);
-  }
+  /* Stationary and fixed - no floating bobbing animation */
+  transform: none;
+  filter: drop-shadow(0 12px 32px rgba(147, 51, 234, 0.35));
 }
 
 .cine-giant-pedestal-light {
@@ -372,29 +361,19 @@
   border-radius: 50%;
   background: radial-gradient(
     circle at 50% 50%,
-    rgba(192, 132, 252, 0.28) 0%,
-    rgba(175, 105, 250, 0.21) 18%,
-    rgba(155, 75, 245, 0.14) 35%,
-    rgba(130, 48, 230, 0.08) 52%,
-    rgba(100, 28, 195, 0.035) 68%,
-    rgba(70, 15, 160, 0.012) 84%,
+    rgba(192, 132, 252, 0.22) 0%,
+    rgba(175, 105, 250, 0.16) 18%,
+    rgba(155, 75, 245, 0.10) 35%,
+    rgba(130, 48, 230, 0.05) 52%,
+    rgba(100, 28, 195, 0.02) 68%,
     rgba(6, 4, 10, 0) 100%
   );
   mix-blend-mode: screen;
   pointer-events: none;
   z-index: -1;
-  animation: cine-pedestal-breathe 6.5s ease-in-out infinite;
-}
-
-@keyframes cine-pedestal-breathe {
-  0%, 100% {
-    transform: scale(1);
-    opacity: 0.85;
-  }
-  50% {
-    transform: scale(1.06);
-    opacity: 1;
-  }
+  /* Stationary and fixed - no pulsing scale */
+  transform: scale(1);
+  opacity: 0.9;
 }
 
 .cine-giant-bakasur {

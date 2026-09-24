@@ -92,7 +92,7 @@ const reduced =
   typeof window !== 'undefined' && typeof window.matchMedia === 'function'
     ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
     : false
-const isStatic = true
+const isStatic = props.frozenAt !== undefined || reduced
 
 /** Date the full resolved preset (vehicle + shape + face + gaze bias). */
 function applyIntent(now: number) {
@@ -234,6 +234,18 @@ watch(resolved, () => {
   // Toujours repeindre : en direct la prochaine image rAF le ferait de toute
   // façon dans 16 ms ; immediat, le changement est deterministe et testable.
   redraw(isStatic ? (props.frozenAt ?? 0) : clock)
+})
+
+watch(() => props.follow, (val) => {
+  if (val && !isListeningPointer && !isStatic && isVisible) {
+    window.addEventListener('pointermove', onPointerMove, { passive: true })
+    document.addEventListener('pointerleave', onPointerLeave)
+    isListeningPointer = true
+  } else if (!val && isListeningPointer) {
+    window.removeEventListener('pointermove', onPointerMove)
+    document.removeEventListener('pointerleave', onPointerLeave)
+    isListeningPointer = false
+  }
 })
 
 onMounted(() => {

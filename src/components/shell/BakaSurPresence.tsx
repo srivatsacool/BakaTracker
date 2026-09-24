@@ -293,9 +293,9 @@ export function BakaSurPresence({ collapsed, onToggle, editorRoute = false, chil
             className="baksur-hero-svg"
             bodyColor={color.body}
             moodColor={color.mood}
-            followPointer={false}
+            followPointer={!osReduced && prefs.motion !== 'reduced'}
             restExpression={restExpression}
-            frozenAt={0}
+            frozenAt={prefs.motion === 'reduced' || osReduced ? 0.4 : undefined}
             decorative
           />
         </button>

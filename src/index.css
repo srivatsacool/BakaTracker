@@ -1557,12 +1557,9 @@ select.obs-input {
    ============================================================================ */
 
 /* Hero preview drifts slowly inside the tunnel (killed by reduced-motion). */
-@keyframes landing-float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-6px); }
-}
 .landing-preview-float {
-  animation: landing-float 9s ease-in-out infinite;
+  /* Stationary and fixed - no floating bobbing animation */
+  transform: none;
 }
 
 /* Quest rows in the live preview — hover lift without touching inline bg. */

@@ -71,8 +71,8 @@ const AppBackground: React.FC = () => {
             grain={true}
             grainIntensity={0.04}
             opacity={0.8}
-            mouseInteraction={true}
-            mouseStrength={0.06}
+            mouseInteraction={false}
+            mouseStrength={0}
           />
         </div>
       )}
