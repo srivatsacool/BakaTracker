@@ -1,5 +1,4 @@
 import React from 'react';
-import { BaksurCharacter } from '../shell/BaksurCharacter';
 import { GITHUB_REPO_URL } from '../../pages/homeParts';
 import { useCineReveal } from './reveal';
 
@@ -10,21 +9,12 @@ interface Props {
   signInDisabled: boolean;
 }
 
-/** FinalCta — simplicity. One creature, one button, one ground line. Formatted for 100vh viewport fit. */
+/** FinalCta — simplicity. One clear call to action, one ground line. Formatted for 100vh viewport fit. */
 export const FinalCta: React.FC<Props> = ({ reducedMotion, onEnterProduct, onLogin, signInDisabled }) => {
   const ref = useCineReveal<HTMLElement>(reducedMotion);
   return (
     <section ref={ref} id="enter" className="cine-section cine-final" aria-labelledby="cine-final-title" tabIndex={-1}>
       <div data-cine-reveal className="cine-final-inner">
-        <BaksurCharacter
-          direction="flamehorn"
-          state="CELEBRATE"
-          size={130}
-          className="cine-bakasur"
-          followPointer={false}
-          frozenAt={reducedMotion ? 0 : undefined}
-          decorative
-        />
         <h2 className="cine-final-title" id="cine-final-title">The den is open.</h2>
         <p className="cine-final-sub">
           Bring the noise. Leave with the one thing that matters — then come

@@ -68,7 +68,7 @@
   position: absolute;
   inset: -25% -20% -30% -20%;
   background: radial-gradient(
-    ellipse 62% 52% at 76% 50%,
+    ellipse 62% 52% at 50% 50%,
     rgba(168, 85, 247, 0.20) 0%,
     rgba(152, 68, 242, 0.14) 20%,
     rgba(132, 48, 226, 0.09) 38%,
@@ -165,21 +165,28 @@
   transform: translateY(-1px);
 }
 
-/* ---------- Hero Left-Dominated Layout ---------- */
+/* ---------- Hero Sovereign Centered Layout ---------- */
 
 .cine-hero-main {
   display: flex;
   align-items: center;
+  justify-content: center;
   min-height: 0;
   position: relative;
   z-index: 20;
+  padding: clamp(32px, 6vh, 64px) 0;
 }
 
 .cine-copy-track {
   position: relative;
   z-index: 25;
-  max-width: 650px;
+  max-width: 860px;
+  margin: 0 auto;
+  text-align: center;
   pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .cine-eyebrow {
@@ -192,7 +199,7 @@
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: #c084fc;
-  margin: 0 0 20px;
+  margin: 0 auto 20px;
 }
 
 .cine-eyebrow-dot {
@@ -248,6 +255,7 @@
   flex-wrap: wrap;
   gap: 14px;
   align-items: center;
+  justify-content: center;
   margin-bottom: 28px;
 }
 
@@ -300,6 +308,7 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: center;
   gap: 12px;
   margin: 0;
   font-family: var(--font-mono, 'IBM Plex Mono', monospace);

@@ -6,7 +6,6 @@ import { CinematicHero } from '../components/cinematic/CinematicHero';
 import { NarrativeSection } from '../components/cinematic/NarrativeSection';
 import { ProductStory } from '../components/cinematic/ProductStory';
 import { Walkthrough } from '../components/cinematic/Walkthrough';
-import { BakasurSpotlight } from '../components/cinematic/BakasurSpotlight';
 import { FinalCta } from '../components/cinematic/FinalCta';
 import '../components/cinematic/cinematic.css';
 
@@ -84,7 +83,6 @@ export const Home: React.FC = () => {
           <NarrativeSection reducedMotion={prefersReducedMotion} />
           <ProductStory reducedMotion={prefersReducedMotion} />
           <Walkthrough reducedMotion={prefersReducedMotion} />
-          <BakasurSpotlight reducedMotion={prefersReducedMotion} />
         </main>
         <FinalCta
           reducedMotion={prefersReducedMotion}
