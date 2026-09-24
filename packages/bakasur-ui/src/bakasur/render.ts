@@ -146,16 +146,18 @@ export function renderBakasurInner(frame: BotFrame, opts: BakasurRenderOpts): st
   s += `<filter id="${sheenBlurId}" filterUnits="userSpaceOnUse" x="${-VB}" y="${-VB}" width="${VB * 2}" height="${VB * 2}">`
   s += '<feGaussianBlur stdDeviation="22"/>'
   s += '</filter>'
-  s += `<pattern id="${grainPatId}" width="6" height="6" patternUnits="userSpaceOnUse">`
-  s += `<circle cx="1.5" cy="1.5" r="0.75" fill="${C.eyes}" opacity="0.06"/>`
-  s += '<circle cx="4.5" cy="4.5" r="0.75" fill="#000000" opacity="0.10"/>'
-  s += `<circle cx="4.5" cy="1.5" r="0.5" fill="${C.eyes}" opacity="0.04"/>`
-  s += '<circle cx="1.5" cy="4.5" r="0.5" fill="#000000" opacity="0.07"/>'
-  s += '</pattern>'
-  s += `<filter id="${grainFiltId}" filterUnits="userSpaceOnUse" x="${-VB}" y="${-VB}" width="${VB * 2}" height="${VB * 2}">`
-  s += '<feTurbulence type="fractalNoise" baseFrequency="0.75" numOctaves="3" result="noise"/>'
-  s += `<feColorMatrix type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 ${L.textureOpacity} 0"/>`
-  s += '</filter>'
+  if (L.textureOpacity > 0) {
+    s += `<pattern id="${grainPatId}" width="6" height="6" patternUnits="userSpaceOnUse">`
+    s += `<circle cx="1.5" cy="1.5" r="0.75" fill="${C.eyes}" opacity="0.06"/>`
+    s += '<circle cx="4.5" cy="4.5" r="0.75" fill="#000000" opacity="0.10"/>'
+    s += `<circle cx="4.5" cy="1.5" r="0.5" fill="${C.eyes}" opacity="0.04"/>`
+    s += '<circle cx="1.5" cy="4.5" r="0.5" fill="#000000" opacity="0.07"/>'
+    s += '</pattern>'
+    s += `<filter id="${grainFiltId}" filterUnits="userSpaceOnUse" x="${-VB}" y="${-VB}" width="${VB * 2}" height="${VB * 2}">`
+    s += '<feTurbulence type="fractalNoise" baseFrequency="0.75" numOctaves="3" result="noise"/>'
+    s += `<feColorMatrix type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 ${L.textureOpacity} 0"/>`
+    s += '</filter>'
+  }
   s += `<filter id="${rimId}" filterUnits="userSpaceOnUse" x="${-VB}" y="${-VB}" width="${VB * 2}" height="${VB * 2}" color-interpolation-filters="sRGB">`
   s += `<feDropShadow dx="0" dy="0" stdDeviation="${L.rimBlur}" flood-color="${C.rim}" flood-opacity="${r2(L.rimOpacity * glow)}"/>`
   s += `<feDropShadow dx="0" dy="0" stdDeviation="${L.auraBlur}" flood-color="${C.rim}" flood-opacity="${r2(L.auraOpacity * glow)}"/>`

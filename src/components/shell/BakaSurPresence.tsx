@@ -94,7 +94,7 @@ export function BakaSurPresence({ collapsed, onToggle, editorRoute = false, chil
   // Rail reports busy (THINKING), and the header slot element to fly into.
   const [busy, setBusy] = useState(false)
   const slotRef = useRef<HTMLElement | null>(null)
-  const [, forceSlotWatch] = useState(0)
+  const [slotWatchTick, forceSlotWatch] = useState(0)
   const registerSlot = useCallback((el: HTMLElement | null) => {
     slotRef.current = el
     forceSlotWatch(n => n + 1) // re-measure on the next frame
@@ -139,6 +139,7 @@ export function BakaSurPresence({ collapsed, onToggle, editorRoute = false, chil
     }
 
     let last = 0
+    let lastS = -1
     const tick = (ms: number) => {
       const dt = last ? Math.min((ms - last) / 1000, 0.064) : 0
       last = ms
@@ -148,19 +149,44 @@ export function BakaSurPresence({ collapsed, onToggle, editorRoute = false, chil
         snapNext.current = false
         pos.current = { ...target }
       } else {
-        // Exponential smoothing — frame-rate independent; sheet slide-in is
-        // tracked because we re-measure the slot every frame while open.
-        const k = instant ? 1 : 1 - Math.exp(-14 * dt)
-        p.x += (target.x - p.x) * k
-        p.y += (target.y - p.y) * k
-        p.s += (target.s - p.s) * k
+        const dx = target.x - p.x
+        const dy = target.y - p.y
+        const ds = target.s - p.s
+        if (!instant && (Math.abs(dx) > 0.25 || Math.abs(dy) > 0.25 || Math.abs(ds) > 0.25)) {
+          const k = 1 - Math.exp(-14 * dt)
+          p.x += dx * k
+          p.y += dy * k
+          p.s += ds * k
+        } else {
+          p.x = target.x
+          p.y = target.y
+          p.s = target.s
+        }
       }
+
       const el = boxRef.current
-      if (el) {
-        el.style.transform = `translate3d(${Math.round(pos.current!.x)}px, ${Math.round(pos.current!.y)}px, 0)`
-        el.style.width = `${Math.round(pos.current!.s)}px`
-        el.style.height = `${Math.round(pos.current!.s)}px`
+      if (el && pos.current) {
+        el.style.transform = `translate3d(${Math.round(pos.current.x)}px, ${Math.round(pos.current.y)}px, 0)`
+        const sRound = Math.round(pos.current.s)
+        if (lastS !== sRound) {
+          el.style.width = `${sRound}px`
+          el.style.height = `${sRound}px`
+          lastS = sRound
+        }
       }
+
+      // Settle check: when arrived at destination, sleep the rAF loop to eliminate layout thrashing
+      const isSettled =
+        pos.current !== null &&
+        Math.abs(target.x - pos.current.x) < 0.25 &&
+        Math.abs(target.y - pos.current.y) < 0.25 &&
+        Math.abs(target.s - pos.current.s) < 0.25
+
+      if (isSettled && !snapNext.current) {
+        rafRef.current = 0
+        return
+      }
+
       rafRef.current = requestAnimationFrame(tick)
     }
 
@@ -174,7 +200,7 @@ export function BakaSurPresence({ collapsed, onToggle, editorRoute = false, chil
       cancelAnimationFrame(rafRef.current)
       document.removeEventListener('visibilitychange', onVis)
     }
-  }, [vp.w, vp.h, isMobile, heroS, flyToRail, collapsed, osReduced, prefs.motion])
+  }, [vp.w, vp.h, isMobile, heroS, flyToRail, collapsed, osReduced, prefs.motion, slotWatchTick])
 
   // Re-anchor instantly when layout-changing prefs or viewport tier change
   // (a setting change should not fling him across the screen).

@@ -36,12 +36,17 @@ export default defineConfig({
           type: 'image/png'
         }
       ]
+    },
+    injectManifest: {
+      globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
+      globIgnores: ['**/media/cinematic/frames/**'],
+      maximumFileSizeToCacheInBytes: 3 * 1024 * 1024
     }
   }), cloudflare()],
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'),
-      'bakasur-ui': path.resolve(__dirname, './packages/bakasur-ui/src/index.ts')
+      '@': path.resolve(import.meta.dirname ?? '.', './src'),
+      'bakasur-ui': path.resolve(import.meta.dirname ?? '.', './packages/bakasur-ui/src/index.ts')
     }
   },
   test: {

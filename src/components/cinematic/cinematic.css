@@ -78,7 +78,6 @@
     rgba(32, 8, 88, 0.003) 92%,
     rgba(6, 4, 10, 0) 100%
   );
-  filter: blur(80px);
   pointer-events: none;
   z-index: 1;
 }
@@ -372,7 +371,6 @@
     rgba(70, 15, 160, 0.012) 84%,
     rgba(6, 4, 10, 0) 100%
   );
-  filter: blur(76px);
   mix-blend-mode: screen;
   pointer-events: none;
   z-index: -1;
@@ -643,7 +641,6 @@
     rgba(70, 15, 160, 0.007) 86%,
     rgba(6, 4, 10, 0) 100%
   );
-  filter: blur(85px);
   pointer-events: none;
   z-index: -1;
 }
@@ -666,7 +663,6 @@
     rgba(59, 130, 246, 0.018) 72%,
     rgba(6, 4, 10, 0) 100%
   );
-  filter: blur(95px);
   pointer-events: none;
   z-index: -1;
 }
@@ -689,7 +685,6 @@
     rgba(90, 20, 185, 0.016) 74%,
     rgba(6, 4, 10, 0) 100%
   );
-  filter: blur(100px);
   pointer-events: none;
   z-index: -1;
 }
@@ -713,7 +708,6 @@
     rgba(70, 15, 160, 0.007) 86%,
     rgba(6, 4, 10, 0) 100%
   );
-  filter: blur(85px);
   pointer-events: none;
   z-index: -1;
 }
@@ -737,7 +731,6 @@
     rgba(70, 15, 160, 0.005) 86%,
     rgba(6, 4, 10, 0) 100%
   );
-  filter: blur(90px);
   pointer-events: none;
   z-index: -1;
 }
