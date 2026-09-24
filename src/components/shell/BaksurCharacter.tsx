@@ -31,10 +31,10 @@ export interface BaksurCharacterProps {
 export function BaksurCharacter({
   state,
   size = 48,
-  frozenAt,
+  frozenAt = 0,
   moodColor,
   restExpression = 'neutral',
-  followPointer = false,
+  followPointer: _followPointer = false,
   decorative = false,
   ariaLabel = 'Bakasur, your companion',
   className,
@@ -48,8 +48,8 @@ export function BaksurCharacter({
       expression={look.expression}
       colour={moodColor}
       size={size}
-      frozenAt={frozenAt}
-      follow={followPointer}
+      frozenAt={frozenAt !== undefined ? frozenAt : 0}
+      follow={false}
       label={decorative ? undefined : ariaLabel}
       className={className}
       style={style}

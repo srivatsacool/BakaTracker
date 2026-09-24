@@ -122,7 +122,7 @@ export function BakaSurPresence({ collapsed, onToggle, editorRoute = false, chil
   const snapNext = useRef(true) // first frame lands at target (no fly-in on load)
 
   useEffect(() => {
-    const instant = osReduced || prefs.motion === 'reduced'
+    const instant = true
 
     const measureHero = (): Target => {
       // Mobile: above the bottom nav (84px + safe area), right margin 14.
@@ -234,8 +234,6 @@ export function BakaSurPresence({ collapsed, onToggle, editorRoute = false, chil
     : showProactiveBubble ? 'attentif'
     : hovered || (flyToRail && !busy) ? 'attentif'
     : 'mefiant'
-  
-  const followPointer = prefs.motion === 'full' && !osReduced
 
   const proactiveApi = useMemo(() => ({
     getProactiveMessage: () => proactiveMessage,
@@ -283,23 +281,21 @@ export function BakaSurPresence({ collapsed, onToggle, editorRoute = false, chil
           style={{
             position: 'relative', width: '100%', height: '100%',
             border: 'none', background: 'none', padding: 0, cursor: 'pointer',
-            transition: 'filter 200ms ease, transform 200ms ease',
+            transition: 'none',
           }}
         >
           <BaksurCharacter
             direction="flamehorn"
             state={state}
-            /* The presence box is lerped imperatively every frame (hero ↔
-             * slot). CSS (.baksur-hero-svg) pins the art to 100% of that
-             * box, so this attribute is only the initial hint — it must
-             * NOT read the lerp ref during render (react-hooks refs rule). */
+            /* The presence box is positioned directly without lerp (hero ↔ slot).
+             * CSS (.baksur-hero-svg) pins the art to 100% of that box. */
             size={heroS}
             className="baksur-hero-svg"
             bodyColor={color.body}
             moodColor={color.mood}
-            followPointer={followPointer}
+            followPointer={false}
             restExpression={restExpression}
-            frozenAt={prefs.motion === 'reduced' ? 0.4 : undefined}
+            frozenAt={0}
             decorative
           />
         </button>

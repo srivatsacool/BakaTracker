@@ -92,7 +92,7 @@ const reduced =
   typeof window !== 'undefined' && typeof window.matchMedia === 'function'
     ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
     : false
-const isStatic = props.frozenAt !== undefined || reduced
+const isStatic = true
 
 /** Date the full resolved preset (vehicle + shape + face + gaze bias). */
 function applyIntent(now: number) {
