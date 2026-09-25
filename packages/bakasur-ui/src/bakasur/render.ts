@@ -43,7 +43,7 @@ function arcRamp(colours: BakasurRenderColours): [string, string, string] {
   return [colours.rim, colours.innerLight, colours.eyes]
 }
 
-function arcStops(count: number, colours: BakasurRenderColours): string[] {
+export function arcStops(count: number, colours: BakasurRenderColours): string[] {
   const ramp = arcRamp(colours)
   if (count <= 1) return [ramp[0]!]
   const out: string[] = []

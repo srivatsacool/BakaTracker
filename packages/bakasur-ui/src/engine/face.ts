@@ -112,7 +112,7 @@ export interface Liveliness {
 
 const BLINK_RNG = createRng(0x5eed)
 /** Calendrier de clignements pre-tire : deterministe et sans etat. */
-const BLINKS: number[] = (() => {
+export const BLINKS: number[] = (() => {
   const out: number[] = []
   let t = 1.4
   while (t < 900) {
@@ -128,7 +128,7 @@ const BLINKS: number[] = (() => {
 })()
 
 /** Mesure : 1 a 2 frames a 10 fps. */
-const BLINK_DUR = 0.18
+export const BLINK_DUR = 0.18
 
 function blinkLid(t: number): number {
   for (let i = 0; i < BLINKS.length; i++) {

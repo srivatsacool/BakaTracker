@@ -13,12 +13,16 @@
   component behaves exactly as in Phase 5 — the direct props travel the
   same resolution pipeline.
 
-  Rendering is delegated to src/bakasur/render.ts with the resolved
-  treatment + theme, the SAME function the preview matrices use.
+  Persistent SVG DOM Architecture:
+  Renders static defs, filters, masks, and gradients ONCE into the DOM tree.
+  Animation ticks mutate only dynamic attributes (bodyPath, eye matrices, alpha)
+  in-place without reparsing or destroying the SVG DOM.
+  Includes dual-stage eye tracking smoothing and intelligent idle-settle sleep
+  for silky responsiveness and 0% idle CPU draw.
 -->
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { BotEngine, type Look } from '../engine/engine'
+import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
+import { BotEngine, type BotFrame, type Look } from '../engine/engine'
 import { DEMI_VIEWBOX, RAYON } from '../engine/repere'
 import type { StateId } from '../engine/states'
 import type { BakasurPresetTreatment } from '../bakasur/presets/types'
@@ -29,7 +33,12 @@ import {
   resolveBakasurTheme,
   resolvePresetDef
 } from '../bakasur/presets'
-import { renderBakasurInner } from '../bakasur/render'
+import { arcStops } from '../bakasur/render'
+import { BAKASUR_LIGHTING } from '../bakasur/lighting'
+import { r2 } from '../engine/math'
+import { mixHex } from '../engine/skins'
+import type { DotRender } from '../engine/decor'
+import { BLINKS, BLINK_DUR } from '../engine/face'
 
 const props = withDefaults(
   defineProps<{
@@ -59,16 +68,25 @@ const props = withDefaults(
 
 const R = RAYON
 const VB = DEMI_VIEWBOX
+const L = BAKASUR_LIGHTING
 
 /** Quiet follow amplitudes (Phase 10 owns interaction tuning). */
 const FOLLOW_YAW_MAX = 18
 const FOLLOW_PITCH_MAX = 14
 
-let uidCounter = 0
+const uid = Math.random().toString(36).slice(2, 8)
+const maskId = `bakasur-mask-${uid}`
+const keyId = `bakasur-key-${uid}`
+const shadowBlurId = `bakasur-depth-shadow-${uid}`
+const sheenBlurId = `bakasur-depth-sheen-${uid}`
+const grainPatId = `bakasur-grain-pat-${uid}`
+const rimId = `bakasur-rim-${uid}`
 
-const uid = `b${++uidCounter}`
+const svgRef = ref<SVGSVGElement | null>(null)
+
 /** Catalogue preset, when named (unknown ids fall back to the direct path). */
 const presetDef = computed(() => (props.preset ? getBakasurPreset(props.preset) : undefined))
+
 /**
  * Full resolution: preset composition, then explicit props per field.
  * Precedence: explicit prop > preset overlay > intent default.
@@ -85,8 +103,17 @@ const resolved = computed(() =>
         { expression: props.expression ?? undefined, treatment: props.treatment ?? undefined }
       )
 )
+
 /** Theme colour surface for the renderer (structural pass-through). */
 const theme = computed(() => resolveBakasurTheme(resolved.value.theme))
+const dim = computed(() => resolved.value.treatment?.dim ?? 0)
+const glow = computed(() => resolved.value.treatment?.glow ?? 1)
+
+const cachedLook = computed<Look | null>(() => {
+  const l = resolved.value.look
+  return l ? { yaw: l.yaw, pitch: l.pitch, mix: l.mix, spin: 0, wander: 1 } : null
+})
+
 const engine = new BotEngine(R, resolved.value.vehicle, null, null)
 const reduced =
   typeof window !== 'undefined' && typeof window.matchMedia === 'function'
@@ -99,52 +126,32 @@ function applyIntent(now: number) {
   applyResolvedPreset(engine, resolved.value, now)
 }
 
-function resolvedLook(): Look | null {
-  const l = resolved.value.look
-  return l ? { yaw: l.yaw, pitch: l.pitch, mix: l.mix, spin: 0, wander: 1 } : null
-}
-
-function redraw(at: number) {
-  inner.value = renderBakasurInner(engine.sample(at), {
-    size: props.size,
-    uid,
-    treatment: resolved.value.treatment,
-    colours: theme.value
-  })
-}
-
 applyIntent(0)
-const inner = ref(
-  renderBakasurInner(engine.sample(props.frozenAt ?? 0), {
-    size: props.size,
-    uid,
-    treatment: resolved.value.treatment,
-    colours: theme.value
-  })
-)
+const frame = shallowRef<BotFrame>(engine.sample(props.frozenAt ?? 0))
 
 let raf = 0
 let last = 0
 let clock = 0
 let lastRender = 0
 const FRAME_INTERVAL_MS = 28 // ~35 FPS target: silky smooth 2D animation while slashing CPU/GPU churn by >60%
-const initLook = resolvedLook()
+
 let hasPointer = false
-let targetYaw = initLook?.yaw ?? 0
-let targetPitch = initLook?.pitch ?? 0
+let targetYaw = cachedLook.value?.yaw ?? 0
+let targetPitch = cachedLook.value?.pitch ?? 0
 let leadYaw = targetYaw
 let leadPitch = targetPitch
 let currentYaw = targetYaw
 let currentPitch = targetPitch
-let currentMix = initLook?.mix ?? 0
+let currentMix = cachedLook.value?.mix ?? 0
 
 let isVisible = true
 let observer: IntersectionObserver | null = null
 let isListeningPointer = false
 let cachedBox: DOMRect | null = null
 let lastBoxTime = 0
+let blinkTimer: ReturnType<typeof setTimeout> | null = null
 
-function updateBox(el: HTMLElement | null): DOMRect | null {
+function updateBox(el: HTMLElement | SVGElement | null): DOMRect | null {
   const now = typeof performance !== 'undefined' ? performance.now() : Date.now()
   if (!cachedBox || now - lastBoxTime > 500) {
     if (el) {
@@ -160,11 +167,33 @@ function invalidateBox() {
   lastBoxTime = 0
 }
 
+function clearBlinkTimer() {
+  if (blinkTimer) {
+    clearTimeout(blinkTimer)
+    blinkTimer = null
+  }
+}
+
+function scheduleNextBlink() {
+  clearBlinkTimer()
+  if (isStatic || !isVisible) return
+  const next = BLINKS.find((t) => t > clock)
+  if (next !== undefined) {
+    const delayMs = Math.max(40, (next - clock - 0.05) * 1000)
+    blinkTimer = setTimeout(() => {
+      startLoop()
+    }, delayMs)
+  }
+}
+
 function startLoop() {
-  if (isStatic || raf !== 0 || !isVisible) return
-  last = 0
-  lastRender = 0
-  raf = requestAnimationFrame(tick)
+  if (isStatic || !isVisible) return
+  clearBlinkTimer()
+  if (raf === 0) {
+    last = 0
+    lastRender = 0
+    raf = requestAnimationFrame(tick)
+  }
   if (props.follow && !isListeningPointer) {
     window.addEventListener('pointermove', onPointerMove, { passive: true })
     document.addEventListener('pointerleave', onPointerLeave)
@@ -173,6 +202,7 @@ function startLoop() {
 }
 
 function stopLoop() {
+  clearBlinkTimer()
   if (raf !== 0) {
     cancelAnimationFrame(raf)
     raf = 0
@@ -189,10 +219,10 @@ function tick(ms: number) {
     raf = 0
     return
   }
-  raf = requestAnimationFrame(tick)
 
   // Cap animation tick rate to ~35 FPS
   if (lastRender && ms - lastRender < FRAME_INTERVAL_MS) {
+    raf = requestAnimationFrame(tick)
     return
   }
 
@@ -201,8 +231,10 @@ function tick(ms: number) {
   lastRender = ms
   clock += dt
 
+  const lookTarget = cachedLook.value
+
   if (props.follow) {
-    const targetMix = hasPointer ? 1 : (resolvedLook()?.mix ?? 0)
+    const targetMix = hasPointer ? 1 : (lookTarget?.mix ?? 0)
 
     // Dual-stage exponential filter:
     // Stage 1 (lead) introduces organic reaction time (inertia & delay)
@@ -230,13 +262,47 @@ function tick(ms: number) {
     )
   }
 
-  redraw(clock)
+  frame.value = engine.sample(clock)
+
+  // Idle settle detection & sleep:
+  // When in resting idle state, cursor stationary, smoothing converged, and not blinking:
+  const isIdleState =
+    (props.state === undefined || props.state === 'idle') &&
+    (!props.preset || props.preset === 'idle' || props.preset === 'calm')
+
+  const canSleep =
+    isIdleState &&
+    frame.value.arcs.length === 0 &&
+    (!frame.value.dots || frame.value.dots.length === 0)
+
+  if (canSleep) {
+    const targetMix = hasPointer ? 1 : (lookTarget?.mix ?? 0)
+    const isGazeSettled =
+      Math.abs(targetYaw - currentYaw) < 0.04 &&
+      Math.abs(targetPitch - currentPitch) < 0.04 &&
+      Math.abs(leadYaw - currentYaw) < 0.04 &&
+      Math.abs(targetMix - currentMix) < 0.04
+
+    const isBlinking = BLINKS.some((t) => clock >= t && clock <= t + BLINK_DUR + 0.06)
+
+    if (isGazeSettled && !isBlinking) {
+      raf = 0
+      scheduleNextBlink()
+      return
+    }
+  }
+
+  raf = requestAnimationFrame(tick)
 }
 
 function onPointerMove(event: PointerEvent) {
   if (!props.follow || event.pointerType === 'touch' || !isVisible) return
   hasPointer = true
-  const el = document.getElementById(`bakasur-${uid}`)
+  clearBlinkTimer()
+  if (raf === 0) {
+    startLoop()
+  }
+  const el = svgRef.value
   const box = updateBox(el)
   if (!box || box.width === 0 || box.height === 0) return
   const nx = (event.clientX - (box.left + box.width / 2)) / Math.max(120, window.innerWidth * 0.35)
@@ -247,21 +313,41 @@ function onPointerMove(event: PointerEvent) {
 
 function onPointerLeave() {
   hasPointer = false
-  const rl = resolvedLook()
+  const rl = cachedLook.value
   targetYaw = rl?.yaw ?? 0
   targetPitch = rl?.pitch ?? 0
+  clearBlinkTimer()
+  if (raf === 0) {
+    startLoop()
+  }
+}
+
+function dotAttrs(dot: DotRender) {
+  const fill =
+    dot.color ??
+    (dot.depth === undefined
+      ? theme.value.body
+      : mixHex(theme.value.void, theme.value.body, dot.depth))
+  const common = { fill, opacity: dot.opacity }
+  return dot.d
+    ? {
+        ...common,
+        d: dot.d,
+        transform: `translate(${dot.x} ${dot.y}) rotate(${dot.rot ?? 0}) scale(${R})`
+      }
+    : { ...common, cx: dot.x, cy: dot.y, r: dot.r }
 }
 
 watch(resolved, () => {
   applyIntent(clock)
   if (!hasPointer) {
-    const rl = resolvedLook()
+    const rl = cachedLook.value
     targetYaw = rl?.yaw ?? 0
     targetPitch = rl?.pitch ?? 0
   }
-  // Toujours repeindre : en direct la prochaine image rAF le ferait de toute
-  // façon dans 16 ms ; immediat, le changement est deterministe et testable.
-  redraw(isStatic ? (props.frozenAt ?? 0) : clock)
+  frame.value = engine.sample(isStatic ? (props.frozenAt ?? 0) : clock)
+  clearBlinkTimer()
+  startLoop()
 })
 
 watch(() => props.follow, (val) => {
@@ -269,6 +355,7 @@ watch(() => props.follow, (val) => {
     window.addEventListener('pointermove', onPointerMove, { passive: true })
     document.addEventListener('pointerleave', onPointerLeave)
     isListeningPointer = true
+    startLoop()
   } else if (!val && isListeningPointer) {
     window.removeEventListener('pointermove', onPointerMove)
     document.removeEventListener('pointerleave', onPointerLeave)
@@ -279,7 +366,7 @@ watch(() => props.follow, (val) => {
 onMounted(() => {
   if (isStatic) return
 
-  const el = document.getElementById(`bakasur-${uid}`)
+  const el = svgRef.value
   if (typeof IntersectionObserver !== 'undefined' && el) {
     observer = new IntersectionObserver(
       (entries) => {
@@ -307,6 +394,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   stopLoop()
+  clearBlinkTimer()
   if (observer) {
     observer.disconnect()
     observer = null
@@ -318,12 +406,217 @@ onBeforeUnmount(() => {
 
 <template>
   <svg
+    ref="svgRef"
     :id="`bakasur-${uid}`"
     :width="props.size"
     :height="props.size"
     :viewBox="`${-VB} ${-VB} ${VB * 2} ${VB * 2}`"
     role="img"
     :aria-label="props.label"
-    v-html="inner"
-  />
+  >
+    <defs>
+      <mask
+        :id="maskId"
+        maskUnits="userSpaceOnUse"
+        :x="-VB"
+        :y="-VB"
+        :width="VB * 2"
+        :height="VB * 2"
+      >
+        <path :d="frame.bodyPath" fill="#fff" />
+        <path
+          v-for="(eye, i) in frame.eyes"
+          :key="i"
+          :d="eye.d"
+          :transform="eye.matrix"
+          :opacity="eye.alpha"
+          fill="#000"
+        />
+        <circle
+          v-if="frame.notch"
+          :cx="frame.notch.x"
+          :cy="frame.notch.y"
+          :r="frame.notch.r"
+          fill="#000"
+        />
+      </mask>
+
+      <radialGradient
+        :id="keyId"
+        gradientUnits="objectBoundingBox"
+        :cx="L.keyX"
+        :cy="L.keyY"
+        r="0.95"
+      >
+        <stop
+          v-for="([offset, , opacity], i) in L.stops"
+          :key="i"
+          :offset="`${r2(offset * 100)}%`"
+          :stop-color="theme.innerLight"
+          :stop-opacity="opacity"
+        />
+      </radialGradient>
+
+      <filter
+        :id="shadowBlurId"
+        filterUnits="userSpaceOnUse"
+        :x="-VB"
+        :y="-VB"
+        :width="VB * 2"
+        :height="VB * 2"
+      >
+        <feGaussianBlur stdDeviation="30" />
+      </filter>
+
+      <filter
+        :id="sheenBlurId"
+        filterUnits="userSpaceOnUse"
+        :x="-VB"
+        :y="-VB"
+        :width="VB * 2"
+        :height="VB * 2"
+      >
+        <feGaussianBlur stdDeviation="22" />
+      </filter>
+
+      <pattern
+        v-if="L.textureOpacity > 0"
+        :id="grainPatId"
+        width="6"
+        height="6"
+        patternUnits="userSpaceOnUse"
+      >
+        <circle cx="1.5" cy="1.5" r="0.75" :fill="theme.eyes" opacity="0.06" />
+        <circle cx="4.5" cy="4.5" r="0.75" fill="#000000" opacity="0.10" />
+        <circle cx="4.5" cy="1.5" r="0.5" :fill="theme.eyes" opacity="0.04" />
+        <circle cx="1.5" cy="4.5" r="0.5" fill="#000000" opacity="0.07" />
+      </pattern>
+
+      <filter
+        :id="rimId"
+        filterUnits="userSpaceOnUse"
+        :x="-VB"
+        :y="-VB"
+        :width="VB * 2"
+        :height="VB * 2"
+        color-interpolation-filters="sRGB"
+      >
+        <feDropShadow
+          dx="0"
+          dy="0"
+          :stdDeviation="L.rimBlur"
+          :flood-color="theme.rim"
+          :flood-opacity="r2(L.rimOpacity * glow)"
+        />
+        <feDropShadow
+          dx="0"
+          dy="0"
+          :stdDeviation="L.auraBlur"
+          :flood-color="theme.rim"
+          :flood-opacity="r2(L.auraOpacity * glow)"
+        />
+      </filter>
+
+      <linearGradient
+        v-for="arc in frame.arcs"
+        :id="`bakasur-${uid}-${arc.id}`"
+        :key="arc.id"
+        gradientUnits="userSpaceOnUse"
+        :x1="arc.grad.x1"
+        :y1="arc.grad.y1"
+        :x2="arc.grad.x2"
+        :y2="arc.grad.y2"
+      >
+        <stop
+          v-for="(stopCol, i) in arcStops(arc.grad.stops.length, theme)"
+          :key="i"
+          :offset="`${r2((i / (arc.grad.stops.length - 1 || 1)) * 100)}%`"
+          :stop-color="stopCol"
+        />
+      </linearGradient>
+    </defs>
+
+    <!-- Back arcs -->
+    <g v-if="frame.arcs.length" fill="none" stroke-linecap="round">
+      <path
+        v-for="arc in frame.arcs"
+        :key="`b${arc.id}`"
+        :d="arc.back"
+        :stroke="`url(#bakasur-${uid}-${arc.id})`"
+        :stroke-width="arc.width"
+        :opacity="arc.opacity"
+      />
+    </g>
+
+    <!-- Dots behind -->
+    <g v-if="frame.dotsBehind && frame.dots?.length">
+      <component
+        :is="dot.d ? 'path' : 'circle'"
+        v-for="(dot, i) in frame.dots"
+        :key="`pb${i}`"
+        v-bind="dotAttrs(dot)"
+      />
+    </g>
+
+    <!-- Body & layers -->
+    <g :opacity="frame.bodyAlpha">
+      <!-- Eye-glow backing: filtered copy first (soft bloom), crisp on top -->
+      <path :d="frame.bodyPath" :fill="theme.eyes" :filter="`url(#${rimId})`" />
+      <path :d="frame.bodyPath" :fill="theme.eyes" />
+      <g :mask="`url(#${maskId})`">
+        <rect :x="-VB" :y="-VB" :width="VB * 2" :height="VB * 2" :fill="theme.body" />
+        <ellipse cx="40" cy="50" rx="90" ry="75" fill="#000000" opacity="0.52" :filter="`url(#${shadowBlurId})`" />
+        <rect :x="-VB" :y="-VB" :width="VB * 2" :height="VB * 2" :fill="`url(#${keyId})`" />
+        <ellipse cx="-35" cy="-45" rx="55" ry="42" :fill="theme.eyes" opacity="0.22" :filter="`url(#${sheenBlurId})`" />
+        <rect
+          v-if="L.textureOpacity > 0"
+          :x="-VB"
+          :y="-VB"
+          :width="VB * 2"
+          :height="VB * 2"
+          :fill="`url(#${grainPatId})`"
+        />
+        <rect
+          v-if="dim > 0"
+          :x="-VB"
+          :y="-VB"
+          :width="VB * 2"
+          :height="VB * 2"
+          fill="#000000"
+          :opacity="dim"
+        />
+      </g>
+    </g>
+
+    <!-- Dots front -->
+    <g v-if="!frame.dotsBehind && frame.dots?.length">
+      <component
+        :is="dot.d ? 'path' : 'circle'"
+        v-for="(dot, i) in frame.dots"
+        :key="`pf${i}`"
+        v-bind="dotAttrs(dot)"
+      />
+    </g>
+
+    <!-- Notification pastille -->
+    <circle
+      v-if="frame.notif"
+      :cx="frame.notif.x"
+      :cy="frame.notif.y"
+      :r="frame.notif.r"
+      :fill="theme.pastille"
+    />
+
+    <!-- Front arcs -->
+    <g v-if="frame.arcs.length" fill="none" stroke-linecap="round">
+      <path
+        v-for="arc in frame.arcs"
+        :key="`f${arc.id}`"
+        :d="arc.front"
+        :stroke="`url(#bakasur-${uid}-${arc.id})`"
+        :stroke-width="arc.width"
+        :opacity="arc.opacity"
+      />
+    </g>
+  </svg>
 </template>
