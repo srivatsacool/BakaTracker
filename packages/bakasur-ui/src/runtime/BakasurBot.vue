@@ -132,8 +132,6 @@ const frame = shallowRef<BotFrame>(engine.sample(props.frozenAt ?? 0))
 let raf = 0
 let last = 0
 let clock = 0
-let lastRender = 0
-const FRAME_INTERVAL_MS = 28 // ~35 FPS target: silky smooth 2D animation while slashing CPU/GPU churn by >60%
 
 let hasPointer = false
 let targetYaw = cachedLook.value?.yaw ?? 0
@@ -191,7 +189,6 @@ function startLoop() {
   clearBlinkTimer()
   if (raf === 0) {
     last = 0
-    lastRender = 0
     raf = requestAnimationFrame(tick)
   }
   if (props.follow && !isListeningPointer) {
@@ -220,15 +217,8 @@ function tick(ms: number) {
     return
   }
 
-  // Cap animation tick rate to ~35 FPS
-  if (lastRender && ms - lastRender < FRAME_INTERVAL_MS) {
-    raf = requestAnimationFrame(tick)
-    return
-  }
-
   const dt = last ? Math.min((ms - last) / 1000, 0.064) : 0
   last = ms
-  lastRender = ms
   clock += dt
 
   const lookTarget = cachedLook.value
@@ -237,14 +227,13 @@ function tick(ms: number) {
     const targetMix = hasPointer ? 1 : (lookTarget?.mix ?? 0)
 
     // Dual-stage exponential filter:
-    // Stage 1 (lead) introduces organic reaction time (inertia & delay)
-    // Slower lambda = higher reaction time (creature takes a moment to respond)
-    const kLead = 1 - Math.exp(-2.4 * dt)
+    // Stage 1 (lead) provides responsive, alert reaction without robotic snapping
+    const kLead = 1 - Math.exp(-9.0 * dt)
     leadYaw += (targetYaw - leadYaw) * kLead
     leadPitch += (targetPitch - leadPitch) * kLead
 
-    // Stage 2 (follower) provides huge luxurious damping (no sudden stops or jerks)
-    const kFollow = 1 - Math.exp(-2.8 * dt)
+    // Stage 2 (follower) provides silky critically-damped deceleration
+    const kFollow = 1 - Math.exp(-7.5 * dt)
     currentYaw += (leadYaw - currentYaw) * kFollow
     currentPitch += (leadPitch - currentPitch) * kFollow
     currentMix += (targetMix - currentMix) * kFollow
