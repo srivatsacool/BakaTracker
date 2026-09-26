@@ -378,6 +378,9 @@
 
 .cine-giant-bakasur {
   display: block;
+  transform: translateZ(0);
+  will-change: transform;
+  contain: paint;
 }
 
 /* ---------- Spatial Bakasur Dialogue HUD Plate ---------- */

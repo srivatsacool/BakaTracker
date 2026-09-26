@@ -147,6 +147,8 @@ let observer: IntersectionObserver | null = null
 let isListeningPointer = false
 let cachedBox: DOMRect | null = null
 let lastBoxTime = 0
+let cachedBodyPath = ''
+let lastBodyPathTime = 0
 let blinkTimer: ReturnType<typeof setTimeout> | null = null
 
 function updateBox(el: HTMLElement | SVGElement | null): DOMRect | null {
@@ -251,7 +253,15 @@ function tick(ms: number) {
     )
   }
 
-  frame.value = engine.sample(clock)
+  const sampled = engine.sample(clock)
+  if (hasPointer && cachedBodyPath && clock - lastBodyPathTime < 0.066) {
+    sampled.bodyPath = cachedBodyPath
+  } else {
+    cachedBodyPath = sampled.bodyPath
+    lastBodyPathTime = clock
+  }
+
+  frame.value = sampled
 
   // Idle settle detection & sleep:
   // When in resting idle state, cursor stationary, smoothing converged, and not blinking:
@@ -402,6 +412,7 @@ onBeforeUnmount(() => {
     :viewBox="`${-VB} ${-VB} ${VB * 2} ${VB * 2}`"
     role="img"
     :aria-label="props.label"
+    style="contain: paint; will-change: transform;"
   >
     <defs>
       <mask
