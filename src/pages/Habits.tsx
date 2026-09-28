@@ -4,10 +4,11 @@ import { useShallow } from 'zustand/react/shallow';
 import { getTodayDateString, getCurrentWeekDates, isHabitCompleted } from '../lib/utils';
 import { calculateHabitStreak } from '../services/habits/calculateHabitStreak';
 import { UndoToast } from '../components/shared/UndoToast';
-import { PresetCatalog } from '../components/habits/HabitInstruments';
-import { HabitCard, STAT_LABELS } from '../components/habits/HabitCard';
+import { HabitCard } from '../components/habits/HabitCard';
+import { STAT_LABELS } from '../components/habits/habitConstants';
 import { EditHabitModal } from '../components/habits/EditHabitModal';
 import { CreateHabitModal } from '../components/habits/CreateHabitModal';
+import { PresetCatalog } from '../components/habits/HabitInstruments';
 import { PixelIcon, SystemLabel, TerminalText } from '../components/ui';
 import type { Habit, StatType } from '../types';
 

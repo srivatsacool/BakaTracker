@@ -6,6 +6,8 @@ import { Layout } from './components/shared/Layout';
 import { ProtectedRoute, useAuth } from './features/auth';
 import { useApiClient } from './api/authFetch';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { useWebMCP } from './features/webmcp';
+import { ToolConfirmationModal } from './components/common/ToolConfirmationModal';
 
 // Route-level code splitting: heavy pages (Journey/recharts, Notes/excalidraw)
 // load only when their route is entered, not on first paint.
@@ -31,6 +33,7 @@ function App() {
   const init = useStore(state => state.init);
   const { isAuthenticated, isLoading, user } = useAuth();
   const apiClient = useApiClient();
+  useWebMCP();
 
   useEffect(() => {
     init();
@@ -44,6 +47,8 @@ function App() {
 
   return (
     <BrowserRouter>
+      {/* Global Human-in-the-Loop AI Confirmation Modal */}
+      <ToolConfirmationModal />
       {/* Background removed for V3.2.1 — quiet dark canvas */}
 
       {/* App content */}

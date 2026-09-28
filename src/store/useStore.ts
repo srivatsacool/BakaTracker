@@ -63,6 +63,7 @@ interface BakaState {
   
   // Tasks Actions
   addTask: (title: string, notes: string, area: TaskArea, xp: number, today: boolean, dueDate?: string) => Promise<void>;
+  updateTask: (id: string, updates: Partial<Omit<Task, 'id' | 'created_at'>>) => Promise<void>;
   moveTask: (id: string, status: Task['status']) => Promise<void>;
   toggleTodayTask: (id: string) => Promise<void>;
   deleteTask: (id: string) => Promise<void>;
@@ -246,6 +247,25 @@ let apiClientHolder: ApiClient | null = null;
 // ---------------------------------------------------------------------------
 let syncDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 const SYNC_DEBOUNCE_MS = 500;
+let isSyncBlockedFlag = false;
+
+export function setSyncBlocked(blocked: boolean) {
+  isSyncBlockedFlag = blocked;
+  if (blocked) {
+    if (syncDebounceTimer !== null) {
+      clearTimeout(syncDebounceTimer);
+      syncDebounceTimer = null;
+    }
+    if (retryTimer !== null) {
+      clearTimeout(retryTimer);
+      retryTimer = null;
+    }
+  }
+}
+
+export function isSyncBlocked(): boolean {
+  return isSyncBlockedFlag;
+}
 
 // ---------------------------------------------------------------------------
 // Retry logic — P3.4b
@@ -295,6 +315,7 @@ function onNetworkReconnect(get: () => BakaState, set: (partial: Partial<BakaSta
 
 /** Immediate sync — sends state to Worker now. */
 async function executeSyncNow(get: () => BakaState, set: (partial: Partial<BakaState>) => void) {
+  if (isSyncBlockedFlag) return;
   const { settings, habits, habitLogs, tasks, journal, events, character, weeklyStats, deletedTaskIds, deletedHabitIds } = get();
   const client = apiClientHolder;
   if (!client) return;
@@ -344,6 +365,7 @@ async function executeSyncNow(get: () => BakaState, set: (partial: Partial<BakaS
  * Waits 500ms of inactivity before firing. Rapid mutations collapse to 1 sync.
  */
 function scheduleSync(get: () => BakaState, set: (partial: Partial<BakaState>) => void) {
+  if (isSyncBlockedFlag) return;
   if (syncDebounceTimer !== null) {
     clearTimeout(syncDebounceTimer);
   }
@@ -383,6 +405,7 @@ export const useStore = create<BakaState>((set, get) => ({
     localStorage.removeItem('bt_weekly_stats');
     localStorage.removeItem('bt_deleted_task_ids');
     localStorage.removeItem('bt_deleted_habit_ids');
+    localStorage.removeItem('bt_sync_pending');
     // Keep bt_theme, bt_sidebar_collapsed, and accent colors intact!
 
     // Reset store state to initial/default values
@@ -1109,6 +1132,49 @@ export const useStore = create<BakaState>((set, get) => ({
     
     get().pushSync().catch(console.error);
   },
+
+  updateTask: async (id: string, updates: Partial<Omit<Task, 'id' | 'created_at'>>) => {
+    const { tasks, habits, habitLogs, journal, events } = get();
+    const task = tasks.find(t => t.id === id);
+    if (!task) return;
+
+    const oldStatus = task.status;
+    const effectiveToday = updates.today !== undefined ? updates.today : task.today;
+    const effectiveStatus = updates.status !== undefined ? updates.status : task.status;
+
+    let newEvents = [...events];
+    if (effectiveStatus === 'done' && oldStatus !== 'done' && effectiveToday) {
+      const completedAt = new Date().toISOString();
+      newEvents.push({
+        id: generateUUID('evt_'),
+        type: 'task_completed',
+        source: 'task',
+        entity: updates.title ?? task.title,
+        entity_id: task.id,
+        xp: updates.xp ?? task.xp,
+        stat: areaToStat(updates.area ?? task.area),
+        metadata: JSON.stringify({ area: updates.area ?? task.area }),
+        timestamp: completedAt
+      });
+    } else if (oldStatus === 'done' && effectiveStatus !== 'done') {
+      newEvents = newEvents.filter(e => !(e.entity_id === id && e.type === 'task_completed'));
+    }
+
+    const updatedTasks = tasks.map(t => {
+      if (t.id === id) {
+        return updateTask(t, updates);
+      }
+      return t;
+    });
+
+    set({ tasks: updatedTasks, events: newEvents });
+    localStorage.setItem('bt_tasks', JSON.stringify(updatedTasks));
+    localStorage.setItem('bt_events', JSON.stringify(newEvents));
+    updateStatsAndSummaries(set, get, habits, habitLogs, updatedTasks, journal, newEvents);
+    
+    get().pushSync().catch(console.error);
+  },
+
 
   toggleTodayTask: async (id: string) => {
     const { tasks } = get();

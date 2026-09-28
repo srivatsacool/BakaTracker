@@ -17,7 +17,6 @@
     "sync:pages-env": "node scripts/sync-pages-env.mjs"
   },
   "dependencies": {
-    "@auth0/auth0-react": "^2.20.0",
     "@excalidraw/excalidraw": "^0.18.1",
     "@fontsource/ibm-plex-mono": "^5.3.0",
     "@fontsource/ibm-plex-sans": "^5.3.0",

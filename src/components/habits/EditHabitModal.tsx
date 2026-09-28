@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import type { Habit, StatType } from '../../types';
 import { PixelIcon, SystemLabel } from '../ui';
 
@@ -20,9 +20,13 @@ const STAT_OPTIONS: { id: StatType; label: string; icon: string; color: string }
 
 const EMOJI_SUGGESTIONS = ['💪', '📖', '🧘', '🏃', '💧', '🌙', '🎯', '⚡', '☕', '🎨', '✍️', '🧠', '🥗', '🚶', '🔋'];
 
-export const EditHabitModal: React.FC<EditHabitModalProps> = ({
+export const EditHabitModal: React.FC<EditHabitModalProps> = (props) => {
+  if (!props.isOpen) return null;
+  return <EditHabitModalContent key={`${props.habit.id}-${props.isOpen}`} {...props} />;
+};
+
+const EditHabitModalContent: React.FC<EditHabitModalProps> = ({
   habit,
-  isOpen,
   onClose,
   onSave,
   onArchive,
@@ -34,20 +38,6 @@ export const EditHabitModal: React.FC<EditHabitModalProps> = ({
   const [targetVal, setTargetVal] = useState<number | ''>(habit.target?.value ?? '');
   const [targetUnit, setTargetUnit] = useState(habit.target?.unit ?? '');
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (isOpen) {
-      setName(habit.name);
-      setIcon(habit.icon);
-      setStat(habit.stat);
-      setXp(habit.xp);
-      setTargetVal(habit.target?.value ?? '');
-      setTargetUnit(habit.target?.unit ?? '');
-      setError(null);
-    }
-  }, [isOpen, habit]);
-
-  if (!isOpen) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

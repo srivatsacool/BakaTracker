@@ -9,6 +9,8 @@ import { calculateHabitStreak } from '../services/habits/calculateHabitStreak';
 import { PixelIcon, PixelBadge, SystemLabel, TerminalText } from '../components/ui';
 import { BaksurCharacter } from '../components/shell/BaksurCharacter';
 import { BAKASUR_COLOR_HEXES } from '../lib/baksurPreferences';
+import { parseActionTag, type ParsedMessageContent, type ParsedAction } from '../features/tools/actionParser';
+import { ActionCard } from '../components/shell/ActionCard';
 import type { Habit, HabitLog, JournalEntry, Task, UserStats } from '../types';
 
 interface Message {
@@ -221,18 +223,24 @@ export const BakaSurPage: React.FC = () => {
 
       {/* Conversation */}
       <div ref={scrollRef} className="rounded-xl border flex flex-col gap-3 p-4 overflow-y-auto flex-1 min-h-[300px] max-h-[500px]" style={{ background: 'rgba(6,7,20,0.4)', borderColor: 'var(--bt-border)' }} aria-live="polite">
-        {messages.map(message => (
-          <article key={message.id} className={`flex gap-3 ${message.role === 'user' ? 'flex-row-reverse' : ''}`}>
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: message.role === 'assistant' ? 'rgba(233,230,242,0.06)' : 'rgba(63,123,255,0.1)' }} aria-hidden="true">
-              {message.role === 'assistant' ? <BaksurCharacter direction="flamehorn" state="IDLE" size={28} bodyColor={BAKASUR_COLOR_HEXES.violet.body} moodColor={BAKASUR_COLOR_HEXES.violet.mood} frozenAt={0} decorative /> : <PixelIcon name="terminal" size={16} color="var(--bt-info)" />}
-            </div>
-            <div className={`flex flex-col gap-1 max-w-[85%] ${message.role === 'user' ? 'items-end' : ''}`}>
-              <span className="font-mono text-[9px] font-bold uppercase tracking-wider" style={{ color: 'var(--bt-text-muted)' }}>{message.role === 'assistant' ? 'BAKASUR' : 'YOU'}</span>
-              <p className="m-0 text-sm leading-relaxed" style={{ color: 'var(--bt-text)' }}>{message.content}</p>
-              {message.source && <TerminalText tone="muted" className="!text-[9px]">{message.source}</TerminalText>}
-            </div>
-          </article>
-        ))}
+        {messages.map(message => {
+          const parsed: ParsedMessageContent = message.role === 'assistant' ? parseActionTag(message.content) : { cleanText: message.content, actions: [] };
+          return (
+            <article key={message.id} className={`flex gap-3 ${message.role === 'user' ? 'flex-row-reverse' : ''}`}>
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: message.role === 'assistant' ? 'rgba(233,230,242,0.06)' : 'rgba(63,123,255,0.1)' }} aria-hidden="true">
+                {message.role === 'assistant' ? <BaksurCharacter direction="flamehorn" state="IDLE" size={28} bodyColor={BAKASUR_COLOR_HEXES.violet.body} moodColor={BAKASUR_COLOR_HEXES.violet.mood} frozenAt={0} decorative /> : <PixelIcon name="terminal" size={16} color="var(--bt-info)" />}
+              </div>
+              <div className={`flex flex-col gap-1 max-w-[85%] ${message.role === 'user' ? 'items-end' : ''}`}>
+                <span className="font-mono text-[9px] font-bold uppercase tracking-wider" style={{ color: 'var(--bt-text-muted)' }}>{message.role === 'assistant' ? 'BAKASUR' : 'YOU'}</span>
+                <p className="m-0 text-sm leading-relaxed" style={{ color: 'var(--bt-text)' }}>{parsed.cleanText}</p>
+                {parsed.actions.map((act: ParsedAction, i: number) => (
+                  <ActionCard key={`${act.toolName}-${i}`} action={act} apiClient={apiClient} />
+                ))}
+                {message.source && <TerminalText tone="muted" className="!text-[9px]">{message.source}</TerminalText>}
+              </div>
+            </article>
+          );
+        })}
         {busy && (
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'rgba(233,230,242,0.06)' }}><BaksurCharacter direction="flamehorn" state="THINKING" size={28} bodyColor={BAKASUR_COLOR_HEXES.violet.body} moodColor={BAKASUR_COLOR_HEXES.violet.mood} decorative /></div>

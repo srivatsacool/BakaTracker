@@ -18,6 +18,8 @@ import {
   loadOnboardingState,
   persistSoulUpdate,
 } from '../../lib/soulOnboarding';
+import { parseActionTag, type ParsedMessageContent, type ParsedAction } from '../../features/tools/actionParser';
+import { ActionCard } from './ActionCard';
 import type { Habit, HabitLog, JournalEntry, Task, UserStats } from '../../types';
 
 interface Message {
@@ -585,17 +587,23 @@ export const BakaSurRail: React.FC<BakaSurRailProps> = ({ collapsed, onToggle })
       {/* ── Independent scroll viewport: the ONLY scrolling element. ── */}
       <div className="baksur-rail-scroll flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 flex flex-col gap-3">
         <div className="flex flex-col gap-3" aria-live="polite">
-          {messages.map(message => (
-            <article key={message.id} className={`flex gap-2 ${message.role === 'user' ? 'flex-row-reverse' : ''}`}>
-              <div className="w-6 h-6 rounded flex items-center justify-center shrink-0" style={{ background: message.role === 'assistant' ? 'rgba(139, 92, 246,0.12)' : 'rgba(63,123,255,0.14)', color: message.role === 'assistant' ? 'var(--arcade-gold)' : 'var(--arcade-cobalt)' }} aria-hidden="true">
-                {message.role === 'assistant' ? <PixelIcon name="robot" size={16} color="var(--arcade-gold)" /> : <PixelIcon name="terminal" size={16} color="var(--arcade-cobalt)" />}
-              </div>
-              <div className={`flex flex-col gap-1 max-w-[85%] ${message.role === 'user' ? 'items-end' : ''}`}>
-                <p className="m-0 text-[0.8rem] leading-relaxed whitespace-pre-line" style={{ color: 'var(--arcade-paper)' }}>{message.content}</p>
-                {message.source && <TerminalText tone="muted" className="text-[9px]">{message.source}</TerminalText>}
-              </div>
-            </article>
-          ))}
+          {messages.map(message => {
+            const parsed: ParsedMessageContent = message.role === 'assistant' ? parseActionTag(message.content) : { cleanText: message.content, actions: [] };
+            return (
+              <article key={message.id} className={`flex gap-2 ${message.role === 'user' ? 'flex-row-reverse' : ''}`}>
+                <div className="w-6 h-6 rounded flex items-center justify-center shrink-0" style={{ background: message.role === 'assistant' ? 'rgba(139, 92, 246,0.12)' : 'rgba(63,123,255,0.14)', color: message.role === 'assistant' ? 'var(--arcade-gold)' : 'var(--arcade-cobalt)' }} aria-hidden="true">
+                  {message.role === 'assistant' ? <PixelIcon name="robot" size={16} color="var(--arcade-gold)" /> : <PixelIcon name="terminal" size={16} color="var(--arcade-cobalt)" />}
+                </div>
+                <div className={`flex flex-col gap-1 max-w-[85%] ${message.role === 'user' ? 'items-end' : ''}`}>
+                  <p className="m-0 text-[0.8rem] leading-relaxed whitespace-pre-line" style={{ color: 'var(--arcade-paper)' }}>{parsed.cleanText}</p>
+                  {parsed.actions.map((act: ParsedAction, i: number) => (
+                    <ActionCard key={`${act.toolName}-${i}`} action={act} apiClient={apiClient} />
+                  ))}
+                  {message.source && <TerminalText tone="muted" className="text-[9px]">{message.source}</TerminalText>}
+                </div>
+              </article>
+            );
+          })}
           {busy && <div className="flex items-center gap-2 font-mono text-[10px]" style={{ color: 'var(--arcade-paper-muted)' }}><Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" /> BakaSur is thinking…</div>}
         </div>
 

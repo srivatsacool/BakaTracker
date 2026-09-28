@@ -40,6 +40,7 @@ const SESSION_CLIENT = 'bt_oauth_client_id';
 // unaffected — the promise resolves and is released the same way.
 // ---------------------------------------------------------------------------
 let oauthExchangeInFlight: Promise<void> | null = null;
+let tokenRefreshInFlight: Promise<string> | null = null;
 
 function base64UrlEncode(bytes: Uint8Array): string {
   let bin = '';
@@ -119,39 +120,57 @@ const AuthProviderInner: React.FC<{ children: React.ReactNode }> = ({ children }
   // Demo mode: when OAuth IS configured but user chose "Explore Demo"
   const isDemoMode = useMemo(() => localStorage.getItem('bt_demo_mode') === 'true', []);
 
-  const getAccessToken = useCallback(async (): Promise<string> => {
+  const getAccessToken = useCallback(async (options?: { ignoreCache?: boolean }): Promise<string> => {
     const token = sessionStorage.getItem(SESSION_TOKEN);
     if (!token) return '';
     const expiresAt = Number(sessionStorage.getItem(SESSION_EXPIRES)) || 0;
-    if (Date.now() < expiresAt) return token;
+    if (!options?.ignoreCache && Date.now() < expiresAt) return token;
 
-    // Expired (or nearly): try the refresh token once.
-    const refresh = sessionStorage.getItem(SESSION_REFRESH);
-    if (!refresh) {
-      sessionStorage.removeItem(SESSION_TOKEN);
-      return '';
+    // Single-flight token refresh: coalesce concurrent refresh requests
+    if (tokenRefreshInFlight) {
+      return tokenRefreshInFlight;
     }
-    const res = await fetch(`${workerBaseUrl()}/token`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        grant_type: 'refresh_token',
-        refresh_token: refresh,
-        client_id: sessionStorage.getItem(SESSION_CLIENT) || (await ensureClientId()),
-      }),
+
+    const doRefresh = async (): Promise<string> => {
+      // Expired (or nearly): try the refresh token once.
+      const refresh = sessionStorage.getItem(SESSION_REFRESH);
+      if (!refresh) {
+        sessionStorage.removeItem(SESSION_TOKEN);
+        return '';
+      }
+      try {
+        const clientId = sessionStorage.getItem(SESSION_CLIENT) || (await ensureClientId());
+        const res = await fetch(`${workerBaseUrl()}/token`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({
+            grant_type: 'refresh_token',
+            refresh_token: refresh,
+            client_id: clientId,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok || !data.access_token) {
+          sessionStorage.removeItem(SESSION_TOKEN);
+          sessionStorage.removeItem(SESSION_REFRESH);
+          sessionStorage.removeItem(SESSION_EXPIRES);
+          return '';
+        }
+        sessionStorage.setItem(SESSION_TOKEN, data.access_token);
+        if (data.refresh_token) sessionStorage.setItem(SESSION_REFRESH, data.refresh_token);
+        sessionStorage.setItem(SESSION_EXPIRES, String(Date.now() + (data.expires_in ?? 3600) * 1000));
+        return data.access_token;
+      } catch {
+        sessionStorage.removeItem(SESSION_TOKEN);
+        return '';
+      }
+    };
+
+    tokenRefreshInFlight = doRefresh().finally(() => {
+      tokenRefreshInFlight = null;
     });
-    const data = await res.json();
-    if (!res.ok || !data.access_token) {
-      sessionStorage.removeItem(SESSION_TOKEN);
-      sessionStorage.removeItem(SESSION_REFRESH);
-      sessionStorage.removeItem(SESSION_EXPIRES);
-      return '';
-    }
-    sessionStorage.setItem(SESSION_TOKEN, data.access_token);
-    if (data.refresh_token) sessionStorage.setItem(SESSION_REFRESH, data.refresh_token);
-    sessionStorage.setItem(SESSION_EXPIRES, String(Date.now() + (data.expires_in ?? 3600) * 1000));
-    return data.access_token;
-     
+
+    return tokenRefreshInFlight;
   }, []);
 
   // Hydrate the user profile from the worker (whoami) using the stored token.
