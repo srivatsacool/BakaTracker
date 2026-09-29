@@ -1,4 +1,4 @@
-# 🚀 BakaTracker — v2.3
+# 🚀 BakaTracker — v2.3.1
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![TypeScript](https://img.shields.io/badge/Language-TypeScript-blue.svg)](https://www.typescriptlang.org/)
@@ -12,32 +12,29 @@
 
 > **BakaTracker** is a gamified personal life operating system — an RPG where
 > your habits, tasks, journal entries, and notes earn XP and level up a
-> character. **v2.3 is Cloudflare-native**: React PWA → Cloudflare Workers REST
+> character. **v2.3.1 is Cloudflare-native**: React PWA → Cloudflare Workers REST
 > API → D1 + R2 + KV. Self-hostable, single-user by design, zero
 > subscriptions. *Track your life without turning it into a project.*
 
 ---
 
-## ✨ What's new in v2.3
+## ✨ What's new in v2.3.1
 
-| | v1 (legacy) | **v2.3 (this repo)** |
+| | v1 (legacy) | **v2.3.1 (this repo)** |
 |---|---|---|
 | **Backend** | Python FastAPI on Google Cloud Run + Google Apps Script | **Cloudflare Workers** (`platform/`) |
 | **Database** | Google Sheets via Apps Script proxy | **Cloudflare D1** (SQLite: notes, FTS, tags) + **R2** (binaries) + **KV** (OAuth, notifications) |
 | **Auth** | Auth0 JWT / static bearer | **Google OAuth** via `workers-oauth-provider` (+ offline guest mode) |
-| **API style** | MCP-first, UI hit Sheets | **REST-only for the UI** (`/api/v1/*`); MCP reserved for AI clients |
+| **API style** | MCP-first, UI hit Sheets | **REST-only for the UI** (`/api/v1/*`); Remote MCP & WebMCP for AI agents |
 | **UI** | Neo-brutalist light/dark | **Dark glassmorphism** with LightTunnel WebGL background |
-| **AI** | — | **BakaSur assistant** (Workers AI, Llama 3.2 1B), notes AI actions, proactive notifications |
-| **Sync** | Sheets `sync` overwrite | **Local-first with op-log sync** (`/sync/pull`, `/sync/push`) |
+| **AI** | — | **BakaSur assistant** (Workers AI, Llama 3.2 1B), 40-tool action execution, proactive notifications |
+| **Sync** | Sheets `sync` overwrite | **Local-first with op-log sync** (`/sync/pull`, `/sync/push`) + anti-ghost sync barrier |
 
-### v2.3 highlights
-- **Harden + optimize pass** — 14 zustand whole-store subscriptions converted to `useShallow` selectors (Layout, BakaSurRail, ContextBar, SyncStatus, all pages, modals); Tasks delete-timer unmount leak fixed; input maxLength/bounds everywhere; kanban truncation; Tasks search empty state.
-- **Landing text unified** — hero paragraph, body text, captions, labels, and inactive icons all at `rgba(233,230,242,0.7)` (paper white at 70% alpha) for a single consistent register.
-- **Footer bolder** — Fragment Mono 700, full instrument white, violet GitHub chip with 700 weight.
-- **Sign-in chip** — statement instrument chip (Fragment Mono, violet glass, blinking cursor) accepted via impeccable live.
-- **CORS security fix** — disallowed origins no longer leak the allowlist (worker wrapper reflected first allowed origin on rejection; now reflects only when allowed).
-- **AI model** — switched to `@cf/meta/llama-3.2-1b-instruct` (fast inference on Workers AI).
-- **MCP connected** — BakaTracker tools accessible via MCP (38 tools) with OAuth.
+### v2.3.1 highlights
+- **Accessibility Fix (BakaSur Composers)** — Disambiguated duplicate accessible names (`Ask BakaSur`) across simultaneously mounted composers (`Ask BakaSur (Page Composer)` for the companion terminal and `Ask BakaSur (Docked Rail)` for the persistent assistant rail). Screen readers and automated testing can uniquely target each control.
+- **Automated Accessibility Testing** — Added `src/__tests__/bakasur/accessibility.test.tsx` verifying unique accessible names, keyboard entry, role queryability, and collapsed behavior.
+- **Canonical 40-Tool Registry** — Full schema alignment across Zustand local store, WebMCP browser bridge, and Remote MCP Cloudflare Worker endpoints.
+- **Harden + optimize pass** — Granular `useShallow` selectors; single-flight token refresh mutex; habit completion idempotency; anti-ghost sync barrier on reset.
 
 ---
 
@@ -48,12 +45,13 @@
 3. [Technical Architecture](#-technical-architecture)
 4. [Folder Structure](#-folder-structure)
 5. [Tech Stack](#-tech-stack)
-6. [Local Development](#-local-development)
-7. [Deploy Your Own Instance](#deploy-your-own-instance)
-8. [Security](#-security)
-9. [Developer Guidelines](#-developer-guidelines)
-10. [Troubleshooting](#-troubleshooting)
-11. [Roadmap](#-roadmap)
+6. [Quality Assurance & Acceptance Testing](#-quality-assurance--acceptance-testing)
+7. [Local Development](#-local-development)
+8. [Deploy Your Own Instance](#deploy-your-own-instance)
+9. [Security](#-security)
+10. [Developer Guidelines](#-developer-guidelines)
+11. [Troubleshooting](#-troubleshooting)
+12. [Roadmap](#-roadmap)
 
 ---
 
@@ -71,7 +69,7 @@
 - **Web Push Notifications** — opt-in notifications with quiet hours and personality settings.
 - **Local-first sync** — instant UI, background op-log sync when online; offline guest mode works fully.
 - **PWA** — installable, service-worker cached, works offline.
-- **MCP Integration** — 38 tools accessible via Model Context Protocol for AI clients (Claude, Cursor, Hermes).
+- **MCP Integration** — 40 tools accessible via Model Context Protocol for AI clients (Claude, Cursor, Hermes) and WebMCP in-browser agents.
 
 ---
 
@@ -171,9 +169,53 @@ BakaTracker/
 | AI | Workers AI (`@cf/meta/llama-3.2-1b-instruct`), notes AI actions |
 | Auth | Google OAuth 2.0 (Authorization Code + PKCE) |
 | PWA | Vite PWA, injectManifest service worker |
-| MCP | `@modelcontextprotocol/sdk`, McpAgent Durable Object |
-| Tests | Vitest + db-verify (219 tests), Node test runner (10 pages checks) |
+| MCP | `@modelcontextprotocol/sdk`, McpAgent Durable Object, Canonical 40-tool registry, WebMCP bridge |
+| Tests | Vitest (313 frontend tests, 286 platform tests), db-verify (7 tests), Node test runner (10 pages contract checks) — 616 total |
 | Deploy | `wrangler` + `scripts/setup.mjs` + Cloudflare Pages |
+
+---
+
+## 🧪 Quality Assurance & Acceptance Testing
+
+BakaTracker maintains strict quality gates across local-first offline state, remote Cloudflare Worker APIs, and AI tool execution.
+
+### Historical Production Acceptance Baseline
+
+The following baseline metrics reflect the comprehensive post-deployment acceptance testing performed on the production environment (`https://bakatracker.buildsrivatsa.qzz.io/` backed by `https://bakatracker-platform.srivatsagorti.workers.dev`):
+
+| Metric | Previous Verified Report | Status |
+|---|---:|---|
+| **Total acceptance scenarios** | **37** | Comprehensive E2E & security audit |
+| **Passed** | **36** | 97.3% live production pass rate |
+| **Failed** | **0** | Zero critical or blocking regressions |
+| **Partially passed** | **0** | No partial state anomalies |
+| **Not tested** | **1** | Intentionally omitted to protect user data |
+| **Blocked** | **0** | No blocked paths |
+
+> [!NOTE]
+> **Safety Policy on `NOT TESTED` (Scenario `SYNC-01`):**
+> The single untested scenario was `SYNC-01: Live Production Account Reset`. Live automated reset was intentionally bypassed on the active production account to prevent irreversible data loss of user records. The client-side anti-ghost sync barrier and account reset logic are independently and strictly verified via isolated automated regression tests in [`src/__tests__/store/sync-reset-barrier.test.ts`](src/__tests__/store/sync-reset-barrier.test.ts).
+
+### Automated Regression Test Suites
+
+BakaTracker executes 616 automated tests across frontend, backend, and build artifacts:
+
+| Test Suite | Framework | Scope / Coverage | Test Count |
+|---|---|---|---:|
+| **Frontend Unit & Components** | Vitest + jsdom + RTL | Store, UI components, accessibility, WebMCP, sync queue | **313 tests** (33 test files) |
+| **Production Build Contract** | Node.js Test Runner | Production asset integrity, no localhost leaks, manifest, headers | **10 checks** |
+| **Platform Worker API** | Vitest + Miniflare | Hono routing, auth, tool registry, D1 repositories, sync | **286 tests** |
+| **Database Migration Verification** | Node.js + D1 SQLite | Schema invariants, foreign keys, triggers, full-text search | **7 checks** |
+| **Total Automated Coverage** | | | **616 tests** |
+
+### Production Performance & Telemetry
+
+Observed production telemetry benchmarks:
+- **Time to First Byte (TTFB)**: ~108ms
+- **DOM Interactive**: ~149ms
+- **DOM Complete**: ~274ms
+- **Client Memory Footprint**: ~18MB JS Heap (stable, zero leak during route transitions)
+- **WebMCP Compatibility**: Native `navigator.modelContext` detected or graceful browser simulation fallback active; 40 canonical tools registered and accessible.
 
 ---
 
@@ -196,10 +238,12 @@ Wrangler simulates D1/KV/R2 locally — no Cloudflare resources needed for dev.
 ### Verification suite
 
 ```bash
-npm run build         # tsc + vite production build
-npm run lint          # eslint
-npm run test:pages    # production build contract checks (10 tests)
-cd platform && npm test   # vitest + db-verify (219 tests)
+npx vitest run --pool=threads   # frontend unit & accessibility tests (313 tests)
+npm run test:pages             # production build contract checks (10 tests)
+npm run lint                   # eslint & code style
+npx tsc -b                     # TypeScript type checking
+cd platform && npm test        # vitest + db-verify (293 tests)
+
 
 # Browser E2E runs in Firefox (via @mozilla/firefox-devtools-mcp).
 # Requires the dev server on :5173. See CONTRIBUTING.md → "Browser E2E / Visual QA".

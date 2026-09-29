@@ -263,7 +263,7 @@ export const BakaSurPage: React.FC = () => {
 
       {/* Composer */}
       <form className="flex items-center gap-2" onSubmit={e => { e.preventDefault(); void ask(input); }}>
-        <input value={input} onChange={e => setInput(e.target.value)} placeholder="Ask BakaSur…" aria-label="Ask BakaSur" maxLength={500} disabled={busy}
+        <input value={input} onChange={e => setInput(e.target.value)} placeholder="Ask BakaSur…" aria-label="Ask BakaSur (Page Composer)" maxLength={500} disabled={busy}
           className="arcade-input !py-3 flex-1" />
         <button type="submit" disabled={busy || !input.trim()} aria-label="Send message" title="Send message"
           className="icon-button !px-4 !py-3" style={{ background: 'var(--bt-primary)', color: '#f4f2ff', borderColor: 'var(--bt-primary)' }}>

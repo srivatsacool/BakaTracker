@@ -628,7 +628,7 @@ export const BakaSurRail: React.FC<BakaSurRailProps> = ({ collapsed, onToggle })
           value={input}
           onChange={event => setInput(event.target.value)}
           placeholder="Ask BakaSur…"
-          aria-label="Ask BakaSur"
+          aria-label="Ask BakaSur (Docked Rail)"
           maxLength={500}
           disabled={busy}
           className="arcade-input !py-2 !text-sm flex-1"

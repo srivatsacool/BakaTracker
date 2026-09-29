@@ -2,6 +2,19 @@
 
 All notable changes to BakaTracker will be documented in this file.
 
+## [2.3.1] — 2026-09-30 — BakaTracker v2.3.1 — Accessibility Fix & Documentation Sync
+
+### Accessibility Improvements
+* **BakaSur Composer Disambiguation** — Resolved duplicate accessible names (`Ask BakaSur`) across simultaneously mounted interactive composers.
+  * Companion terminal page input (`/bakasur`) updated to `aria-label="Ask BakaSur (Page Composer)"`.
+  * Persistent docked assistant rail input (`BakaSurRail`) updated to `aria-label="Ask BakaSur (Docked Rail)"`.
+  * Preserved visual design, placeholder (`Ask BakaSur…`), and keyboard navigation while ensuring screen readers and automated accessibility testing can uniquely distinguish each active composer.
+* **Automated Accessibility Testing** — Introduced `src/__tests__/bakasur/accessibility.test.tsx` verifying unique accessible names, keyboard entry, role-based queryability, and proper unmounting when collapsed.
+
+### Quality & Documentation
+* **Production Acceptance Test Baseline Synchronized** — Documented the verified 37-scenario production acceptance test run (36 PASS, 1 NOT TESTED for live production account reset safeguard, 0 FAIL) and verified environment performance benchmarks (TTFB 108ms, DOM Interactive 149ms, Complete 274ms, JS Heap ~18MB).
+* **Canonical Tool Registry Realignment** — Updated documentation to reflect the full 40 canonical platform tools aligned across Zustand, WebMCP, and Cloudflare Worker MCP endpoints.
+
 ---
 
 ## [2.3.0] — 2026-09-15 — BakaTracker v2.3.0 — Production Release
